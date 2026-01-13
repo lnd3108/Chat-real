@@ -83,3 +83,13 @@ cd backend
 npm install
 npm start
 ```
+
+### FrontEnd
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+> Project được khởi tạo từ React + Vite template.
