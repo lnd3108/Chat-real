@@ -1,0 +1,81 @@
+import { create } from "zustand";
+import { io, type Socket } from "socket.io-client";
+import { useAuthStore } from "./useAuthStore";
+import type { SocketState } from "@/types/store";
+import { useChatStore } from "./useChatStore";
+
+const baseURL = import.meta.env.VITE_SOCKET_URL;
+
+export const useSocketStore = create<SocketState>((set, get) => ({
+  socket: null,
+  onlineUsers: [],
+  connectSocket: () => {
+    const accessToken = useAuthStore.getState().accessToken;
+    const existingSocket = get().socket;
+
+    if (existingSocket) return; // tránh tạo nhièu socket
+
+    const socket: Socket = io(baseURL, {
+      auth: { token: accessToken },
+      transports: ["websocket"],
+    });
+
+    set({ socket });
+
+    socket.on("connect", () => {
+      console.log("Đã kết nối thành công với socket");
+    });
+
+    //online users
+    socket.on("online-users", (userIds) => {
+      console.log("online-users received:", userIds);
+      set({ onlineUsers: userIds });
+    });
+
+    // new message
+    socket.on("new-message", ({ message, conversation, unreadCounts }) => {
+      useChatStore.getState().addMessage(message);
+
+      const lastMessage = {
+        _id: conversation.lastMessage._id,
+        content: conversation.lastMessage.content,
+        createdAt: conversation.lastMessage.createdAt,
+        sender: {
+          _id:
+            conversation.lastMessage.sender?._id ??
+            conversation.lastMessage.senderId,
+          displayName: conversation.lastMessage.sender?.displayName ?? "",
+          avatarUrl: conversation.lastMessage.sender?.avatarUrl ?? null,
+        },
+      };
+
+      const updatedConversation = {
+        ...conversation,
+        lastMessage,
+        unreadCounts,
+      };
+
+      if (
+        useChatStore.getState().activeConversationId === message.conversationId
+      ) {
+        useChatStore.getState().markasSeen();
+      }
+
+      useChatStore.getState().updateConversation(updatedConversation);
+    });
+
+    // read message
+    socket.on("read-message", ({ conversation }) => {
+      useChatStore.getState().updateConversation(conversation);
+    });
+  },
+
+  disconnectSocket: () => {
+    const socket = get().socket;
+
+    if (socket) {
+      socket.disconnect();
+      set({ socket: null });
+    }
+  },
+}));
