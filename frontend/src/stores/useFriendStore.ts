@@ -5,7 +5,7 @@ import { create } from "zustand";
 export const useFriendStore = create<FriendState>((set, get) => ({
   loading: false,
   receivedList: [],
-  sendList: [],
+  sentList: [],
   searchByUserName: async (userName) => {
     try {
       set({ loading: true });
@@ -46,7 +46,7 @@ export const useFriendStore = create<FriendState>((set, get) => ({
 
       const { received, sent } = result;
 
-      set({ receivedList: received, sendList: sent });
+      set({ receivedList: received, sentList: sent });
     } catch (error) {
       console.error("loi xayr ra khi getAllFriendRequests", error);
     } finally {

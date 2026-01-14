@@ -79,7 +79,7 @@ export interface SocketState {
 export interface FriendState {
   loading: boolean;
   receivedList: FriendRequest[];
-  sendList: FriendRequest[];
+  sentList: FriendRequest[];
   searchByUserName: (userName: string) => Promise<User | null>;
   addFriend: (to: string, message?: string) => Promise<string>;
   getAllFriendRequests: () => Promise<void>;

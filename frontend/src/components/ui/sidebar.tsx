@@ -493,55 +493,104 @@ const sidebarMenuButtonVariants = cva(
   }
 );
 
-function SidebarMenuButton({
-  asChild = false,
-  isActive = false,
-  variant = "default",
-  size = "default",
-  tooltip,
-  className,
-  ...props
-}: React.ComponentProps<"button"> & {
+// function SidebarMenuButton({
+//   asChild = false,
+//   isActive = false,
+//   variant = "default",
+//   size = "default",
+//   tooltip,
+//   className,
+//   ...props
+// }: React.ComponentProps<"button"> & {
+//   asChild?: boolean;
+//   isActive?: boolean;
+//   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+// } & VariantProps<typeof sidebarMenuButtonVariants>) {
+//   const Comp = asChild ? Slot : "button";
+//   const { isMobile, state } = useSidebar();
+
+//   const button = (
+//     <Comp
+//       data-slot="sidebar-menu-button"
+//       data-sidebar="menu-button"
+//       data-size={size}
+//       data-active={isActive}
+//       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+//       {...props}
+//     />
+//   );
+
+//   if (!tooltip) {
+//     return button;
+//   }
+
+//   if (typeof tooltip === "string") {
+//     tooltip = {
+//       children: tooltip,
+//     };
+//   }
+
+//   return (
+//     <Tooltip>
+//       <TooltipTrigger asChild>{button}</TooltipTrigger>
+//       <TooltipContent
+//         side="right"
+//         align="center"
+//         hidden={state !== "collapsed" || isMobile}
+//         {...tooltip}
+//       />
+//     </Tooltip>
+//   );
+// }
+type SidebarMenuButtonProps = React.ComponentPropsWithoutRef<"button"> & {
   asChild?: boolean;
   isActive?: boolean;
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-} & VariantProps<typeof sidebarMenuButtonVariants>) {
-  const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  tooltip?: string;
+  size?: "sm" | "md" | "lg";
+};
 
-  const button = (
-    <Comp
-      data-slot="sidebar-menu-button"
-      data-sidebar="menu-button"
-      data-size={size}
-      data-active={isActive}
-      className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-      {...props}
-    />
-  );
+const SidebarMenuButton = React.forwardRef<
+  HTMLButtonElement,
+  SidebarMenuButtonProps
+>(
+  (
+    { asChild = false, isActive = false, size = "md", className, ...props },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : "button";
 
-  if (!tooltip) {
-    return button;
-  }
+    return (
+      <Comp
+        ref={ref}
+        type={asChild ? undefined : "button"} // tránh submit form nếu nằm trong <form>
+        data-slot="sidebar-menu-button"
+        data-sidebar="menu-button"
+        data-active={isActive}
+        data-size={size}
+        className={cn(
+          // base
+          "flex w-full items-center gap-2 rounded-md outline-hidden transition-colors",
+          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          "focus-visible:ring-2 ring-sidebar-ring",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
 
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    };
-  }
+          // size
+          size === "sm" && "h-8 px-2 text-xs",
+          size === "md" && "h-10 px-2 text-sm",
+          size === "lg" && "h-12 px-3 text-sm",
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
+          className
+        )}
+        {...props}
       />
-    </Tooltip>
-  );
-}
+    );
+  }
+);
+
+SidebarMenuButton.displayName = "SidebarMenuButton";
+
+SidebarMenuButton.displayName = "SidebarMenuButton";
 
 function SidebarMenuAction({
   className,
@@ -664,37 +713,75 @@ function SidebarMenuSubItem({
   );
 }
 
-function SidebarMenuSubButton({
-  asChild = false,
-  size = "md",
-  isActive = false,
-  className,
-  ...props
-}: React.ComponentProps<"a"> & {
+// function SidebarMenuSubButton({
+//   asChild = false,
+//   size = "md",
+//   isActive = false,
+//   className,
+//   ...props
+// }: React.ComponentProps<"a"> & {
+//   asChild?: boolean;
+//   size?: "sm" | "md";
+//   isActive?: boolean;
+// }) {
+//   const Comp = asChild ? Slot : "a";
+
+//   return (
+//     <Comp
+//       data-slot="sidebar-menu-sub-button"
+//       data-sidebar="menu-sub-button"
+//       data-size={size}
+//       data-active={isActive}
+//       className={cn(
+//         "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+//         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+//         size === "sm" && "text-xs",
+//         size === "md" && "text-sm",
+//         "group-data-[collapsible=icon]:hidden",
+//         className
+//       )}
+//       {...props}
+//     />
+//   );
+// }
+type SidebarMenuSubButtonProps = React.ComponentPropsWithoutRef<"a"> & {
   asChild?: boolean;
   size?: "sm" | "md";
   isActive?: boolean;
-}) {
-  const Comp = asChild ? Slot : "a";
+};
 
-  return (
-    <Comp
-      data-slot="sidebar-menu-sub-button"
-      data-sidebar="menu-sub-button"
-      data-size={size}
-      data-active={isActive}
-      className={cn(
-        "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
-        size === "sm" && "text-xs",
-        size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      )}
-      {...props}
-    />
-  );
-}
+const SidebarMenuSubButton = React.forwardRef<
+  HTMLAnchorElement,
+  SidebarMenuSubButtonProps
+>(
+  (
+    { asChild = false, size = "md", isActive = false, className, ...props },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : "a";
+
+    return (
+      <Comp
+        ref={ref}
+        data-slot="sidebar-menu-sub-button"
+        data-sidebar="menu-sub-button"
+        data-size={size}
+        data-active={isActive}
+        className={cn(
+          "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+          "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+          size === "sm" && "text-xs",
+          size === "md" && "text-sm",
+          "group-data-[collapsible=icon]:hidden",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 export {
   Sidebar,
