@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFriendStore } from "@/stores/useFriendStore";
 import SentRequest from "./SentRequest";
+import ReceivedRequests from "./ReceivedRequests";
 
 interface FriendRequestDialogProps {
   open: boolean;
@@ -38,7 +39,9 @@ const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
             <TabsTrigger value="sent">Đã gửi</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="received">{/* {todo} */}</TabsContent>
+          <TabsContent value="received">
+            <ReceivedRequests />
+          </TabsContent>
           <TabsContent value="sent">
             <SentRequest />
           </TabsContent>

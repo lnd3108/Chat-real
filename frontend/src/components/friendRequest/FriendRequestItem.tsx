@@ -32,6 +32,7 @@ const FriendRequestItem = ({
           <p className="text-sm text-muted-foreground">@{info.userName}</p>
         </div>
       </div>
+      {actions}
     </div>
   );
 };

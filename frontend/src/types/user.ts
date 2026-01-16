@@ -21,13 +21,13 @@ export interface FriendRequest {
   _id: string;
   from?: {
     _id: string;
-    username: string;
+    userName: string;
     displayName: string;
     avatarUrl?: string;
   };
   to?: {
     _id: string;
-    username: string;
+    userName: string;
     displayName: string;
     avatarUrl?: string;
   };
