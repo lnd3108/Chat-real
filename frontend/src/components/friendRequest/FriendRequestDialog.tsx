@@ -27,7 +27,7 @@ const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Lời mời kết bạn</DialogTitle>
         </DialogHeader>
