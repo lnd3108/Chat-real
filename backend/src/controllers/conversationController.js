@@ -89,9 +89,15 @@ export const createConversation = async (req, res) => {
       participants,
     };
 
+    // if (type === "group") {
+    //   memberIds.forEach((userId) => {
+    //     io.to(userId).emit("new-group", { conversation: formatted });
+    //   });
+    // }
     if (type === "group") {
-      memberIds.forEach((userId) => {
-        io.to(userId).emit("new-group", { conversation: formatted });
+      conversation.participants.forEach((p) => {
+        const uid = p.userId.toString();
+        io.to(uid).emit("new-group", { conversation: formatted });
       });
     }
 
@@ -108,7 +114,8 @@ export const getConversation = async (req, res) => {
     const conversations = await Conversation.find({
       "participants.userId": userId,
     })
-      .sort({ lastMessageAt: 1, updatedAt: -1 })
+      // .sort({ lastMessageAt: 1, updatedAt: -1 })
+      .sort({ lastMessageAt: -1 })
       .populate({
         path: "participants.userId",
         select: "displayName avatarUrl",
@@ -123,14 +130,12 @@ export const getConversation = async (req, res) => {
       });
 
     const formatted = conversations.map((convo) => {
-      const participants =
-        convo.participants ||
-        [].map((p) => ({
-          _id: p.userId?._id,
-          displayName: p.userId?.displayName,
-          avatarUrl: p.userId?.avatarUrl ?? null,
-          joinedAt: p.joinedAt,
-        }));
+      const participants = (convo.participants || []).map((p) => ({
+        _id: p.userId?._id,
+        displayName: p.userId?.displayName,
+        avatarUrl: p.userId?.avatarUrl ?? null,
+        joinedAt: p.joinedAt,
+      }));
       return {
         ...convo.toObject(),
         unreadCounts: convo.unreadCounts || {},
