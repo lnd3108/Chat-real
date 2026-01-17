@@ -6,6 +6,7 @@ export const createConversation = async (req, res) => {
   try {
     const { type, name, memberIds } = req.body;
     const userId = req.user._id;
+    const io = getIo();
 
     if (
       !type ||
@@ -87,6 +88,12 @@ export const createConversation = async (req, res) => {
       unreadCounts: conversation.unreadCounts || {},
       participants,
     };
+
+    if (type === "group") {
+      memberIds.forEach((userId) => {
+        io.to(userId).emit("new-group", { conversation: formatted });
+      });
+    }
 
     return res.status(201).json({ conversation: formatted });
   } catch (error) {

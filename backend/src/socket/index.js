@@ -35,6 +35,8 @@ export const initSocket = (server) => {
       socket.join(id.toString());
     });
 
+    socket.join(user._id.toString()); //Join room cá nhân của user
+
     socket.on("disconnect", () => {
       const set = onlineUsers.get(userId);
 

@@ -68,6 +68,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on("read-message", ({ conversation }) => {
       useChatStore.getState().updateConversation(conversation);
     });
+
+    //new Group chat
+    socket.on("new-group", (conversation) => {
+      useChatStore.getState().addConvo(conversation);
+      socket.emit("join-conversation", conversation._id);
+    });
   },
 
   disconnectSocket: () => {

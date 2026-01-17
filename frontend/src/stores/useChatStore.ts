@@ -13,6 +13,7 @@ export const useChatStore = create<ChatState>()(
       activeConversationId: null,
       convoLoading: false, // convo loading
       messageLoading: false, // message loading
+      loading: false, // create convo loading
 
       reset: () =>
         set({
@@ -260,6 +261,7 @@ export const useChatStore = create<ChatState>()(
 
       createConversation: async (type, name, memberIds) => {
         try {
+          set({ loading: true });
           const conversation = await chatServices.createConversation(
             type,
             name,
@@ -272,6 +274,8 @@ export const useChatStore = create<ChatState>()(
             .socket?.emit("join-conversation", conversation._id);
         } catch (error) {
           console.error("Lỗi xảy ra khi tạo cuộc trò chuyện:", error);
+        } finally {
+          set({ loading: false });
         }
       },
     }),
