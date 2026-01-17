@@ -47,6 +47,10 @@ export const initSocket = (server) => {
       io.emit("online-users", Array.from(onlineUsers.keys()));
       console.log(`socket disconnect: ${socket.id}`);
     });
+
+    socket.on("join-conversation", (conversationId) => {
+      socket.join(conversationId);
+    });
   });
 
   return io;

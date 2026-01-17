@@ -75,7 +75,20 @@ export const createConversation = async (req, res) => {
       { path: "lastMessage.senderId", select: "displayName avatarUrl" },
     ]);
 
-    return res.status(201).json({ conversation });
+    const participants = (conversation.participants || []).map((p) => ({
+      _id: p.userId?._id,
+      displayName: p.userId?.displayName,
+      avatarUrl: p.userId?.avatarUrl ?? null,
+      joinedAt: p.joinedAt,
+    }));
+
+    const formatted = {
+      ...conversation.toObject(),
+      unreadCounts: conversation.unreadCounts || {},
+      participants,
+    };
+
+    return res.status(201).json({ conversation: formatted });
   } catch (error) {
     console.error("Lỗi khi tạo conversation", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

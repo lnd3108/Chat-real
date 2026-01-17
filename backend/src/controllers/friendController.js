@@ -142,8 +142,8 @@ export const getAllFriends = async (req, res) => {
         { userB: userId },
       ],
     })
-      .populate("userA", "_id displayName avatarUrl")
-      .populate("userB", "_id displayName avatarUrl")
+      .populate("userA", "_id displayName avatarUrl userName")
+      .populate("userB", "_id displayName avatarUrl userName")
       .lean();
 
     if (!friendships.length) {
