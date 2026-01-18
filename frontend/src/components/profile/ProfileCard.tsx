@@ -4,6 +4,7 @@ import UserAvatar from "../chat/UserAvatar";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { useSocketStore } from "@/stores/useSocketStore";
+import AvatarUploader from "./AvatarUploader";
 
 interface ProfileCardProps {
   user: User | null;
@@ -23,7 +24,7 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
   return (
     <Card className="overflow-hidden p-0 h-52 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
       <CardContent className="mt-20 pb-8 flex flex-col sm:flex-row items-center sm:item-end gap-6">
-        <div>
+        <div className="relative">
           <UserAvatar
             type="profile"
             name={user.displayName}
@@ -31,6 +32,7 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
             className="ring-4 ring-white shadow-lg"
           />
           {/* todo: avatar upload */}
+          <AvatarUploader />
         </div>
 
         {/* user Info */}
@@ -53,13 +55,13 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
             "flex items-center gap-1 capitalize",
             isOnline
               ? "bg-green-100 text-green-700"
-              : "bg-slate-100 text-slate-700"
+              : "bg-slate-100 text-slate-700",
           )}
         >
           <div
             className={cn(
               "size-2 rounded-full",
-              isOnline ? "bg-green-500 animate-pulse" : "bg-slate-500"
+              isOnline ? "bg-green-500 animate-pulse" : "bg-slate-500",
             )}
           ></div>
           {isOnline ? "Online" : "Offline"}

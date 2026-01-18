@@ -4,7 +4,7 @@ import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
 import { persist } from "zustand/middleware";
 import { useChatStore } from "./useChatStore";
-import { use } from "react";
+
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -17,6 +17,9 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken });
       },
 
+      setUser: (user) => {
+        set({ user });
+      },
       clearState: () => {
         set({ accessToken: null, user: null, loading: false });
         useChatStore.getState().reset();

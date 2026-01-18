@@ -1,0 +1,24 @@
+import { userService } from "@/services/userService";
+import type { UserState } from "@/types/store";
+import { create } from "zustand";
+import { useAuthStore } from "./useAuthStore";
+import { toast } from "sonner";
+
+export const useUserStore = create<UserState>((set, get) => ({
+  updateAvatarUrl: async (formData) => {
+    try {
+      const { user, setUser } = useAuthStore.getState();
+      const data = await userService.UploadAvatar(formData);
+
+      if (user) {
+        setUser({
+          ...user,
+          avatarUrl: data.avatarUrl,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to upload avatar:", error);
+      toast.error("Failed to upload avatar.");
+    }
+  },
+}));

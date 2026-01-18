@@ -8,6 +8,7 @@ export interface AuthState {
   loading: boolean;
 
   setAccessToken: (accessToken: string) => void;
+  setUser: (user: User) => void;
   clearState: () => void;
 
   signUp: (
@@ -15,7 +16,7 @@ export interface AuthState {
     password: string,
     email: string,
     firstName: string,
-    lastName: string
+    lastName: string,
   ) => Promise<void>;
 
   signIn: (userName: string, password: string) => Promise<void>;
@@ -54,12 +55,12 @@ export interface ChatState {
   sendDirectMessage: (
     recipientId: string,
     content: string,
-    imgUrl?: string
+    imgUrl?: string,
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
     content: string,
-    imgUrl?: string
+    imgUrl?: string,
   ) => Promise<void>;
   //add message
   addMessage: (message: Message) => Promise<void>;
@@ -73,7 +74,7 @@ export interface ChatState {
   createConversation: (
     type: "direct" | "group",
     name: string,
-    memberIds: string[]
+    memberIds: string[],
   ) => Promise<void>;
 }
 
@@ -95,4 +96,8 @@ export interface FriendState {
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
   getFriends: () => Promise<void>;
+}
+
+export interface UserState {
+  updateAvatarUrl: (formData: FormData) => Promise<void>;
 }
