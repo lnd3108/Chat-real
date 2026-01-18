@@ -2,6 +2,10 @@ import type { Dispatch, SetStateAction } from "react";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import ProfileCard from "./ProfileCard";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import PersonalInForm from "./PersonalInForm";
+import PreferencesForm from "./PreferencesForm";
+import PrivacySetting from "./PrivacySetting";
 
 interface ProfileDialogProps {
   open: boolean;
@@ -25,6 +29,43 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
               </h1>
             </div>
             <ProfileCard user={user} />
+
+            {/* tabs */}
+            <Tabs className="my-4" defaultValue="personal">
+              <TabsList className="grid w-full grid-cols-3 glass-light ">
+                <TabsTrigger
+                  value="personal"
+                  className="data-[state=active]:glass-strong"
+                >
+                  Tài Khoản
+                </TabsTrigger>
+                <TabsTrigger
+                  value="preferences"
+                  className="data-[state=active]:glass-strong"
+                >
+                  Cấu Hình
+                </TabsTrigger>
+                <TabsTrigger
+                  value="privacy"
+                  className="data-[state=active]:glass-strong"
+                >
+                  Bảo Mật
+                </TabsTrigger>
+
+                <TabsContent value="personal">
+                  {/* <PersonalInForm /> */}
+                  <PersonalInForm userInfo={user} />
+                </TabsContent>
+                <TabsContent value="preferences">
+                  {/* <PreferencesForm /> */}
+                  <PreferencesForm />
+                </TabsContent>
+                <TabsContent value="privacy">
+                  {/* <PrivacySetting /> */}
+                  <PrivacySetting />
+                </TabsContent>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </DialogContent>
