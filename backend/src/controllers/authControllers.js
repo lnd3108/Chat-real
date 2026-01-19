@@ -79,7 +79,7 @@ export const signIn = async (req, res) => {
     const accessToken = jwt.sign(
       { userId: user._id },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: ACCESS_TOKEN_TTL }
+      { expiresIn: ACCESS_TOKEN_TTL },
     );
 
     //tạo refresh token
@@ -161,7 +161,7 @@ export const refreshToken = async (req, res) => {
     const accessToken = jwt.sign(
       { userId: session.userId },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: ACCESS_TOKEN_TTL }
+      { expiresIn: ACCESS_TOKEN_TTL },
     );
 
     //return
@@ -171,5 +171,77 @@ export const refreshToken = async (req, res) => {
     return res.status(500).json({
       message: "Lỗi Hệ Thống",
     });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // validate input
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "Thiếu currentPassword, newPassword hoặc confirmPassword",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "confirmPassword không khớp với newPassword",
+      });
+    }
+
+    // lấy user đầy đủ (có hashedPassword)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    // kiểm tra mật khẩu hiện tại
+    const isCorrect = await bcrypt.compare(
+      currentPassword,
+      user.hashedPassword,
+    );
+    if (!isCorrect) {
+      return res.status(401).json({ message: "Mật khẩu hiện tại không đúng" });
+    }
+
+    // tránh đổi trùng mật khẩu cũ
+    const isSameAsOld = await bcrypt.compare(newPassword, user.hashedPassword);
+    if (isSameAsOld) {
+      return res.status(400).json({
+        message: "Mật khẩu mới không được trùng mật khẩu cũ",
+      });
+    }
+
+    // hash & save
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.hashedPassword = hashedPassword;
+    await user.save();
+
+    //logout toàn bộ session refreshToken
+    await Session.deleteMany({ userId: user._id });
+
+    // clear cookie refreshToken hiện tại luôn
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
+
+    return res.status(200).json({
+      message: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
+    });
+  } catch (error) {
+    console.error("Lỗi khi gọi changePassword", error);
+    return res.status(500).json({ message: "Lỗi Hệ Thống" });
   }
 };

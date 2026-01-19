@@ -51,20 +51,19 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
                 >
                   Bảo Mật
                 </TabsTrigger>
-
-                <TabsContent value="personal">
-                  {/* <PersonalInForm /> */}
-                  <PersonalInForm userInfo={user} />
-                </TabsContent>
-                <TabsContent value="preferences">
-                  {/* <PreferencesForm /> */}
-                  <PreferencesForm />
-                </TabsContent>
-                <TabsContent value="privacy">
-                  {/* <PrivacySetting /> */}
-                  <PrivacySetting />
-                </TabsContent>
               </TabsList>
+              <TabsContent value="personal">
+                {/* <PersonalInForm /> */}
+                <PersonalInForm userInfo={user} />
+              </TabsContent>
+              <TabsContent value="preferences">
+                {/* <PreferencesForm /> */}
+                <PreferencesForm />
+              </TabsContent>
+              <TabsContent value="privacy">
+                {/* <PrivacySetting /> */}
+                <PrivacySetting />
+              </TabsContent>
             </Tabs>
           </div>
         </div>

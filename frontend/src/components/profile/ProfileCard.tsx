@@ -22,20 +22,18 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
   const isOnline = onlineUsers.includes(user._id) ? true : false;
 
   return (
-    <Card className="overflow-hidden p-0 h-52 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-      <CardContent className="mt-20 pb-8 flex flex-col sm:flex-row items-center sm:item-end gap-6">
-        <div className="relative">
+    <Card className="overflow-hidden p-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+      <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5">
+        <div className="relative shrink-0">
           <UserAvatar
             type="profile"
             name={user.displayName}
             avatarUrl={user.avatarUrl ?? undefined}
             className="ring-4 ring-white shadow-lg"
           />
-          {/* todo: avatar upload */}
           <AvatarUploader />
         </div>
 
-        {/* user Info */}
         <div className="text-center sm:text-left flex-1">
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             {user.displayName}
@@ -47,8 +45,6 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
             </p>
           )}
         </div>
-
-        {/* status */}
 
         <Badge
           className={cn(
@@ -63,7 +59,7 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
               "size-2 rounded-full",
               isOnline ? "bg-green-500 animate-pulse" : "bg-slate-500",
             )}
-          ></div>
+          />
           {isOnline ? "Online" : "Offline"}
         </Badge>
       </CardContent>
