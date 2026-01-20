@@ -76,6 +76,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
   },
 
+  emitShowOnlineStatus: (value: boolean) => {
+    const socket = get().socket;
+    if (!socket) return;
+    socket.emit("preferences:showOnlineStatus", value);
+  },
+
   disconnectSocket: () => {
     const socket = get().socket;
 

@@ -82,6 +82,7 @@ export interface SocketState {
   socket: Socket | null;
   onlineUsers: string[];
   connectSocket: () => void;
+  emitShowOnlineStatus: (value: boolean) => void;
   disconnectSocket: () => void;
 }
 

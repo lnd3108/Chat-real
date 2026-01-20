@@ -151,3 +151,33 @@ export const updateMe = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const updatePreferences = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { theme, showOnlineStatus } = req.body || {};
+
+    const updates = {};
+
+    if (theme) updates["preferences.theme"] = theme;
+
+    // ✅ nhận được cả false
+    if (typeof showOnlineStatus === "boolean") {
+      updates["preferences.showOnlineStatus"] = showOnlineStatus;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true },
+    ).select("-hashedPassword");
+
+    return res.status(200).json({
+      message: "Cập nhật cấu hình thành công!",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Lỗi updatePreferences:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};

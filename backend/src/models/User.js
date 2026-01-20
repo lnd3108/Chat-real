@@ -39,10 +39,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true,
     },
+    preferences: {
+      theme: {
+        type: String,
+        enum: ["light", "dark", "system"],
+        default: "system",
+      },
+      showOnlineStatus: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const User = mongoose.model("User", userSchema);

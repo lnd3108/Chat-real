@@ -9,13 +9,40 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSocketStore } from "@/stores/useSocketStore";
+import axios from "@/lib/axios";
 
 const PreferencesForm = () => {
   const { isDark, toggleTheme } = useThemeStore();
 
   //   các bạn cần handle logic setOnlineStatus
   const [onlineStatus, setOnlineStatus] = useState(false);
+  const { socket } = useSocketStore();
+
+  // ✅ load ban đầu từ backend
+  useEffect(() => {
+    (async () => {
+      const res = await axios.get("/users/me");
+      setOnlineStatus(res.data?.user?.preferences?.showOnlineStatus ?? true);
+    })();
+  }, []);
+
+  const handleToggleOnline = async (checked: boolean) => {
+    setOnlineStatus(checked);
+
+    try {
+      await axios.patch("/users/me/preferences", {
+        showOnlineStatus: checked,
+      });
+
+      // ✅ realtime update list online
+      socket?.emit("preferences:showOnlineStatus", checked);
+    } catch (e) {
+      // rollback nếu lỗi
+      setOnlineStatus((prev) => !prev);
+    }
+  };
 
   return (
     <Card className="glass-strong border-border/30">
@@ -40,6 +67,7 @@ const PreferencesForm = () => {
               Chuyển đổi giữa giao diện sáng và tối
             </p>
           </div>
+
           <div className="flex items-center gap-2">
             <Sun className="h-4 w-4 text-muted-foreground" />
             <Switch
@@ -62,10 +90,11 @@ const PreferencesForm = () => {
               Cho phép người khác thấy khi bạn đang online
             </p>
           </div>
+
           <Switch
             id="online-status"
             checked={onlineStatus}
-            onCheckedChange={setOnlineStatus}
+            onCheckedChange={handleToggleOnline}
             className="data-[state=checked]:bg-primary-glow"
           />
         </div>

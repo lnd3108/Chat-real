@@ -53,6 +53,20 @@ export const initSocket = (server) => {
     socket.on("join-conversation", (conversationId) => {
       socket.join(conversationId);
     });
+
+    socket.on("preferences:showOnlineStatus", (val) => {
+      if (val === true) {
+        if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
+        onlineUsers.get(userId).add(socket.id);
+      } else {
+        const set = onlineUsers.get(userId);
+        if (set) {
+          set.delete(socket.id);
+          if (set.size === 0) onlineUsers.delete(userId);
+        }
+      }
+      io.emit("online-users", Array.from(onlineUsers.keys()));
+    });
   });
 
   return io;
@@ -62,7 +76,7 @@ export const initSocket = (server) => {
 export const getIo = () => {
   if (!io)
     throw new Error(
-      "Socket.io chưa được khởi tạo. Gọi initSocket(server) trước."
+      "Socket.io chưa được khởi tạo. Gọi initSocket(server) trước.",
     );
   return io;
 };
