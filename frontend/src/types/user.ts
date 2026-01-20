@@ -4,8 +4,8 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl?: string;
-  bio?: string;
-  phone?: string;
+  bio?: string | null;
+  phone?: string | null;
   createAt?: string;
   updateAt?: string;
 }

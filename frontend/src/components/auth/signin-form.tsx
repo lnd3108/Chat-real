@@ -22,18 +22,41 @@ export function SignInForm({
 }: React.ComponentProps<"div">) {
   const { signIn } = useAuthStore();
   const navigate = useNavigate();
+  // const {
+  //   register,
+  //   handleSubmit,
+  //   formState: { errors, isSubmitting },
+  // } = useForm<SignInFormValues>({ resolver: zodResolver(signInSchema) });
   const {
     register,
     handleSubmit,
+    setValue,
+    setFocus,
     formState: { errors, isSubmitting },
-  } = useForm<SignInFormValues>({ resolver: zodResolver(signInSchema) });
+  } = useForm<SignInFormValues>({
+    resolver: zodResolver(signInSchema),
+  });
 
+  // const onSubmit = async (data: SignInFormValues) => {
+  //   const { userName, password } = data;
+  //   const ok = await signIn(userName, password);
+  //   if (ok) navigate("/");
+
+  //   // Gọi backend để signUp
+  // };
   const onSubmit = async (data: SignInFormValues) => {
     const { userName, password } = data;
-    await signIn(userName, password);
-    navigate("/");
 
-    // Gọi backend để signUp
+    const ok = await signIn(userName, password);
+
+    if (!ok) {
+      setValue("userName", ""); // xoá userName
+      setValue("password", ""); // xoá pass
+      setFocus("userName"); // focus lại ô userName
+      return;
+    }
+
+    navigate("/");
   };
 
   return (

@@ -4,7 +4,7 @@ import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
 import { persist } from "zustand/middleware";
 import { useChatStore } from "./useChatStore";
-
+import axios from "axios";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -36,11 +36,11 @@ export const useAuthStore = create<AuthState>()(
             password,
             email,
             firstName,
-            lastName
+            lastName,
           );
 
           toast.success(
-            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập."
+            "Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập.",
           );
         } catch (error) {
           console.error(error);
@@ -55,19 +55,23 @@ export const useAuthStore = create<AuthState>()(
           get().clearState();
           set({ loading: true });
 
-          localStorage.clear();
-          useChatStore.getState().reset();
-
           const { accessToken } = await authService.signIn(userName, password);
-          get().setAccessToken(accessToken);
 
+          get().setAccessToken(accessToken);
           await get().fetchMe();
+
           useChatStore.getState().fetchConversations();
 
-          toast.success("Chào mừng bạn quay lại với ChatRealTime 🎉");
+          toast.success("Chào mừng bạn quay lại 🎉");
+          return true;
         } catch (error) {
-          console.error(error);
-          toast.error("Đăng nhập không thành công");
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            toast.error("Sai tên tài khoản hoặc mật khẩu. Vui lòng nhập lại!");
+            return false;
+          }
+
+          toast.error("Đăng nhập không thành công. Thử lại!");
+          return false;
         } finally {
           set({ loading: false });
         }
@@ -102,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
       refresh: async () => {
         try {
           set({ loading: true });
+
           const { user, fetchMe, setAccessToken } = get();
           const accessToken = await authService.refresh();
 
@@ -111,7 +116,14 @@ export const useAuthStore = create<AuthState>()(
             await fetchMe();
           }
         } catch (error) {
-          console.error(error);
+          // ✅ KHÔNG console.error
+
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            // refresh fail => coi như chưa đăng nhập
+            get().clearState();
+            return;
+          }
+
           get().clearState();
         } finally {
           set({ loading: false });
@@ -123,6 +135,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user, // Chỉ lưu trữ thông tin user
       }),
-    }
-  )
+    },
+  ),
 );

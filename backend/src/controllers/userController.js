@@ -67,3 +67,87 @@ export const uploadAvatar = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+const normalizeString = (v) => {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+
+export const updateMe = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { displayName, userName, email, phone, bio } = req.body || {};
+
+    if (!req.body) {
+      return res.status(400).json({ message: "Thiếu dữ liệu cập nhật" });
+    }
+
+    // debug nhanh
+    console.log("PATCH /users/me body:", req.body);
+
+    // ✅ check username trùng (nếu có đổi)
+    if (userName) {
+      const existedUserName = await User.findOne({
+        userName: userName.toLowerCase().trim(),
+        _id: { $ne: userId },
+      });
+
+      if (existedUserName) {
+        return res.status(409).json({ message: "Username đã tồn tại" });
+      }
+    }
+
+    // ✅ check email trùng (nếu có đổi)
+    if (email) {
+      const existedEmail = await User.findOne({
+        email: email.toLowerCase().trim(),
+        _id: { $ne: userId },
+      });
+
+      if (existedEmail) {
+        return res.status(409).json({ message: "Email đã tồn tại" });
+      }
+    }
+
+    const updates = {};
+
+    const nDisplayName = normalizeString(displayName);
+    const nUserName = normalizeString(userName);
+    const nEmail = normalizeString(email);
+    const nPhone = normalizeString(phone); // ✅ "" -> null, null -> null
+    const nBio = bio === undefined ? undefined : bio === "" ? null : bio;
+
+    if (nDisplayName !== undefined) updates.displayName = nDisplayName;
+    if (nUserName !== undefined) updates.userName = nUserName?.toLowerCase();
+    if (nEmail !== undefined) updates.email = nEmail?.toLowerCase();
+
+    // ✅ phone có thể null
+    if (nPhone !== undefined) updates.phone = nPhone;
+
+    // ✅ bio có thể null
+    if (nBio !== undefined) updates.bio = nBio;
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true,
+    }).select("-hashedPassword");
+
+    // ✅ ép trả về phone/bio có null nếu không có data
+    const userObj = updatedUser?.toObject?.() || updatedUser;
+    const safeUser = {
+      ...userObj,
+      phone: userObj?.phone ?? null,
+      bio: userObj?.bio ?? null,
+    };
+
+    return res.status(200).json({
+      message: "Cập nhật thông tin thành công!",
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error("Lỗi updateMe:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};

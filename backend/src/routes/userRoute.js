@@ -3,6 +3,7 @@ import {
   authMe,
   searchUserByUserName,
   test,
+  updateMe,
   uploadAvatar,
 } from "../controllers/userController.js";
 import { upload } from "../middlewares/uploadMiddleWare.js";
@@ -10,6 +11,7 @@ import { upload } from "../middlewares/uploadMiddleWare.js";
 const router = express.Router();
 
 router.get("/me", authMe);
+router.patch("/me", updateMe);
 
 router.get("/test", test);
 
