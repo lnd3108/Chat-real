@@ -26,6 +26,20 @@ const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
     loadRequest();
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const loadRequest = async () => {
+      try {
+        await getAllFriendRequests();
+      } catch (error) {
+        console.error("Lỗi xảy ra khi load requests", error);
+      }
+    };
+
+    loadRequest();
+  }, [open, getAllFriendRequests]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
