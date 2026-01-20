@@ -2,6 +2,10 @@ import type { ThemeState } from "@/types/store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+const applyTheme = (dark: boolean) => {
+  document.documentElement.classList.toggle("dark", dark);
+};
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -27,6 +31,11 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: "theme-storage",
-    }
-  )
+
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        applyTheme(state.isDark);
+      },
+    },
+  ),
 );

@@ -23,8 +23,12 @@ export const useAuthStore = create<AuthState>()(
       clearState: () => {
         set({ accessToken: null, user: null, loading: false });
         useChatStore.getState().reset();
-        localStorage.clear();
-        sessionStorage.clear();
+        // localStorage.clear();
+        // sessionStorage.clear();
+        localStorage.removeItem("auth-storage");
+        localStorage.removeItem("chat-storage");
+
+        sessionStorage.removeItem("chat-scroll-695fc449262cb21583616d56");
       },
 
       signUp: async (userName, password, email, firstName, lastName) => {
