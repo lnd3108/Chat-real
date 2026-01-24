@@ -1,4 +1,5 @@
-import { Bell, ChevronsUpDown, UserIcon } from "lucide-react";
+import { ChevronsUpDown, UserIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -16,16 +17,29 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+
 import type { User } from "@/types/user";
 import Logout from "../auth/Logout";
-import { useState } from "react";
 import FriendRequestDialog from "../friendRequest/FriendRequestDialog";
 import ProfileDialog from "../profile/ProfileDialog";
 
+import { useFriendStore } from "@/stores/useFriendStore";
+import NotificationMenuItem from "../profile/NotificationMenuItem";
+
+
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
+
   const [friendRequestOpen, setFriendRequestOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const { receivedList, getAllFriendRequests } = useFriendStore();
+
+  const notiCount = useMemo(() => receivedList?.length ?? 0, [receivedList]);
+
+  useEffect(() => {
+    getAllFriendRequests();
+  }, [getAllFriendRequests]);
 
   return (
     <>
@@ -43,15 +57,16 @@ export function NavUser({ user }: { user: User }) {
                     {user.displayName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
+
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {user.displayName}
-                  </span>
+                  <span className="truncate font-medium">{user.displayName}</span>
                   <span className="truncate text-xs">{user.userName}</span>
                 </div>
+
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent
               className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
               side={isMobile ? "bottom" : "right"}
@@ -66,10 +81,9 @@ export function NavUser({ user }: { user: User }) {
                       {user.displayName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
+
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">
-                      {user.displayName}
-                    </span>
+                    <span className="truncate font-medium">{user.displayName}</span>
                     <span className="truncate text-xs">{user.userName}</span>
                   </div>
                 </div>
@@ -80,16 +94,16 @@ export function NavUser({ user }: { user: User }) {
                   <UserIcon className="text-muted-foreground dark:group-focus:!text-accent-foreground" />
                   Tài Khoản
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFriendRequestOpen(true)}>
-                  <Bell className="text-muted-foreground dark:group-focus:!text-accent-foreground" />
-                  Thông Báo
-                </DropdownMenuItem>
+
+                <NotificationMenuItem
+                  count={notiCount}
+                  onClick={() => setFriendRequestOpen(true)}
+                />
               </DropdownMenuGroup>
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="cursor-pointer"
-                variant="destructive"
-              >
+
+              <DropdownMenuItem className="cursor-pointer" variant="destructive">
                 <Logout />
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -100,6 +114,7 @@ export function NavUser({ user }: { user: User }) {
       <FriendRequestDialog
         open={friendRequestOpen}
         setOpen={setFriendRequestOpen}
+        defaultTab="received"
       />
 
       <ProfileDialog open={profileOpen} setOpen={setProfileOpen} />

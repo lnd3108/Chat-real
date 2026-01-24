@@ -8,27 +8,24 @@ import ReceivedRequests from "./ReceivedRequests";
 interface FriendRequestDialogProps {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
+  defaultTab?: "received" | "sent";
 }
 
-const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
-  const [tab, setTab] = useState("received");
+const FriendRequestDialog = ({
+  open,
+  setOpen,
+  defaultTab = "received",
+}: FriendRequestDialogProps) => {
+  const [tab, setTab] = useState<"received" | "sent">(defaultTab);
   const { getAllFriendRequests } = useFriendStore();
 
-  useEffect(() => {
-    const loadRequest = async () => {
-      try {
-        await getAllFriendRequests();
-      } catch (error) {
-        console.error("Lỗi xảy ra khi load requests", error);
-      }
-    };
-
-    loadRequest();
-  }, []);
-
+  // ✅ chỉ load khi mở dialog
   useEffect(() => {
     if (!open) return;
 
+    // ✅ reset tab đúng UX mỗi lần mở
+    setTab(defaultTab);
+
     const loadRequest = async () => {
       try {
         await getAllFriendRequests();
@@ -38,7 +35,7 @@ const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
     };
 
     loadRequest();
-  }, [open, getAllFriendRequests]);
+  }, [open, defaultTab, getAllFriendRequests]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -47,7 +44,11 @@ const FriendRequestDialog = ({ open, setOpen }: FriendRequestDialogProps) => {
           <DialogTitle>Lời mời kết bạn</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as any)}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="received">Đã nhận</TabsTrigger>
             <TabsTrigger value="sent">Đã gửi</TabsTrigger>

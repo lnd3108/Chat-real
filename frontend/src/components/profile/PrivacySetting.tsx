@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button";
 
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import DeleteAccountDialog from "./DeleteAccountDialog";
+import NotificationSettingsDialog from "./NotificationSettingsDialog"; // ✅ add
 
 const PrivacySettings = () => {
   const [openChangePass, setOpenChangePass] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openNotiSetting, setOpenNotiSetting] = useState(false); // ✅ add
 
   return (
     <>
@@ -32,7 +34,6 @@ const PrivacySettings = () => {
 
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            {/* Change password */}
             <Button
               variant="outline"
               className="w-full justify-start glass-light border-border/30 hover:text-warning"
@@ -42,9 +43,11 @@ const PrivacySettings = () => {
               Đổi mật khẩu
             </Button>
 
+            {/* ✅ open notification setting */}
             <Button
               variant="outline"
               className="w-full justify-start glass-light border-border/30 hover:text-info"
+              onClick={() => setOpenNotiSetting(true)}
             >
               <Bell className="h-4 w-4 mr-2" />
               Cài đặt thông báo
@@ -79,6 +82,12 @@ const PrivacySettings = () => {
       {/* dialogs */}
       <ChangePasswordDialog open={openChangePass} setOpen={setOpenChangePass} />
       <DeleteAccountDialog open={openDelete} setOpen={setOpenDelete} />
+
+      {/* ✅ new dialog */}
+      <NotificationSettingsDialog
+        open={openNotiSetting}
+        setOpen={setOpenNotiSetting}
+      />
     </>
   );
 };
