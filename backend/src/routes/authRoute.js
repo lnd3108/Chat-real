@@ -5,6 +5,7 @@ import {
   signOut,
   refreshToken,
   changePassword,
+  deleteAccount,
 } from "../controllers/authControllers.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 
@@ -19,5 +20,7 @@ router.post("/signout", signOut);
 router.post("/refresh", refreshToken);
 
 router.patch("/change-password", protectedRoute, changePassword);
+
+router.delete("/delete-account", protectedRoute, deleteAccount);
 
 export default router;

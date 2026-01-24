@@ -245,3 +245,17 @@ export const changePassword = async (req, res) => {
     return res.status(500).json({ message: "Lỗi Hệ Thống" });
   }
 };
+
+export const deleteAccount = async (req, res) => {
+  const userId = req.user._id;
+
+  await User.findByIdAndDelete(userId);
+
+  // clear cookie (nếu dùng jwt cookie)
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+
+  return res.status(200).json({
+    message: "Xoá tài khoản thành công!",
+  });
+};
