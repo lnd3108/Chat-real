@@ -95,7 +95,7 @@ export const useChatStore = create<ChatState>()(
 
           if (!finalRecipientId && activeConversationId && me) {
             const convo = conversations.find(
-              (c: any) => c._id === activeConversationId
+              (c: any) => c._id === activeConversationId,
             );
 
             const other = convo?.participants?.find((p) => {
@@ -121,12 +121,12 @@ export const useChatStore = create<ChatState>()(
             finalRecipientId,
             content,
             imgUrl,
-            activeConversationId || undefined
+            activeConversationId || undefined,
           );
 
           set((state) => ({
             conversations: state.conversations.map((c) =>
-              c._id === activeConversationId ? { ...c, seenBy: [] } : c
+              c._id === activeConversationId ? { ...c, seenBy: [] } : c,
             ),
           }));
         } catch (error: any) {
@@ -140,7 +140,7 @@ export const useChatStore = create<ChatState>()(
           await chatServices.sendGroupMessage(conversationId, content, imgUrl);
           set((state) => ({
             conversations: state.conversations.map((c) =>
-              c._id === get().activeConversationId ? { ...c, seenBy: [] } : c
+              c._id === get().activeConversationId ? { ...c, seenBy: [] } : c,
             ),
           }));
         } catch (error) {
@@ -187,12 +187,12 @@ export const useChatStore = create<ChatState>()(
       },
       updateConversation: async (conversation) => {
         const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
-          typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u
+          typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
         );
 
         set((state) => ({
           conversations: state.conversations.map((c) =>
-            c._id === conversation._id ? { ...c, ...conversation, seenBy } : c
+            c._id === conversation._id ? { ...c, ...conversation, seenBy } : c,
           ),
         }));
       },
@@ -207,7 +207,7 @@ export const useChatStore = create<ChatState>()(
           }
 
           const convo = conversations.find(
-            (c) => c._id === activeConversationId
+            (c) => c._id === activeConversationId,
           );
 
           if (!convo?.lastMessage) {
@@ -236,7 +236,7 @@ export const useChatStore = create<ChatState>()(
                       [user._id]: 0,
                     },
                   }
-                : c
+                : c,
             ),
           }));
         } catch (error) {
@@ -247,7 +247,7 @@ export const useChatStore = create<ChatState>()(
       addConvo: (convo) => {
         set((state) => {
           const exists = state.conversations.some(
-            (c) => c._id.toString() === convo._id.toString()
+            (c) => c._id.toString() === convo._id.toString(),
           );
 
           return {
@@ -262,16 +262,23 @@ export const useChatStore = create<ChatState>()(
       createConversation: async (type, name, memberIds) => {
         try {
           set({ loading: true });
+
           const conversation = await chatServices.createConversation(
             type,
             name,
-            memberIds
+            memberIds,
           );
+
           get().addConvo(conversation);
 
           useSocketStore
             .getState()
             .socket?.emit("join-conversation", conversation._id);
+
+          // ✅ quan trọng: fetch messages ngay (nếu convo đã tồn tại từ trước)
+          await get().fetchMessages(conversation._id);
+
+          return conversation;
         } catch (error) {
           console.error("Lỗi xảy ra khi tạo cuộc trò chuyện:", error);
         } finally {
@@ -284,6 +291,6 @@ export const useChatStore = create<ChatState>()(
       partialize: (state) => ({
         conversations: state.conversations,
       }),
-    }
-  )
+    },
+  ),
 );

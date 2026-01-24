@@ -22,7 +22,7 @@ const ChatWindowBody = () => {
   const hasMore = allMessages[activeConversationId!]?.hasMore ?? false;
   const key = `chat-scroll-${activeConversationId}`;
   const selectedConvo = conversations.find(
-    (c) => c._id === activeConversationId
+    (c) => c._id === activeConversationId,
   );
 
   //ref
@@ -95,7 +95,7 @@ const ChatWindowBody = () => {
       JSON.stringify({
         scrollTop: container.scrollTop,
         scrollHeight: container.scrollHeight,
-      })
+      }),
     );
   };
 
