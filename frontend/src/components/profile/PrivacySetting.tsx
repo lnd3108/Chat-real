@@ -12,12 +12,14 @@ import { Button } from "@/components/ui/button";
 
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import DeleteAccountDialog from "./DeleteAccountDialog";
-import NotificationSettingsDialog from "./NotificationSettingsDialog"; // ✅ add
+import NotificationSettingsDialog from "./NotificationSettingsDialog";
+import BlockReportDialog from "./BlockReportDialog";
 
 const PrivacySettings = () => {
   const [openChangePass, setOpenChangePass] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [openNotiSetting, setOpenNotiSetting] = useState(false); // ✅ add
+  const [openNotiSetting, setOpenNotiSetting] = useState(false);
+  const [openBlockReport, setOpenBlockReport] = useState(false);
 
   return (
     <>
@@ -56,6 +58,7 @@ const PrivacySettings = () => {
             <Button
               variant="outline"
               className="w-full justify-start glass-light border-border/30 hover:text-destructive"
+              onClick={() => setOpenBlockReport(true)} // ✅ add
             >
               <ShieldBan className="size-4 mr-2" />
               Chặn & Báo cáo
@@ -88,6 +91,8 @@ const PrivacySettings = () => {
         open={openNotiSetting}
         setOpen={setOpenNotiSetting}
       />
+
+      <BlockReportDialog open={openBlockReport} setOpen={setOpenBlockReport} />
     </>
   );
 };
