@@ -10,8 +10,8 @@ import { UserPlus } from "lucide-react";
 import type { User } from "@/types/user";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import SearchForm from "../addFriendModals/SearchForm";
-import SendFriendRequest from "../addFriendModals/SendFriendRequest";
+import SearchForm from "../AddFriendModals/SearchForm";
+import SendFriendRequest from "../AddFriendModals/SendFriendRequest";
 import { useFriendStore } from "@/stores/useFriendStore";
 
 export interface IFormValues {
