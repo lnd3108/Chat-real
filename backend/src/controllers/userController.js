@@ -161,7 +161,6 @@ export const updatePreferences = async (req, res) => {
 
     if (theme) updates["preferences.theme"] = theme;
 
-    // ✅ nhận được cả false
     if (typeof showOnlineStatus === "boolean") {
       updates["preferences.showOnlineStatus"] = showOnlineStatus;
     }

@@ -17,30 +17,37 @@ const PreferencesForm = () => {
   const { isDark, toggleTheme } = useThemeStore();
 
   //   các bạn cần handle logic setOnlineStatus
-  const [onlineStatus, setOnlineStatus] = useState(false);
+  const LS_KEY = "pref:showOnlineStatus";
+  const [onlineStatus, setOnlineStatus] = useState<boolean>(() => {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw === null ? true : raw === "true"; // default true nếu chưa có
+  });
   const { socket } = useSocketStore();
 
   // ✅ load ban đầu từ backend
   useEffect(() => {
     (async () => {
       const res = await axios.get("/users/me");
-      setOnlineStatus(res.data?.user?.preferences?.showOnlineStatus ?? true);
+      const v = res.data?.user?.preferences?.showOnlineStatus ?? true;
+
+      setOnlineStatus(v);
+      localStorage.setItem(LS_KEY, String(v));
     })();
   }, []);
 
   const handleToggleOnline = async (checked: boolean) => {
+    const prev = onlineStatus;
+
     setOnlineStatus(checked);
+    localStorage.setItem(LS_KEY, String(checked));
 
     try {
-      await axios.patch("/users/me/preferences", {
-        showOnlineStatus: checked,
-      });
-
-      // ✅ realtime update list online
+      await axios.patch("/users/me/preferences", { showOnlineStatus: checked });
       socket?.emit("preferences:showOnlineStatus", checked);
     } catch (e) {
-      // rollback nếu lỗi
-      setOnlineStatus((prev) => !prev);
+      // rollback
+      setOnlineStatus(prev);
+      localStorage.setItem(LS_KEY, String(prev));
     }
   };
 

@@ -1,52 +1,71 @@
 import { Server } from "socket.io";
 import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
 import { getUserConversationsForSocketIO } from "../controllers/conversationController.js";
+import User from "../models/User.js";
 
 let io;
 
-//Gắn socket.io vào http server
 export const initSocket = (server) => {
   io = new Server(server, {
-    cors: {
-      origin: process.env.CLIENT_URL,
-      credentials: true,
-    },
+    cors: { origin: process.env.CLIENT_URL, credentials: true },
   });
 
   io.use(socketAuthMiddleWare);
 
-  const onlineUsers = new Map(); //{userId:socketId}
+  // Presence thật: user mở bao nhiêu socket/tab
+  const socketsByUser = new Map(); // { userId: Set(socketId) }
+
+  // Preference: có cho người khác thấy online không
+  const visibleByUser = new Map(); // { userId: boolean }
+
+  const emitOnlineUsers = () => {
+    const onlineVisibleUsers = [];
+    for (const [userId, set] of socketsByUser.entries()) {
+      const visible = visibleByUser.get(userId) ?? true;
+      if (set.size > 0 && visible) onlineVisibleUsers.push(userId);
+    }
+    io.emit("online-users", onlineVisibleUsers);
+  };
 
   io.on("connection", async (socket) => {
     const user = socket.user;
     const userId = user._id.toString();
-    console.log(`${user.displayName} online với socket ${socket.id}`);
 
-    // onlineUsers.set(user._id.toString(), socket.id);
-    // io.emit("online-users", Array.from(onlineUsers.keys()));
+    // ✅ Lấy preference thật (ưu tiên từ socket.user nếu có, fallback query DB)
+    let visible = user?.preferences?.showOnlineStatus;
+    if (typeof visible !== "boolean") {
+      const dbUser = await User.findById(userId).select(
+        "preferences.showOnlineStatus",
+      );
+      visible = dbUser?.preferences?.showOnlineStatus;
+    }
+    if (typeof visible !== "boolean") visible = true;
 
-    if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
-    onlineUsers.get(userId).add(socket.id);
+    // Track socket presence
+    if (!socketsByUser.has(userId)) socketsByUser.set(userId, new Set());
+    socketsByUser.get(userId).add(socket.id);
 
-    io.emit("online-users", Array.from(onlineUsers.keys()));
+    // Track visibility preference
+    visibleByUser.set(userId, visible);
+
+    // ✅ Emit list online theo preference
+    emitOnlineUsers();
 
     const conversations = await getUserConversationsForSocketIO(user._id);
-    conversations.forEach((id) => {
-      socket.join(id.toString());
-    });
-
-    socket.join(user._id.toString()); //Join room cá nhân của user
+    conversations.forEach((id) => socket.join(id.toString()));
+    socket.join(userId);
 
     socket.on("disconnect", () => {
-      const set = onlineUsers.get(userId);
-
+      const set = socketsByUser.get(userId);
       if (set) {
         set.delete(socket.id);
-        if (set.size === 0) onlineUsers.delete(userId);
+        if (set.size === 0) {
+          socketsByUser.delete(userId);
+          // visibleByUser có thể giữ hoặc xoá đều được, giữ cũng ok
+          // visibleByUser.delete(userId);
+        }
       }
-
-      // onlineUsers.delete(user._id.toString());
-      io.emit("online-users", Array.from(onlineUsers.keys()));
+      emitOnlineUsers();
       console.log(`socket disconnect: ${socket.id}`);
     });
 
@@ -54,25 +73,18 @@ export const initSocket = (server) => {
       socket.join(conversationId);
     });
 
+    // ✅ Khi toggle preference: chỉ đổi visibleByUser (KHÔNG đụng socketsByUser)
     socket.on("preferences:showOnlineStatus", (val) => {
-      if (val === true) {
-        if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
-        onlineUsers.get(userId).add(socket.id);
-      } else {
-        const set = onlineUsers.get(userId);
-        if (set) {
-          set.delete(socket.id);
-          if (set.size === 0) onlineUsers.delete(userId);
-        }
+      if (typeof val === "boolean") {
+        visibleByUser.set(userId, val);
+        emitOnlineUsers();
       }
-      io.emit("online-users", Array.from(onlineUsers.keys()));
     });
   });
 
   return io;
 };
 
-//Lấy instance io để dùng ở controller/service
 export const getIo = () => {
   if (!io)
     throw new Error(
