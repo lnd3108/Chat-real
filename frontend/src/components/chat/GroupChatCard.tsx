@@ -12,7 +12,13 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
     setActiveConversation,
     messages,
     fetchMessages,
+    deleteConversation,
   } = useChatStore();
+
+  const isOwner =
+    convo.type === "group" && convo.group?.createdBy?.toString?.()
+      ? convo.group.createdBy.toString() === user?._id
+      : convo.group?.createdBy === user?._id;
 
   if (!user) return null;
 
@@ -21,7 +27,7 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
     if (!messages[id]) {
-      await fetchMessages();
+      await fetchMessages(id);
     }
   };
 
@@ -49,6 +55,8 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
           {convo.participants.length} members
         </p>
       }
+      canDelete={isOwner}
+      onDeleteConversation={deleteConversation}
     />
   );
 };

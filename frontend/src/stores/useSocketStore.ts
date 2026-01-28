@@ -49,27 +49,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         },
       };
 
-      // const updatedConversation = {
-      //   ...conversation,
-      //   lastMessage,
-      //   unreadCounts,
-      // };
-
-      // console.log("[new-message] participants:", conversation?.participants);
-      // console.log(
-      //   "[new-message] first participant:",
-      //   conversation?.participants?.[0],
-      // );
-      // console.log("[new-message] unreadCounts:", unreadCounts);
-
-      // if (
-      //   useChatStore.getState().activeConversationId === message.conversationId
-      // ) {
-      //   useChatStore.getState().markasSeen();
-      // }
-
-      // useChatStore.getState().updateConversation(updatedConversation);
-
       useChatStore.getState().updateConversation({
         _id: conversation._id,
         lastMessage,
@@ -94,14 +73,16 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         lastMessage: conversation.lastMessage,
         lastMessageAt: conversation.lastMessageAt,
       });
-
-      // console.log("[read-message] participants:", conversation?.participants);
     });
 
     //new Group chat
     socket.on("new-group", (conversation) => {
       useChatStore.getState().addConvo(conversation);
       socket.emit("join-conversation", conversation._id);
+    });
+
+    socket.on("conversation-deleted", ({ conversationId }) => {
+      useChatStore.getState().removeConversationLocal(conversationId);
     });
   },
 

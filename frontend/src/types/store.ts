@@ -76,6 +76,8 @@ export interface ChatState {
     name: string,
     memberIds: string[],
   ) => Promise<void>;
+  removeConversationLocal: (conversationId: string) => void;
+  deleteConversation: (conversationId: string) => Promise<void>;
 }
 
 export interface SocketState {

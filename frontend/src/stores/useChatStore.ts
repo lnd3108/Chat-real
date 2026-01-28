@@ -185,18 +185,6 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi add message:", error);
         }
       },
-      // updateConversation: async (conversation) => {
-      //   const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
-      //     typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
-      //   );
-
-      //   set((state) => ({
-      //     conversations: state.conversations.map((c) =>
-      //       c._id === conversation._id ? { ...c, ...conversation, seenBy } : c,
-      //     ),
-      //   }));
-      // },
-
       updateConversation: async (conversation) => {
         const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
           typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
@@ -229,7 +217,6 @@ export const useChatStore = create<ChatState>()(
           }),
         }));
       },
-
       markasSeen: async () => {
         try {
           const { user } = useAuthStore.getState();
@@ -276,7 +263,6 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi gọi markasSeen trong store", error);
         }
       },
-
       addConvo: (convo) => {
         set((state) => {
           const exists = state.conversations.some(
@@ -291,7 +277,6 @@ export const useChatStore = create<ChatState>()(
           };
         });
       },
-
       createConversation: async (type, name, memberIds) => {
         try {
           set({ loading: true });
@@ -316,6 +301,34 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi tạo cuộc trò chuyện:", error);
         } finally {
           set({ loading: false });
+        }
+      },
+      removeConversationLocal: (conversationId: string) => {
+        set((state) => {
+          const nextConversations = state.conversations.filter(
+            (c) => c._id !== conversationId,
+          );
+
+          const nextMessages = { ...state.messages };
+          delete nextMessages[conversationId];
+
+          return {
+            conversations: nextConversations,
+            messages: nextMessages,
+            activeConversationId:
+              state.activeConversationId === conversationId
+                ? null
+                : state.activeConversationId,
+          };
+        });
+      },
+
+      deleteConversation: async (conversationId: string) => {
+        try {
+          await chatServices.deleteConversation(conversationId);
+          get().removeConversationLocal(conversationId);
+        } catch (error) {
+          console.error("Delete conversation failed:", error);
         }
       },
     }),

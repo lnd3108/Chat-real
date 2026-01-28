@@ -87,6 +87,14 @@ export const createConversation = async (req, res) => {
       ...conversation.toObject(),
       unreadCounts: conversation.unreadCounts || {},
       participants,
+      group: conversation.group
+        ? {
+            ...conversation.group,
+            createdBy:
+              conversation.group.createdBy?.toString?.() ??
+              conversation.group.createdBy,
+          }
+        : undefined,
     };
 
     if (type === "group") {
@@ -250,6 +258,63 @@ export const markasSeen = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi mark as seen", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id.toString();
+    const io = getIo();
+
+    //  tìm conversation
+    const convo = await Conversation.findById(conversationId);
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation không tồn tại" });
+    }
+
+    // chỉ participant mới được thao tác
+    const isMember = (convo.participants || []).some(
+      (p) => p.userId.toString() === userId,
+    );
+    if (!isMember) {
+      return res.status(403).json({ message: "Bạn không có quyền" });
+    }
+
+    // CHECK OWNER (CHÈN ĐOẠN MÀY HỎI Ở ĐÂY)
+    if (convo.type === "group") {
+      const ownerId = convo.group?.createdBy?.toString();
+      if (!ownerId) {
+        return res.status(400).json({ message: "Group missing createdBy" });
+      }
+
+      if (ownerId !== userId) {
+        return res.status(403).json({
+          message: "Chỉ chủ nhóm mới có quyền xóa cuộc trò chuyện này",
+        });
+      }
+    }
+
+    // lấy memberIds để emit realtime
+    const memberIds = (convo.participants || []).map((p) =>
+      p.userId.toString(),
+    );
+
+    // xóa messages
+    await Message.deleteMany({ conversationId });
+
+    //xóa conversation
+    await Conversation.findByIdAndDelete(conversationId);
+
+    // realtime: báo cho tất cả member
+    memberIds.forEach((uid) => {
+      io.to(uid).emit("conversation-deleted", { conversationId });
+    });
+
+    return res.status(200).json({ message: "deleted", conversationId });
+  } catch (error) {
+    console.error("Lỗi khi xóa conversation", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

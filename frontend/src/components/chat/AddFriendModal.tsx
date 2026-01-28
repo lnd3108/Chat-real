@@ -10,8 +10,8 @@ import { UserPlus } from "lucide-react";
 import type { User } from "@/types/user";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import SearchForm from "../AddFriendModals/SearchForm";
-import SendFriendRequest from "../AddFriendModals/SendFriendRequest";
+import SearchForm from "../addFriendModals/SearchForm";
+import SendFriendRequest from "../addFriendModals/SendFriendRequest";
 import { useFriendStore } from "@/stores/useFriendStore";
 
 export interface IFormValues {
@@ -65,7 +65,7 @@ const AddFriendModal = () => {
     try {
       const message = await addFriend(
         searchUser._id,
-        (data.message ?? "").trim()
+        (data.message ?? "").trim(),
       );
       toast.success(message);
 
