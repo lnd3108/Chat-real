@@ -25,6 +25,12 @@ const NewGroupChatModal = () => {
   const [search, setSearch] = useState("");
   const { friends, getFriends } = useFriendStore();
   const [invitedUsers, setInvitedUsers] = useState<Friend[]>([]);
+  const [open, setOpen] = useState(false);
+  const resetForm = () => {
+    setGroupName("");
+    setSearch("");
+    setInvitedUsers([]);
+  };
 
   const { loading, createConversation } = useChatStore();
 
@@ -53,11 +59,11 @@ const NewGroupChatModal = () => {
       await createConversation(
         "group",
         groupName,
-        invitedUsers.map((u) => u._id)
+        invitedUsers.map((u) => u._id),
       );
 
-      setSearch("");
-      setInvitedUsers([]);
+      resetForm();
+      setOpen(false);
     } catch (error) {
       console.error("Error creating group chat:", error);
       toast.error("Failed to create group chat. Please try again.");
@@ -67,11 +73,17 @@ const NewGroupChatModal = () => {
   const filteredFriends = friends.filter(
     (friend) =>
       friend.displayName.toLowerCase().includes(search.toLowerCase()) &&
-      !invitedUsers.some((u) => u._id === friend._id)
+      !invitedUsers.some((u) => u._id === friend._id),
   );
 
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="ghost"

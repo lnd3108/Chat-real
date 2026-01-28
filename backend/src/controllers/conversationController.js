@@ -89,18 +89,14 @@ export const createConversation = async (req, res) => {
       participants,
     };
 
-    // if (type === "group") {
-    //   memberIds.forEach((userId) => {
-    //     io.to(userId).emit("new-group", { conversation: formatted });
-    //   });
-    // }
     if (type === "group") {
-      conversation.participants.forEach((p) => {
-        const uid = p.userId.toString();
-        io.to(uid).emit("new-group", { conversation: formatted });
+      formatted.participants.forEach((p) => {
+        const uid = p._id?.toString();
+        if (!uid) return;
+
+        io.to(uid).emit("new-group", formatted);
       });
     }
-
     return res.status(201).json({ conversation: formatted });
   } catch (error) {
     console.error("Lỗi khi tạo conversation", error);
@@ -155,10 +151,6 @@ export const getMessages = async (req, res) => {
     const { limit = 50, cursor } = req.query;
 
     const query = { conversationId };
-
-    // if (cursor) {
-    //   query.createdAt = { $lt: new Date(cursor) };
-    // }
 
     if (typeof cursor === "string" && cursor.trim() !== "") {
       const d = new Date(cursor);
@@ -239,19 +231,6 @@ export const markasSeen = async (req, res) => {
         new: true,
       },
     );
-
-    // const io = getIo();
-    // io.to(conversationId).emit("read-message", {
-    //   conversation: updated,
-    //   lastMessage: {
-    //     _id: updated?.lastMessage._id,
-    //     content: updated?.lastMessage.content,
-    //     createdAt: updated?.lastMessage.createdAt,
-    //     sender: {
-    //       _id: updated?.lastMessage.senderId,
-    //     },
-    //   },
-    // });
 
     const io = getIo();
     io.to(conversationId).emit("read-message", {
