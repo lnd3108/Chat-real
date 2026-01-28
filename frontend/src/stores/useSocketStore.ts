@@ -28,7 +28,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     //online users
     socket.on("online-users", (userIds) => {
-      console.log("online-users received:", userIds);
+      // console.log("online-users received:", userIds);
       set({ onlineUsers: userIds });
     });
 
@@ -55,12 +55,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       //   unreadCounts,
       // };
 
-      console.log("[new-message] participants:", conversation?.participants);
-      console.log(
-        "[new-message] first participant:",
-        conversation?.participants?.[0],
-      );
-      console.log("[new-message] unreadCounts:", unreadCounts);
+      // console.log("[new-message] participants:", conversation?.participants);
+      // console.log(
+      //   "[new-message] first participant:",
+      //   conversation?.participants?.[0],
+      // );
+      // console.log("[new-message] unreadCounts:", unreadCounts);
 
       // if (
       //   useChatStore.getState().activeConversationId === message.conversationId
@@ -95,7 +95,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         lastMessageAt: conversation.lastMessageAt,
       });
 
-      console.log("[read-message] participants:", conversation?.participants);
+      // console.log("[read-message] participants:", conversation?.participants);
     });
 
     //new Group chat
