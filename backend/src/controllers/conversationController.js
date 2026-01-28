@@ -195,7 +195,7 @@ export const getUserConversationsForSocketIO = async (userId) => {
       { "participants.userId": userId },
       {
         _id: 1,
-      }
+      },
     );
 
     return conversations.map((c) => c._id.toString());
@@ -237,19 +237,30 @@ export const markasSeen = async (req, res) => {
       },
       {
         new: true,
-      }
+      },
     );
+
+    // const io = getIo();
+    // io.to(conversationId).emit("read-message", {
+    //   conversation: updated,
+    //   lastMessage: {
+    //     _id: updated?.lastMessage._id,
+    //     content: updated?.lastMessage.content,
+    //     createdAt: updated?.lastMessage.createdAt,
+    //     sender: {
+    //       _id: updated?.lastMessage.senderId,
+    //     },
+    //   },
+    // });
 
     const io = getIo();
     io.to(conversationId).emit("read-message", {
-      conversation: updated,
-      lastMessage: {
-        _id: updated?.lastMessage._id,
-        content: updated?.lastMessage.content,
-        createdAt: updated?.lastMessage.createdAt,
-        sender: {
-          _id: updated?.lastMessage.senderId,
-        },
+      conversation: {
+        _id: updated._id,
+        unreadCounts: updated.unreadCounts,
+        seenBy: updated.seenBy,
+        lastMessage: updated.lastMessage,
+        lastMessageAt: updated.lastMessageAt,
       },
     });
 

@@ -185,15 +185,48 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi add message:", error);
         }
       },
+      // updateConversation: async (conversation) => {
+      //   const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
+      //     typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
+      //   );
+
+      //   set((state) => ({
+      //     conversations: state.conversations.map((c) =>
+      //       c._id === conversation._id ? { ...c, ...conversation, seenBy } : c,
+      //     ),
+      //   }));
+      // },
+
       updateConversation: async (conversation) => {
         const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
           typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
         );
 
         set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c._id === conversation._id ? { ...c, ...conversation, seenBy } : c,
-          ),
+          conversations: state.conversations.map((c) => {
+            if (c._id !== conversation._id) return c;
+
+            const merged: any = { ...c, ...conversation, seenBy };
+
+            const incoming = conversation?.participants;
+            const participantsHydrated =
+              Array.isArray(incoming) &&
+              incoming.length > 0 &&
+              incoming.some(
+                (p: any) =>
+                  typeof p?.userId === "object" ||
+                  !!p?.displayName ||
+                  !!p?.avatarUrl,
+              );
+
+            if (!participantsHydrated) merged.participants = c.participants;
+
+            if (conversation?.group == null) merged.group = c.group;
+            if (!conversation?.type) merged.type = c.type;
+            if (!conversation?.lastMessage) merged.lastMessage = c.lastMessage;
+
+            return merged;
+          }),
         }));
       },
 

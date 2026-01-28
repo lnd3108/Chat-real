@@ -49,24 +49,53 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         },
       };
 
-      const updatedConversation = {
-        ...conversation,
+      // const updatedConversation = {
+      //   ...conversation,
+      //   lastMessage,
+      //   unreadCounts,
+      // };
+
+      console.log("[new-message] participants:", conversation?.participants);
+      console.log(
+        "[new-message] first participant:",
+        conversation?.participants?.[0],
+      );
+      console.log("[new-message] unreadCounts:", unreadCounts);
+
+      // if (
+      //   useChatStore.getState().activeConversationId === message.conversationId
+      // ) {
+      //   useChatStore.getState().markasSeen();
+      // }
+
+      // useChatStore.getState().updateConversation(updatedConversation);
+
+      useChatStore.getState().updateConversation({
+        _id: conversation._id,
         lastMessage,
         unreadCounts,
-      };
+        seenBy: conversation.seenBy,
+        lastMessageAt: conversation.lastMessageAt,
+      });
 
       if (
         useChatStore.getState().activeConversationId === message.conversationId
       ) {
         useChatStore.getState().markasSeen();
       }
-
-      useChatStore.getState().updateConversation(updatedConversation);
     });
 
     // read message
     socket.on("read-message", ({ conversation }) => {
-      useChatStore.getState().updateConversation(conversation);
+      useChatStore.getState().updateConversation({
+        _id: conversation._id,
+        unreadCounts: conversation.unreadCounts,
+        seenBy: conversation.seenBy,
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
+      });
+
+      console.log("[read-message] participants:", conversation?.participants);
     });
 
     //new Group chat
