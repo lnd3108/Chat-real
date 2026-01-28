@@ -1,8 +1,13 @@
-import { SidebarInset } from "../ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "../ui/sidebar";
 
 const ChatWelcomeScreen = () => {
   return (
     <SidebarInset className="flex w-full h-full bg-transparent">
+      {/* Mobile topbar để mở sidebar */}
+      <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-4 py-2 w-full">
+        <SidebarTrigger className="-ml-1 text-foreground" />
+      </header>
+
       <div className="flex bg-primary-foreground rounded-2xl flex-1 items-center justify-center">
         <div className="text-center">
           <div className="size-24 mx-auto mb-6 bg-gradient-chat rounded-full flex items-center justify-center shadow-glow pulse-ring">
