@@ -103,6 +103,14 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().addConvo(conversation);
       socket.emit("join-conversation", conversation._id);
     });
+
+    socket.on("conversation:deleted", ({ conversationId }) => {
+      useChatStore.getState().removeConversationLocal(conversationId);
+    });
+
+    socket.on("conversation:left", ({ conversationId, userId }) => {
+      useChatStore.getState().removeConversationLocal(conversationId);
+    });
   },
 
   emitShowOnlineStatus: (value: boolean) => {

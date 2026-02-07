@@ -16,10 +16,10 @@ export const chatServices = {
 
   async fetchMessages(
     id: string,
-    cursor?: string
+    cursor?: string,
   ): Promise<FetchMessagesProps> {
     const res = await api.get(
-      `/conversations/${id}/messages?limit=${pageLimit}&cursor=${cursor}`
+      `/conversations/${id}/messages?limit=${pageLimit}&cursor=${cursor}`,
     );
     return { messages: res.data.messages, cursor: res.data.nextCursor };
   },
@@ -28,7 +28,7 @@ export const chatServices = {
     recipientId: string,
     content: string = "",
     imgUrl?: string,
-    conversationId?: string
+    conversationId?: string,
   ) {
     // console.log("SEND DIRECT PAYLOAD:", {
     //   recipientId,
@@ -48,7 +48,7 @@ export const chatServices = {
   async sendGroupMessage(
     conversationId: string,
     content: string = "",
-    imgUrl?: string
+    imgUrl?: string,
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
@@ -66,7 +66,7 @@ export const chatServices = {
   async createConversation(
     type: "direct" | "group",
     name: string,
-    memberIds: string[]
+    memberIds: string[],
   ) {
     const res = await api.post("/conversations", {
       type,
@@ -74,5 +74,10 @@ export const chatServices = {
       memberIds,
     });
     return res.data.conversation;
+  },
+
+  async deleteOrLeaveGroupConversation(conversationId: string) {
+    const res = await api.delete(`/conversations/${conversationId}`);
+    return res.data;
   },
 };

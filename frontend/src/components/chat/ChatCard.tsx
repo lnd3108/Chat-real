@@ -12,6 +12,7 @@ interface ChatCardProps {
   unreadCount?: number;
   leftSection: React.ReactNode;
   subtitle: React.ReactNode;
+  actions?: React.ReactNode;
 }
 
 const ChatCard = ({
@@ -23,6 +24,7 @@ const ChatCard = ({
   unreadCount,
   leftSection,
   subtitle,
+  actions,
 }: ChatCardProps) => {
   return (
     <Card
@@ -30,7 +32,7 @@ const ChatCard = ({
       className={cn(
         "border-none p-3 cursor-pointer transition-smooth glass hover:bg-muted/30",
         isActive &&
-          "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground "
+          "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground ",
       )}
       onClick={() => onSelect(convoId)}
     >
@@ -42,7 +44,7 @@ const ChatCard = ({
             <h3
               className={cn(
                 "font-semibold text-sm truncate",
-                unreadCount && unreadCount > 0 && "text-foreground"
+                unreadCount && unreadCount > 0 && "text-foreground",
               )}
             >
               {name}
@@ -57,7 +59,11 @@ const ChatCard = ({
             <div className="flex-1 items-center gap-1 flex-1 min-w-0 text-sm ">
               {subtitle}
             </div>
-            <MoreHorizontal className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 hover:size-5 transition-smooth" />
+            {actions ? (
+              <div onClick={(e) => e.stopPropagation()}>{actions}</div>
+            ) : (
+              <MoreHorizontal className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 hover:size-5 transition-smooth" />
+            )}
           </div>
         </div>
       </div>

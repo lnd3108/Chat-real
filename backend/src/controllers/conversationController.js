@@ -253,3 +253,81 @@ export const markasSeen = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const deleteOrLeaveGroupConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id.toString();
+    const io = getIo();
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation không tồn tại" });
+    }
+
+    if (conversation.type !== "group") {
+      return res.status(400).json({ message: "Chỉ áp dụng cho nhóm (group)" });
+    }
+
+    const isMember = conversation.participants?.some(
+      (p) => p.userId.toString() === userId,
+    );
+    if (!isMember) {
+      return res
+        .status(403)
+        .json({ message: "Bạn không thuộc cuộc trò chuyện này" });
+    }
+
+    const ownerId = conversation.group?.createdBy?.toString();
+    const isOwner = ownerId && ownerId === userId;
+
+    if (isOwner) {
+      // Lấy danh sách member để emit trước khi xóa
+      const memberIds = conversation.participants.map((p) =>
+        p.userId.toString(),
+      );
+      await Message.deleteMany({ conversationId }); // xóa tất cả tin nhắn
+      await Conversation.deleteOne({ _id: conversationId });
+
+      // Emit cho từng user để họ remove conversation khỏi UI
+      memberIds.forEach((uid) => {
+        io.to(uid).emit("conversation:deleted", { conversationId });
+      });
+
+      // Emit vào room để các tab đang join room biết (optional)
+      io.to(conversationId).emit("conversation:deleted", { conversationId });
+
+      return res
+        .status(200)
+        .json({ message: "Đã xóa nhóm thành công", deleted: true });
+    }
+    const updated = await Conversation.findByIdAndUpdate(
+      conversationId,
+      {
+        $pull: { participants: { userId } },
+        $pull: { seenBy: userId },
+        $unset: { [`unreadCounts.${userId}`]: "" },
+      },
+      { new: true },
+    );
+    io.to(userId).emit("conversation:left", {
+      conversationId,
+      userId,
+    });
+
+    io.to(conversationId).emit("conversation:member-left", {
+      conversationId,
+      userId,
+      participantsCount: updated?.participants?.length ?? 0,
+    });
+
+    return res.status(200).json({
+      message: "Bạn đã rời nhóm và cuộc trò chuyện đã được xóa ở phía bạn",
+      deleted: false,
+      left: true,
+    });
+  } catch (error) {
+    console.error("Lỗi deleteOrLeaveGroupConversation:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};

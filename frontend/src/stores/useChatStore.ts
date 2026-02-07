@@ -185,17 +185,6 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi add message:", error);
         }
       },
-      // updateConversation: async (conversation) => {
-      //   const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
-      //     typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
-      //   );
-
-      //   set((state) => ({
-      //     conversations: state.conversations.map((c) =>
-      //       c._id === conversation._id ? { ...c, ...conversation, seenBy } : c,
-      //     ),
-      //   }));
-      // },
 
       updateConversation: async (conversation) => {
         const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
@@ -228,6 +217,46 @@ export const useChatStore = create<ChatState>()(
             return merged;
           }),
         }));
+      },
+
+      removeConversationLocal: (conversationId: string) => {
+        set((state) => {
+          const nextConvos = state.conversations.filter(
+            (c) => c._id !== conversationId,
+          );
+
+          const nextMessages = { ...state.messages };
+          delete nextMessages[conversationId];
+
+          const nextActive =
+            state.activeConversationId === conversationId
+              ? null
+              : state.activeConversationId;
+
+          return {
+            conversations: nextConvos,
+            messages: nextMessages,
+            activeConversationId: nextActive,
+          };
+        });
+      },
+
+      deleteOrLeaveGroupConversation: async (conversationId?: string) => {
+        try {
+          const { activeConversationId } = get();
+          const id = conversationId ?? activeConversationId;
+          if (!id) return;
+
+          await chatServices.deleteOrLeaveGroupConversation(id);
+
+          // Xóa luôn trên UI của user này
+          get().removeConversationLocal(id);
+        } catch (err: any) {
+          console.error(
+            "deleteOrLeaveGroupConversation failed:",
+            err?.response?.data || err,
+          );
+        }
       },
 
       markasSeen: async () => {
