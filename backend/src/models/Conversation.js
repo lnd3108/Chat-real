@@ -33,6 +33,23 @@ const groupSchema = new mongoose.Schema(
   }
 );
 
+const clearedStateSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    clearedAt: {
+      type: Date,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const lastMessageSchema = new mongoose.Schema(
   {
     _id: { type: String },
@@ -87,6 +104,10 @@ const conversationSchema = new mongoose.Schema(
       type: Map,
       of: Number,
       default: {},
+    },
+    clearedFor: {
+      type: [clearedStateSchema],
+      default: [],
     },
   },
   {

@@ -36,6 +36,28 @@ const formatConversationForClient = (conversation) => {
   };
 };
 
+const getClearedAtForUser = (conversation, userId) => {
+  const currentUserId = userId?.toString();
+  if (!currentUserId) return null;
+
+  const clearedEntry = (conversation.clearedFor || []).find(
+    (item) => item.userId?.toString() === currentUserId,
+  );
+
+  return clearedEntry?.clearedAt ? new Date(clearedEntry.clearedAt) : null;
+};
+
+const shouldIncludeConversationForUser = (conversation, userId) => {
+  if (conversation.type !== "direct") return true;
+
+  const clearedAt = getClearedAtForUser(conversation, userId);
+  if (!clearedAt) return true;
+
+  if (!conversation.lastMessageAt) return false;
+
+  return new Date(conversation.lastMessageAt) > clearedAt;
+};
+
 // Tạo cuộc trò chuyện mới, nếu đã tồn tại cuộc trò chuyện 1-1 thì trả về cuộc trò chuyện đó, nếu là nhóm thì tạo mới
 export const createConversation = async (req, res) => {
   try {
@@ -151,19 +173,21 @@ export const getConversation = async (req, res) => {
         select: "displayName avatarUrl",
       });
 
-    const formatted = conversations.map((convo) => {
-      const participants = (convo.participants || []).map((p) => ({
-        _id: p.userId?._id,
-        displayName: p.userId?.displayName,
-        avatarUrl: p.userId?.avatarUrl ?? null,
-        joinedAt: p.joinedAt,
-      }));
-      return {
-        ...convo.toObject(),
-        unreadCounts: convo.unreadCounts || {},
-        participants,
-      };
-    });
+    const formatted = conversations
+      .filter((convo) => shouldIncludeConversationForUser(convo, userId))
+      .map((convo) => {
+        const participants = (convo.participants || []).map((p) => ({
+          _id: p.userId?._id,
+          displayName: p.userId?.displayName,
+          avatarUrl: p.userId?.avatarUrl ?? null,
+          joinedAt: p.joinedAt,
+        }));
+        return {
+          ...convo.toObject(),
+          unreadCounts: convo.unreadCounts || {},
+          participants,
+        };
+      });
 
     return res.status(200).json({ conversations: formatted });
   } catch (error) {
@@ -180,7 +204,7 @@ export const getMessages = async (req, res) => {
     const userId = req.user._id;
 
     const conversation = await Conversation.findById(conversationId).select(
-      "_id participants",
+      "_id participants clearedFor",
     );
 
     if(!conversation){
@@ -201,12 +225,20 @@ export const getMessages = async (req, res) => {
     }
 
     const query = { conversationId };
+    const clearedAt = getClearedAtForUser(conversation, userId);
+
+    if (clearedAt) {
+      query.createdAt = { $gt: clearedAt };
+    }
 
     if (typeof cursor === "string" && cursor.trim() !== "") {
       const d = new Date(cursor);
 
       if (!Number.isNaN(d.getTime())) {
-        query.createdAt = { $lt: d };
+        query.createdAt = {
+          ...(query.createdAt || {}),
+          $lt: d,
+        };
       }
     }
 
@@ -311,6 +343,7 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user._id.toString();
+    const userObjectId = req.user._id;
     const io = getIo();
 
     const conversation = await Conversation.findById(conversationId);
@@ -318,7 +351,7 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
       return res.status(404).json({ message: "Conversation không tồn tại" });
     }
 
-    if (conversation.type !== "group") {
+    if (conversation.type !== "group" && conversation.type !== "direct") {
       return res.status(400).json({ message: "Chỉ áp dụng cho nhóm (group)" });
     }
 
@@ -329,6 +362,35 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Bạn không thuộc cuộc trò chuyện này" });
+    }
+
+    if (conversation.type === "direct") {
+      const clearedAt = new Date();
+
+      await Conversation.findByIdAndUpdate(conversationId, {
+        $pull: {
+          clearedFor: { userId: userObjectId },
+          seenBy: userObjectId,
+        },
+        $set: { [`unreadCounts.${userId}`]: 0 },
+      });
+
+      await Conversation.findByIdAndUpdate(conversationId, {
+        $push: {
+          clearedFor: {
+            userId: userObjectId,
+            clearedAt,
+          },
+        },
+      });
+
+      io.to(userId).emit("conversation:direct-cleared", { conversationId });
+
+      return res.status(200).json({
+        message: "ÄÃ£ xÃ³a lá»‹ch sá»­ chat á»Ÿ phÃ­a báº¡n",
+        deleted: false,
+        cleared: true,
+      });
     }
 
     const ownerId = conversation.group?.createdBy?.toString();
@@ -354,8 +416,6 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
         .status(200)
         .json({ message: "Đã xóa nhóm thành công", deleted: true });
     }
-
-    const userObjectId = req.user._id; // ObjectId để query Mongo
 
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,

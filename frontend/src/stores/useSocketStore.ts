@@ -106,6 +106,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().removeConversationLocal(conversationId);
     });
 
+    socket.on("conversation:direct-cleared", ({ conversationId }) => {
+      useChatStore.getState().removeConversationLocal(conversationId);
+    });
+
     socket.on("conversation:left", ({ conversationId, groupName, removedByOther }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
       toast.message(
