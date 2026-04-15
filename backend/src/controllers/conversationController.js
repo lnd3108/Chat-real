@@ -301,20 +301,26 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
         .status(200)
         .json({ message: "Đã xóa nhóm thành công", deleted: true });
     }
+
+    const userObjectId = req.user._id; // ObjectId để query Mongo
+
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
-        $pull: { participants: { userId } },
-        $pull: { seenBy: userId },
+        $pull: { participants: { userId: userObjectId } },
+        $pull: { seenBy: userObjectId },
         $unset: { [`unreadCounts.${userId}`]: "" },
       },
       { new: true },
     );
+
+    // Emit cho chính user đó để UI remove conversation khỏi list
     io.to(userId).emit("conversation:left", {
       conversationId,
       userId,
     });
 
+    // Emit cho các member còn lại biết có người rời (optional)
     io.to(conversationId).emit("conversation:member-left", {
       conversationId,
       userId,

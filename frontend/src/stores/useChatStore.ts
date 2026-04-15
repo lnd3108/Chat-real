@@ -249,7 +249,6 @@ export const useChatStore = create<ChatState>()(
 
           await chatServices.deleteOrLeaveGroupConversation(id);
 
-          // Xóa luôn trên UI của user này
           get().removeConversationLocal(id);
         } catch (err: any) {
           console.error(
