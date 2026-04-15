@@ -203,35 +203,55 @@ export const useChatStore = create<ChatState>()(
           typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
         );
 
-        set((state) => ({
-          conversations: state.conversations.map((c) => {
-            if (c._id !== conversation._id) return c;
+        set((state) => {
+          const currentIndex = state.conversations.findIndex(
+            (c) => c._id === conversation._id,
+          );
 
-            const merged: any = { ...c, ...conversation };
-            if (seenBy) {
-              merged.seenBy = seenBy;
-            }
+          if (currentIndex === -1) {
+            return { conversations: state.conversations };
+          }
 
-            const incoming = conversation?.participants;
-            const participantsHydrated =
-              Array.isArray(incoming) &&
-              incoming.length > 0 &&
-              incoming.some(
-                (p: any) =>
-                  typeof p?.userId === "object" ||
-                  !!p?.displayName ||
-                  !!p?.avatarUrl,
-              );
+          const current = state.conversations[currentIndex];
+          const merged: any = { ...current, ...conversation };
 
-            if (!participantsHydrated) merged.participants = c.participants;
+          if (seenBy) {
+            merged.seenBy = seenBy;
+          }
 
-            if (conversation?.group == null) merged.group = c.group;
-            if (!conversation?.type) merged.type = c.type;
-            if (!conversation?.lastMessage) merged.lastMessage = c.lastMessage;
+          const incoming = conversation?.participants;
+          const participantsHydrated =
+            Array.isArray(incoming) &&
+            incoming.length > 0 &&
+            incoming.some(
+              (p: any) =>
+                typeof p?.userId === "object" ||
+                !!p?.displayName ||
+                !!p?.avatarUrl,
+            );
 
-            return merged;
-          }),
-        }));
+          if (!participantsHydrated) merged.participants = current.participants;
+
+          if (conversation?.group == null) merged.group = current.group;
+          if (!conversation?.type) merged.type = current.type;
+          if (!conversation?.lastMessage) merged.lastMessage = current.lastMessage;
+
+          const nextConversations = [...state.conversations];
+          nextConversations[currentIndex] = merged;
+
+          const shouldMoveToTop =
+            conversation.moveToTop ??
+            Boolean(conversation.lastMessage || conversation.lastMessageAt);
+
+          if (!shouldMoveToTop || currentIndex === 0) {
+            return { conversations: nextConversations };
+          }
+
+          nextConversations.splice(currentIndex, 1);
+          nextConversations.unshift(merged);
+
+          return { conversations: nextConversations };
+        });
       },
       setConversationParticipants: (conversationId, participants) => {
         set((state) => ({

@@ -11,6 +11,7 @@ export interface ConversationPatch {
   seenBy?: Conversation["seenBy"] | string[];
   lastMessage?: LastMessage | null;
   unreadCounts?: Record<string, number>;
+  moveToTop?: boolean;
 }
 
 export interface AuthState {

@@ -77,6 +77,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
           conversation?.lastMessageAt ??
           lastMessage?.createdAt ??
           message?.createdAt,
+        moveToTop: true,
         ...(lastMessage ? { lastMessage } : {}),
       });
 
@@ -94,6 +95,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         seenBy: conversation.seenBy,
         lastMessage: conversation.lastMessage,
         lastMessageAt: conversation.lastMessageAt,
+        moveToTop: false,
       });
     });
 
