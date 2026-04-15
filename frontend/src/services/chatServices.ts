@@ -29,12 +29,14 @@ export const chatServices = {
     content: string = "",
     imgUrl?: string,
     conversationId?: string,
+    replyToMessageId?: string,
   ) {
     const res = await api.post("/messages/direct", {
       recipientId,
       content,
       imgUrl,
       conversationId,
+      replyToMessageId,
     });
     return res.data.message;
   },
@@ -43,11 +45,13 @@ export const chatServices = {
     conversationId: string,
     content: string = "",
     imgUrl?: string,
+    replyToMessageId?: string,
   ) {
     const res = await api.post("/messages/group", {
       conversationId,
       content,
       imgUrl,
+      replyToMessageId,
     });
     return res.data.message;
   },
@@ -57,12 +61,14 @@ export const chatServices = {
     image: File,
     content: string = "",
     conversationId?: string,
+    replyToMessageId?: string,
   ) {
     const formData = new FormData();
     formData.append("recipientId", recipientId);
     formData.append("image", image);
     if (content.trim()) formData.append("content", content.trim());
     if (conversationId) formData.append("conversationId", conversationId);
+    if (replyToMessageId) formData.append("replyToMessageId", replyToMessageId);
 
     const res = await api.post("/messages/direct/with-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -74,11 +80,13 @@ export const chatServices = {
     conversationId: string,
     image: File,
     content: string = "",
+    replyToMessageId?: string,
   ) {
     const formData = new FormData();
     formData.append("conversationId", conversationId);
     formData.append("image", image);
     if (content.trim()) formData.append("content", content.trim());
+    if (replyToMessageId) formData.append("replyToMessageId", replyToMessageId);
 
     const res = await api.post("/messages/group/with-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -127,5 +135,25 @@ export const chatServices = {
       { memberId },
     );
     return res.data;
+  },
+
+  async editMessage(messageId: string, content: string) {
+    const res = await api.patch(`/messages/${messageId}`, { content });
+    return res.data.message as Message;
+  },
+
+  async deleteMessageForMe(messageId: string) {
+    const res = await api.delete(`/messages/${messageId}/me`);
+    return res.data;
+  },
+
+  async deleteMessageForEveryone(messageId: string) {
+    const res = await api.delete(`/messages/${messageId}/everyone`);
+    return res.data.message as Message;
+  },
+
+  async toggleReaction(messageId: string, emoji: string) {
+    const res = await api.post(`/messages/${messageId}/reactions`, { emoji });
+    return res.data.message as Message;
   },
 };

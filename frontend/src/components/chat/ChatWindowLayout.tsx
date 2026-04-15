@@ -12,12 +12,18 @@ const ChatWindowLayout = () => {
     activeConversationId,
     conversations,
     messageLoading: loading,
-    // messages,
     markasSeen,
+    setEditingMessage,
+    setReplyingTo,
   } = useChatStore();
 
   const selectedConvo =
     conversations.find((c) => c._id === activeConversationId) ?? null;
+
+  useEffect(() => {
+    setEditingMessage(null);
+    setReplyingTo(null);
+  }, [activeConversationId, setEditingMessage, setReplyingTo]);
 
   useEffect(() => {
     if (!selectedConvo) {

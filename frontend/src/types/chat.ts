@@ -32,6 +32,19 @@ export interface LastMessage {
   senderId?: string;
 }
 
+export interface MessageReply {
+  messageId: string;
+  senderId: string;
+  content: string | null;
+  imgUrl?: string | null;
+  type?: "user" | "system";
+}
+
+export interface MessageReaction {
+  emoji: string;
+  userIds: string[];
+}
+
 export interface Conversation {
   _id: string;
   type: "direct" | "group";
@@ -56,6 +69,12 @@ export interface Message {
   type?: "user" | "system";
   content: string | null;
   imgUrl?: string | null;
+  replyTo?: MessageReply | null;
+  reactions?: MessageReaction[];
+  deletedFor?: string[];
+  isDeletedForEveryone?: boolean;
+  isHiddenForMe?: boolean;
+  editedAt?: string | null;
   updatedAt?: string | null;
   createdAt: string;
   isOwn?: boolean;

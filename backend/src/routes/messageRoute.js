@@ -1,9 +1,13 @@
 import express from "express";
 
 import {
+  deleteMessageForEveryone,
+  deleteMessageForMe,
+  editMessage,
   sendDirectMessage,
   sendGroupMessage,
   sendMessageWithImage,
+  toggleReaction,
 } from "../controllers/messageController.js";
 import { upload } from "../middlewares/uploadMiddleWare.js";
 import {
@@ -48,5 +52,9 @@ router.post(
   checkGroupMemberShip,
   sendMessageWithImage,
 );
+router.patch("/:messageId", editMessage);
+router.delete("/:messageId/me", deleteMessageForMe);
+router.delete("/:messageId/everyone", deleteMessageForEveryone);
+router.post("/:messageId/reactions", toggleReaction);
 
 export default router;

@@ -1,5 +1,49 @@
 import mongoose from "mongoose";
 
+const replyToSchema = new mongoose.Schema(
+  {
+    messageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    content: {
+      type: String,
+      default: null,
+    },
+    imgUrl: {
+      type: String,
+      default: null,
+    },
+    type: {
+      type: String,
+      enum: ["user", "system"],
+      default: "user",
+    },
+  },
+  { _id: false },
+);
+
+const reactionSchema = new mongoose.Schema(
+  {
+    emoji: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    userIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+  },
+  { _id: false },
+);
+
 const messageSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -25,6 +69,28 @@ const messageSchema = new mongoose.Schema(
     },
     imgUrl: {
       type: String,
+    },
+    replyTo: {
+      type: replyToSchema,
+      default: null,
+    },
+    reactions: {
+      type: [reactionSchema],
+      default: [],
+    },
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isDeletedForEveryone: {
+      type: Boolean,
+      default: false,
+    },
+    editedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

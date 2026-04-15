@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Conversation } from "@/types/chat";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { Input } from "../ui/input";
@@ -11,10 +11,15 @@ import { toast } from "sonner";
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
   const {
+    editMessage,
+    editingMessage,
+    replyingTo,
     sendDirectMessage,
     sendDirectMessageWithImage,
     sendGroupMessage,
     sendGroupMessageWithImage,
+    setEditingMessage,
+    setReplyingTo,
   } = useChatStore();
   const [value, setValue] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -22,6 +27,16 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [sending, setSending] = useState(false);
 
   if (!user) return;
+
+  useEffect(() => {
+    if (!editingMessage) return;
+    setValue(editingMessage.content ?? "");
+    setImage(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  }, [editingMessage]);
 
   const resetImage = () => {
     if (previewUrl) {
@@ -60,6 +75,12 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
     try {
       setSending(true);
+
+      if (editingMessage?._id) {
+        await editMessage(editingMessage._id, currValue);
+        setValue("");
+        return;
+      }
 
       if (selectedConvo.type === "direct") {
         const participants = selectedConvo.participants;
@@ -100,6 +121,34 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
   return (
     <div className="space-y-2 p-3 bg-background">
+      {(replyingTo || editingMessage) && (
+        <div className="flex items-start justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-primary">
+              {editingMessage ? "Dang chinh sua tin nhan" : "Dang tra loi"}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              {editingMessage
+                ? editingMessage.content || "Tin nhan hinh anh"
+                : replyingTo?.content || (replyingTo?.imgUrl ? "Hinh anh" : "Tin nhan")}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => {
+              setReplyingTo(null);
+              setEditingMessage(null);
+              setValue("");
+            }}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+
       {previewUrl && (
         <div className="relative inline-flex overflow-hidden rounded-xl border border-border/60 bg-card p-2">
           <img

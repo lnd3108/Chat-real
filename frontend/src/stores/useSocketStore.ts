@@ -89,6 +89,24 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    socket.on("message:updated", ({ message, conversation }) => {
+      useChatStore.getState().updateMessage(message);
+      if (conversation) {
+        useChatStore.getState().updateConversation({
+          _id: conversation._id,
+          unreadCounts: conversation.unreadCounts,
+          seenBy: conversation.seenBy,
+          lastMessage: conversation.lastMessage,
+          lastMessageAt: conversation.lastMessageAt,
+          moveToTop: false,
+        });
+      }
+    });
+
+    socket.on("message:removed-for-me", ({ conversationId, messageId }) => {
+      useChatStore.getState().removeMessageForMe(conversationId, messageId);
+    });
+
     socket.on("read-message", ({ conversation }) => {
       useChatStore.getState().updateConversation({
         _id: conversation._id,

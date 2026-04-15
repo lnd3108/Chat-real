@@ -55,6 +55,8 @@ export interface ChatState {
   >;
 
   activeConversationId: string | null;
+  replyingTo: Message | null;
+  editingMessage: Message | null;
 
   convoLoading: boolean;
   messageLoading: boolean;
@@ -84,7 +86,15 @@ export interface ChatState {
     image: File,
     content?: string,
   ) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
+  deleteMessageForMe: (messageId: string) => Promise<void>;
+  deleteMessageForEveryone: (messageId: string) => Promise<void>;
+  toggleReaction: (messageId: string, emoji: string) => Promise<void>;
   addMessage: (message: Message) => Promise<void>;
+  updateMessage: (message: Message) => void;
+  removeMessageForMe: (conversationId: string, messageId: string) => void;
+  setReplyingTo: (message: Message | null) => void;
+  setEditingMessage: (message: Message | null) => void;
 
   updateConversation: (conversation: ConversationPatch) => void;
   setConversationParticipants: (

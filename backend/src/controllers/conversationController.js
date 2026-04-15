@@ -47,6 +47,21 @@ const getClearedAtForUser = (conversation, userId) => {
   return clearedEntry?.clearedAt ? new Date(clearedEntry.clearedAt) : null;
 };
 
+const normalizeMessageForUser = (message, userId) => {
+  const currentUserId = userId?.toString();
+  return {
+    ...message.toObject(),
+    deletedFor: (message.deletedFor || []).map((item) => item.toString()),
+    reactions: (message.reactions || []).map((reaction) => ({
+      emoji: reaction.emoji,
+      userIds: (reaction.userIds || []).map((item) => item.toString()),
+    })),
+    isHiddenForMe: (message.deletedFor || []).some(
+      (item) => item.toString() === currentUserId,
+    ),
+  };
+};
+
 const shouldIncludeConversationForUser = (conversation, userId) => {
   if (conversation.type !== "direct") return true;
 
@@ -224,7 +239,10 @@ export const getMessages = async (req, res) => {
       })
     }
 
-    const query = { conversationId };
+    const query = {
+      conversationId,
+      deletedFor: { $ne: userId },
+    };
     const clearedAt = getClearedAtForUser(conversation, userId);
 
     if (clearedAt) {
@@ -256,7 +274,10 @@ export const getMessages = async (req, res) => {
 
     messages = messages.reverse();
 
-    return res.status(200).json({ messages, nextCursor });
+    return res.status(200).json({
+      messages: messages.map((message) => normalizeMessageForUser(message, userId)),
+      nextCursor,
+    });
   } catch (error) {
     console.error("Lỗi xảy ra khi lấy messages", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

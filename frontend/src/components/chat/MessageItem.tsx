@@ -1,8 +1,26 @@
 import { cn, formatMessageTime } from "@/lib/utils";
 import type { Conversation, Message, Participant } from "@/types/chat";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
 import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import {
+  Heart,
+  MessageSquareReply,
+  MoreHorizontal,
+  Pencil,
+  SmilePlus,
+  Trash2,
+} from "lucide-react";
 
 interface MessageItemProps {
   message: Message;
@@ -19,7 +37,16 @@ const MessageItem = ({
   selectedConvo,
   lastMessageStatus,
 }: MessageItemProps) => {
+  const { user } = useAuthStore();
+  const {
+    deleteMessageForEveryone,
+    deleteMessageForMe,
+    setEditingMessage,
+    setReplyingTo,
+    toggleReaction,
+  } = useChatStore();
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
+  const reactionOptions = ["👍", "❤️", "😂", "😮", "😡"];
 
   const isShowTime =
     index === 0 ||
@@ -31,6 +58,15 @@ const MessageItem = ({
 
   const participant = selectedConvo.participants.find(
     (p: Participant) => p._id?.toString() === message.senderId?.toString(),
+  );
+  const replySender = selectedConvo.participants.find(
+    (p: Participant) => p._id?.toString() === message.replyTo?.senderId?.toString(),
+  );
+  const canEdit = message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
+  const canRecallForEveryone =
+    message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
+  const reactionBadges = (message.reactions ?? []).filter(
+    (reaction) => reaction.userIds.length > 0,
   );
 
   if (message.type === "system") {
@@ -96,20 +132,139 @@ const MessageItem = ({
             )}
           >
             <div className="space-y-2">
-              {message.imgUrl && (
-                <img
-                  src={message.imgUrl}
-                  alt="Message attachment"
-                  className="max-h-72 w-auto max-w-full rounded-lg object-cover"
-                />
+              {message.replyTo && (
+                <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-xs">
+                  <p className="font-medium text-primary">
+                    {message.replyTo.senderId === user?._id
+                      ? "Ban"
+                      : (replySender?.displayName ?? "Nguoi gui")}
+                  </p>
+                  <p className="truncate text-muted-foreground">
+                    {message.replyTo.content || (message.replyTo.imgUrl ? "Hinh anh" : "Tin nhan")}
+                  </p>
+                </div>
               )}
-              {message.content && (
-                <p className="text-sm leading-relaxed break-words">
-                  {message.content}
+
+              {message.isDeletedForEveryone ? (
+                <p className="text-sm italic text-muted-foreground">
+                  Ban da xoa mot tin nhan
                 </p>
+              ) : (
+                <>
+                  {message.imgUrl && (
+                    <img
+                      src={message.imgUrl}
+                      alt="Message attachment"
+                      className="max-h-72 w-auto max-w-full rounded-lg object-cover"
+                    />
+                  )}
+                  {message.content && (
+                    <p className="text-sm leading-relaxed break-words">
+                      {message.content}
+                    </p>
+                  )}
+                  {message.editedAt && (
+                    <p className="text-[11px] italic text-muted-foreground">
+                      Da chinh sua
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </Card>
+
+          {!message.isDeletedForEveryone && reactionBadges.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {reactionBadges.map((reaction) => {
+                const reactedByMe = reaction.userIds.includes(user?._id ?? "");
+                return (
+                  <button
+                    key={`${message._id}-${reaction.emoji}`}
+                    type="button"
+                    onClick={() => void toggleReaction(message._id, reaction.emoji)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-xs transition-smooth",
+                      reactedByMe
+                        ? "border-primary/40 bg-primary/15 text-primary"
+                        : "border-border bg-background text-muted-foreground",
+                    )}
+                  >
+                    {reaction.emoji} {reaction.userIds.length}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex items-center gap-1">
+            {!message.isDeletedForEveryone && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-7 rounded-full">
+                    <SmilePlus className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
+                  <div className="flex gap-1 px-1 py-1">
+                    {reactionOptions.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className="rounded-md px-2 py-1 text-lg hover:bg-accent"
+                        onClick={() => void toggleReaction(message._id, emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 rounded-full"
+              onClick={() => setReplyingTo(message)}
+            >
+              <MessageSquareReply className="size-4" />
+            </Button>
+
+            {!message.isDeletedForEveryone && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-7 rounded-full">
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
+                  {canEdit && (
+                    <DropdownMenuItem onClick={() => setEditingMessage(message)}>
+                      <Pencil className="size-4" />
+                      Sua tin nhan
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => void deleteMessageForMe(message._id)}>
+                    <Trash2 className="size-4" />
+                    Thu hoi phia minh
+                  </DropdownMenuItem>
+                  {canRecallForEveryone && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => void deleteMessageForEveryone(message._id)}
+                      >
+                        <Heart className="size-4" />
+                        Thu hoi cho ca hai ben
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
 
           {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
             <Badge
