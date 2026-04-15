@@ -106,8 +106,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().removeConversationLocal(conversationId);
     });
 
-    socket.on("conversation:left", ({ conversationId }) => {
+    socket.on("conversation:left", ({ conversationId, groupName, removedByOther }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
+      toast.message(
+        removedByOther
+          ? `Bạn đã bị xóa khỏi ${groupName ?? "nhóm"}`
+          : `Bạn đã rời ${groupName ?? "nhóm"}`,
+      );
     });
 
     socket.on("conversation:member-left", ({ conversationId, userId }) => {
@@ -143,6 +148,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on("conversation:members-added", ({ conversationId, participants }) => {
       useChatStore.getState().setConversationParticipants(conversationId, participants);
       toast.message("Nhóm vừa có thêm thành viên mới");
+    });
+    socket.on("added-to-group", ({ groupName }) => {
+      toast.success(`Bạn vừa được thêm vào ${groupName}`);
     });
   },
 

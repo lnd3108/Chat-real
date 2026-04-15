@@ -21,6 +21,21 @@ const createSystemMessage = async (conversation, actorId, content) => {
   return message;
 };
 
+const formatConversationForClient = (conversation) => {
+  const participants = (conversation.participants || []).map((p) => ({
+    _id: p.userId?._id,
+    displayName: p.userId?.displayName,
+    avatarUrl: p.userId?.avatarUrl ?? null,
+    joinedAt: p.joinedAt,
+  }));
+
+  return {
+    ...conversation.toObject(),
+    unreadCounts: conversation.unreadCounts || {},
+    participants,
+  };
+};
+
 // Tạo cuộc trò chuyện mới, nếu đã tồn tại cuộc trò chuyện 1-1 thì trả về cuộc trò chuyện đó, nếu là nhóm thì tạo mới
 export const createConversation = async (req, res) => {
   try {
@@ -96,18 +111,7 @@ export const createConversation = async (req, res) => {
       { path: "lastMessage.senderId", select: "displayName avatarUrl" },
     ]);
 
-    const participants = (conversation.participants || []).map((p) => ({
-      _id: p.userId?._id,
-      displayName: p.userId?.displayName,
-      avatarUrl: p.userId?.avatarUrl ?? null,
-      joinedAt: p.joinedAt,
-    }));
-
-    const formatted = {
-      ...conversation.toObject(),
-      unreadCounts: conversation.unreadCounts || {},
-      participants,
-    };
+    const formatted = formatConversationForClient(conversation);
 
     if (type === "group") {
       formatted.participants.forEach((p) => {
@@ -378,6 +382,8 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
     io.to(userId).emit("conversation:left", {
       conversationId,
       userId,
+      groupName: conversation.group?.name ?? "Nhóm",
+      removedByOther: false,
     });
 
     // Emit cho các member còn lại biết có người rời (optional)
@@ -481,15 +487,11 @@ export const addGroupMembers = async (req, res) => {
     io.to(conversationId).emit("conversation:members-added", {
       conversationId,
       newMembers: newMemberIds,
-      participants: populatedConversation.participants.map((p) => ({
-        _id: p.userId?._id,
-        displayName: p.userId?.displayName,
-        avatarUrl: p.userId?.avatarUrl ?? null,
-        joinedAt: p.joinedAt,
-      })),
+      participants: formatConversationForClient(populatedConversation).participants,
     });
 
     newMemberIds.forEach((memberId) => {
+      io.to(memberId).emit("new-group", formatConversationForClient(populatedConversation));
       io.to(memberId).emit("added-to-group", {
         groupId: conversationId,
         groupName: populatedConversation.group.name,
@@ -594,6 +596,8 @@ export const removeGroupMember = async (req, res) => {
     io.to(memberId).emit("conversation:left", {
       conversationId,
       userId: memberId,
+      groupName: conversation.group?.name ?? "Nhóm",
+      removedByOther: !isSelf,
     });
 
     io.to(conversationId).emit("conversation:member-removed", {
