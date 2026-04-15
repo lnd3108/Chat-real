@@ -11,16 +11,42 @@ import {
   checkGroupMemberShip,
 } from "../middlewares/friendMiddleware.js";
 import { validateRequest } from "../middlewares/validationMiddleware.js";
-import { sendDirectMessageSchema, sendGroupMessageSchema } from "../libs/validation.js";
+import {
+  sendDirectMessageSchema,
+  sendGroupMessageSchema,
+} from "../libs/validation.js";
 
 const router = express.Router();
 
-router.post("/direct", checkFriendship, validateRequest(sendDirectMessageSchema), sendDirectMessage);
-router.post("/group", checkGroupMemberShip, validateRequest(sendGroupMessageSchema), sendGroupMessage);
+router.post(
+  "/direct",
+  checkFriendship,
+  validateRequest(sendDirectMessageSchema),
+  sendDirectMessage,
+);
+router.post(
+  "/direct/with-image",
+  upload.single("image"),
+  checkFriendship,
+  sendDirectMessage,
+);
+router.post(
+  "/group",
+  checkGroupMemberShip,
+  validateRequest(sendGroupMessageSchema),
+  sendGroupMessage,
+);
 router.post(
   "/group/with-image",
-  checkGroupMemberShip,
   upload.single("image"),
-  sendMessageWithImage
+  checkGroupMemberShip,
+  sendGroupMessage,
 );
+router.post(
+  "/legacy/group/with-image",
+  upload.single("image"),
+  checkGroupMemberShip,
+  sendMessageWithImage,
+);
+
 export default router;

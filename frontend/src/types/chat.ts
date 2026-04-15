@@ -1,5 +1,7 @@
 export interface Participant {
-  userId?: string | { _id: string; displayName?: string; avatarUrl?: string | null };
+  userId?:
+    | string
+    | { _id: string; displayName?: string; avatarUrl?: string | null };
   _id?: string;
   displayName?: string;
   avatarUrl?: string | null;
@@ -20,6 +22,7 @@ export interface Group {
 export interface LastMessage {
   _id: string;
   content: string | null;
+  imgUrl?: string | null;
   createdAt?: string;
   sender?: {
     _id: string;
@@ -37,7 +40,7 @@ export interface Conversation {
   lastMessageAt: string;
   seenBy: SeenUser[];
   lastMessage: LastMessage | null;
-  unreadCounts: Record<string, number>; // key = userId, value = unread count
+  unreadCounts: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }

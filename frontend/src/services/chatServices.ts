@@ -30,12 +30,6 @@ export const chatServices = {
     imgUrl?: string,
     conversationId?: string,
   ) {
-    // console.log("SEND DIRECT PAYLOAD:", {
-    //   recipientId,
-    //   content,
-    //   imgUrl,
-    //   conversationId,
-    // });
     const res = await api.post("/messages/direct", {
       recipientId,
       content,
@@ -54,6 +48,40 @@ export const chatServices = {
       conversationId,
       content,
       imgUrl,
+    });
+    return res.data.message;
+  },
+
+  async sendDirectMessageWithImage(
+    recipientId: string,
+    image: File,
+    content: string = "",
+    conversationId?: string,
+  ) {
+    const formData = new FormData();
+    formData.append("recipientId", recipientId);
+    formData.append("image", image);
+    if (content.trim()) formData.append("content", content.trim());
+    if (conversationId) formData.append("conversationId", conversationId);
+
+    const res = await api.post("/messages/direct/with-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.message;
+  },
+
+  async sendGroupMessageWithImage(
+    conversationId: string,
+    image: File,
+    content: string = "",
+  ) {
+    const formData = new FormData();
+    formData.append("conversationId", conversationId);
+    formData.append("image", image);
+    if (content.trim()) formData.append("content", content.trim());
+
+    const res = await api.post("/messages/group/with-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return res.data.message;
   },

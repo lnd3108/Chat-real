@@ -54,6 +54,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
           ? {
               _id: payloadLastMessage._id,
               content: payloadLastMessage.content ?? null,
+              imgUrl: payloadLastMessage.imgUrl ?? message?.imgUrl ?? null,
               createdAt:
                 payloadLastMessage.createdAt ??
                 conversation?.lastMessageAt ??
@@ -203,3 +204,5 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     }
   },
 }));
+
+

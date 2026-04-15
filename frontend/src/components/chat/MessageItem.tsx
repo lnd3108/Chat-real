@@ -25,12 +25,12 @@ const MessageItem = ({
     index === 0 ||
     new Date(message.createdAt).getTime() -
       new Date(prev?.createdAt || 0).getTime() >
-      300000; //5p
+      300000;
 
   const isGroupBreak = isShowTime || message.senderId !== prev?.senderId;
 
   const participant = selectedConvo.participants.find(
-    (p: Participant) => p._id?.toString() === message.senderId?.toString()
+    (p: Participant) => p._id?.toString() === message.senderId?.toString(),
   );
 
   if (message.type === "system") {
@@ -55,7 +55,6 @@ const MessageItem = ({
 
   return (
     <>
-      {/* TimeStamp */}
       {isShowTime && (
         <div className="w-full flex justify-center my-3">
           <span className="text-xs text-muted-foreground px-2 py-1 rounded-full bg-muted/40">
@@ -67,10 +66,9 @@ const MessageItem = ({
       <div
         className={cn(
           "flex gap-2 message-bounce mt-1",
-          message.isOwn ? "justify-end" : "justify-start"
+          message.isOwn ? "justify-end" : "justify-start",
         )}
       >
-        {/* avatar */}
         {!message.isOwn && (
           <div className="w-8">
             {isGroupBreak && (
@@ -83,11 +81,10 @@ const MessageItem = ({
           </div>
         )}
 
-        {/* Message */}
         <div
           className={cn(
             "max-w-xs lg:max-w-md space-y-1 flex flex-col",
-            message.isOwn ? "items-end" : "items-start"
+            message.isOwn ? "items-end" : "items-start",
           )}
         >
           <Card
@@ -95,15 +92,25 @@ const MessageItem = ({
               "p-3",
               message.isOwn
                 ? "chat-bubble-sent border-0"
-                : "chat-bubble-received"
+                : "chat-bubble-received",
             )}
           >
-            <p className="text-sm leading-relaxed break-words">
-              {message.content}
-            </p>
+            <div className="space-y-2">
+              {message.imgUrl && (
+                <img
+                  src={message.imgUrl}
+                  alt="Message attachment"
+                  className="max-h-72 w-auto max-w-full rounded-lg object-cover"
+                />
+              )}
+              {message.content && (
+                <p className="text-sm leading-relaxed break-words">
+                  {message.content}
+                </p>
+              )}
+            </div>
           </Card>
 
-          {/* seen/delivered */}
           {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
             <Badge
               variant="outline"
@@ -111,7 +118,7 @@ const MessageItem = ({
                 "text-xs px-1.5 py-0.5 h-4 border-0",
                 lastMessageStatus === "seen"
                   ? "bg-primary/20 text-primary"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground",
               )}
             >
               {lastMessageStatus}

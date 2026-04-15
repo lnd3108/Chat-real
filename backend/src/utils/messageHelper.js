@@ -3,12 +3,16 @@ export const updateConversationAfterCreateMessage = (
   message,
   senderId,
 ) => {
+  const lastMessageContent =
+    message.content?.trim() || (message.imgUrl ? "[Hinh anh]" : null);
+
   conversation.set({
     seenBy: [],
     lastMessageAt: message.createdAt,
     lastMessage: {
       _id: message._id,
-      content: message.content,
+      content: lastMessageContent,
+      imgUrl: message.imgUrl ?? null,
       senderId,
       createdAt: message.createdAt,
     },

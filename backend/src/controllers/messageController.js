@@ -7,17 +7,52 @@ import {
 import { getIo } from "../socket/index.js";
 import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
 
-// Controller xử lý gửi tin nhắn trực tiếp và nhóm
+const createAndEmitMessage = async ({
+  conversation,
+  conversationId,
+  senderId,
+  content,
+  file,
+}) => {
+  let imgUrl = null;
+
+  if (file) {
+    const result = await uploadImageFromBuffer(file.buffer, {
+      folder: "chat_app/messages",
+      transformation: [{ width: 1600, height: 1600, crop: "limit" }],
+    });
+    imgUrl = result.secure_url;
+  }
+
+  const normalizedContent = content?.trim() || null;
+
+  const message = await Message.create({
+    conversationId,
+    senderId,
+    content: normalizedContent,
+    imgUrl,
+  });
+
+  updateConversationAfterCreateMessage(conversation, message, senderId);
+  await conversation.save();
+
+  const io = getIo();
+  emitNewMessage(io, conversation, message);
+
+  return message;
+};
+
 export const sendDirectMessage = async (req, res) => {
   try {
     const { recipientId, content, conversationId } = req.body;
     const senderId = req.user._id;
+    const file = req.file;
 
-    let conversation;
-
-    if (!content) {
-      return res.status(400).json({ message: "Thiếu nội dung" });
+    if (!content?.trim() && !file) {
+      return res.status(400).json({ message: "Thieu noi dung" });
     }
+
+    let conversation = null;
 
     if (conversationId) {
       conversation = await Conversation.findById(conversationId);
@@ -34,106 +69,47 @@ export const sendDirectMessage = async (req, res) => {
       });
     }
 
-    const message = await Message.create({
+    const message = await createAndEmitMessage({
+      conversation,
       conversationId: conversation._id,
       senderId,
       content,
+      file,
     });
-
-    updateConversationAfterCreateMessage(conversation, message, senderId);
-    const io = getIo();
-    await conversation.save();
-
-    emitNewMessage(io, conversation, message);
 
     return res.status(201).json({ message });
   } catch (error) {
-    console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi xay ra khi gui tin nhan truc tiep", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// Controller xử lý gửi tin nhắn trong nhóm
 export const sendGroupMessage = async (req, res) => {
   try {
     const { conversationId, content } = req.body;
     const senderId = req.user._id;
     const conversation = req.conversation;
+    const file = req.file;
 
-    if (!content) {
-      return res.status(400).json("Thiếu nội dung");
+    if (!content?.trim() && !file) {
+      return res.status(400).json({ message: "Thieu noi dung" });
     }
 
-    const message = await Message.create({
+    const message = await createAndEmitMessage({
+      conversation,
       conversationId,
       senderId,
       content,
+      file,
     });
 
-    updateConversationAfterCreateMessage(conversation, message, senderId);
-
-    await conversation.save();
-    const io = getIo();
-    emitNewMessage(io, conversation, message);
-
     return res.status(201).json({ message });
   } catch (error) {
-    console.error("Lỗi xảy ra khi gửi tin nhắn nhóm", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi xay ra khi gui tin nhan nhom", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-export const sendMessageWithImage = async (req, res) => {
-  try {
-    const { conversationId, content } = req.body;
-    const senderId = req.user._id;
-    const file = req.file;
+export const sendMessageWithImage = sendGroupMessage;
 
-    if(!conversationId){
-      return res.status(400).json({
-        message: "Thiếu conversationId"
-      });
-    }
 
-    const conversation = await Conversation.findById(conversationId);
-    if(!conversation){
-      return res.status(404).json({
-        message: "Cuộc trò chuyện không tồn tại"
-      });
-    }
-
-    const isMember = conversation.participants.some(
-      p => p.userId.toString() === senderId.toString()
-    );
-
-    if(!isMember){
-      return res.status(403).json({
-        message: "Bạn không phải là thành viên của cuộc trò chuyện này"
-      })
-    }
-
-    let imgUrl = null;
-    if(file){
-      const result = await uploadImageFromBuffer(file.buffer);
-      imgUrl = result.secure_url;
-    }
-
-    const message = await Message.create({
-      conversationId,
-      senderId,
-      content: content || null,
-      imgUrl,
-    })
-    
-    updateConversationAfterCreateMessage(conversation, message, senderId);
-
-    await conversation.save();
-    const io = getIo();
-    emitNewMessage(io, conversation, message);
-
-    return res.status(201).json({ message });
-  } catch (error) {
-    console.error("Lỗi xảy ra khi gửi tin nhắn có hình ảnh", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
-  }
-};

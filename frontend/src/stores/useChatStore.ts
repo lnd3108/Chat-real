@@ -154,6 +154,51 @@ export const useChatStore = create<ChatState>()(
           console.error("Lỗi xảy ra khi gửi direct message", error);
         }
       },
+      sendDirectMessageWithImage: async (recipientId, image, content = "") => {
+        try {
+          const { activeConversationId, conversations } = get();
+          const me = useAuthStore.getState().user?._id;
+
+          let finalRecipientId: string | undefined = recipientId;
+
+          if (!finalRecipientId && activeConversationId && me) {
+            const convo = conversations.find(
+              (c: any) => c._id === activeConversationId,
+            );
+
+            const other = convo?.participants?.find((p) => {
+              const uid =
+                typeof p.userId === "string" ? p.userId : p.userId._id;
+              return uid !== me;
+            });
+
+            finalRecipientId =
+              typeof other?.userId === "string"
+                ? other.userId
+                : other?.userId._id;
+          }
+
+          if (!finalRecipientId) {
+            console.error("Missing recipientId: cannot send direct image");
+            return;
+          }
+
+          await chatServices.sendDirectMessageWithImage(
+            finalRecipientId,
+            image,
+            content,
+            activeConversationId || undefined,
+          );
+
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === activeConversationId ? { ...c, seenBy: [] } : c,
+            ),
+          }));
+        } catch (error) {
+          console.error("Loi xay ra khi gui direct message co anh", error);
+        }
+      },
       sendGroupMessage: async (conversationId, content, imgUrl) => {
         try {
           await chatServices.sendGroupMessage(conversationId, content, imgUrl);
@@ -164,6 +209,22 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (error) {
           console.error("Lỗi xảy ra khi gửi group message", error);
+        }
+      },
+      sendGroupMessageWithImage: async (conversationId, image, content = "") => {
+        try {
+          await chatServices.sendGroupMessageWithImage(
+            conversationId,
+            image,
+            content,
+          );
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c._id === get().activeConversationId ? { ...c, seenBy: [] } : c,
+            ),
+          }));
+        } catch (error) {
+          console.error("Loi xay ra khi gui group message co anh", error);
         }
       },
       addMessage: async (message) => {
@@ -402,3 +463,6 @@ export const useChatStore = create<ChatState>()(
     },
   ),
 );
+
+
+

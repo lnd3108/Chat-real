@@ -49,8 +49,8 @@ export interface ChatState {
     string,
     {
       items: Message[];
-      hasMore: boolean; // infinite scroll
-      nextCursor: string | null | undefined; // pagination
+      hasMore: boolean;
+      nextCursor: string | null | undefined;
     }
   >;
 
@@ -69,15 +69,23 @@ export interface ChatState {
     content: string,
     imgUrl?: string,
   ) => Promise<void>;
+  sendDirectMessageWithImage: (
+    recipientId: string,
+    image: File,
+    content?: string,
+  ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
     content: string,
     imgUrl?: string,
   ) => Promise<void>;
-  //add message
+  sendGroupMessageWithImage: (
+    conversationId: string,
+    image: File,
+    content?: string,
+  ) => Promise<void>;
   addMessage: (message: Message) => Promise<void>;
 
-  //update convo
   updateConversation: (conversation: ConversationPatch) => void;
   setConversationParticipants: (
     conversationId: string,

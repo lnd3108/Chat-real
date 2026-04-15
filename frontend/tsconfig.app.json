@@ -25,7 +25,6 @@
     "noUncheckedSideEffectImports": true,
     // shadn
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"]
     }
