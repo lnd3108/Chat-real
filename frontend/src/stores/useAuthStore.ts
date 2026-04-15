@@ -27,8 +27,12 @@ export const useAuthStore = create<AuthState>()(
         // sessionStorage.clear();
         localStorage.removeItem("auth-storage");
         localStorage.removeItem("chat-storage");
-
-        sessionStorage.removeItem("chat-scroll-695fc449262cb21583616d56");
+        for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+          const key = sessionStorage.key(i);
+          if (key?.startsWith("chat-scroll-")) {
+            sessionStorage.removeItem(key);
+          }
+        }
       },
 
       signUp: async (userName, password, email, firstName, lastName) => {

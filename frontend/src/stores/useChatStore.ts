@@ -5,6 +5,8 @@ import { persist } from "zustand/middleware";
 import { useAuthStore } from "./useAuthStore";
 import { useSocketStore } from "./useSocketStore";
 
+const inflightMessageFetches = new Map<string, Promise<void>>();
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -53,37 +55,54 @@ export const useChatStore = create<ChatState>()(
 
         if (nextCursor === null) return;
 
-        set({ messageLoading: true });
-
-        try {
-          const { messages: fetched, cursor } =
-            await chatServices.fetchMessages(convoId, nextCursor);
-
-          const processed = fetched.map((m) => ({
-            ...m,
-            isOwn: m.senderId === user?._id,
-          }));
-          set((state) => {
-            const prev = state.messages[convoId]?.items ?? [];
-            const merged =
-              prev.length > 0 ? [...processed, ...prev] : processed;
-
-            return {
-              messages: {
-                ...state.messages,
-                [convoId]: {
-                  items: merged,
-                  hasMore: !!cursor,
-                  nextCursor: cursor ?? null,
-                },
-              },
-            };
-          });
-        } catch (error) {
-          console.error("Failed to fetch messages:", error);
-        } finally {
-          set({ messageLoading: false });
+        const requestKey = `${convoId}::${nextCursor ?? "__initial__"}`;
+        const inflight = inflightMessageFetches.get(requestKey);
+        if (inflight) {
+          await inflight;
+          return;
         }
+
+        const request = (async () => {
+          set({ messageLoading: true });
+
+          try {
+            const { messages: fetched, cursor } =
+              await chatServices.fetchMessages(convoId, nextCursor);
+
+            const processed = fetched.map((m) => ({
+              ...m,
+              isOwn: m.senderId === user?._id,
+            }));
+
+            set((state) => {
+              const prev = state.messages[convoId]?.items ?? [];
+              const merged = prev.length > 0 ? [...processed, ...prev] : processed;
+              const deduped = merged.filter(
+                (item, index, arr) =>
+                  arr.findIndex((candidate) => candidate._id === item._id) === index,
+              );
+
+              return {
+                messages: {
+                  ...state.messages,
+                  [convoId]: {
+                    items: deduped,
+                    hasMore: !!cursor,
+                    nextCursor: cursor ?? null,
+                  },
+                },
+              };
+            });
+          } catch (error) {
+            console.error("Failed to fetch messages:", error);
+          } finally {
+            inflightMessageFetches.delete(requestKey);
+            set({ messageLoading: false });
+          }
+        })();
+
+        inflightMessageFetches.set(requestKey, request);
+        await request;
       },
       sendDirectMessage: async (recipientId, content, imgUrl) => {
         try {
@@ -150,23 +169,16 @@ export const useChatStore = create<ChatState>()(
       addMessage: async (message) => {
         try {
           const { user } = useAuthStore.getState();
-          const { fetchMessages } = get();
 
           message.isOwn = message.senderId === user?._id;
 
           const convoId = message.conversationId;
 
-          let prevItems = get().messages[convoId]?.items ?? [];
-          if (prevItems.length === 0) {
-            await fetchMessages(message.conversationId);
-            prevItems = get().messages[convoId]?.items ?? [];
-          }
-
           set((state) => {
             const current = state.messages[convoId] ?? {
               items: [],
               hasMore: true,
-              nextCursor: null,
+              nextCursor: undefined,
             };
 
             if (current.items.some((m) => m._id === message._id)) return state;
@@ -186,8 +198,8 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      updateConversation: async (conversation) => {
-        const seenBy = (conversation?.seenBy ?? []).map((u: any) =>
+      updateConversation: (conversation) => {
+        const seenBy = conversation.seenBy?.map((u: any) =>
           typeof u === "string" ? { _id: u } : u?._id ? { _id: u._id } : u,
         );
 
@@ -195,7 +207,10 @@ export const useChatStore = create<ChatState>()(
           conversations: state.conversations.map((c) => {
             if (c._id !== conversation._id) return c;
 
-            const merged: any = { ...c, ...conversation, seenBy };
+            const merged: any = { ...c, ...conversation };
+            if (seenBy) {
+              merged.seenBy = seenBy;
+            }
 
             const incoming = conversation?.participants;
             const participantsHydrated =
@@ -305,17 +320,20 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      addConvo: (convo) => {
+      addConvo: (convo, options) => {
         set((state) => {
           const exists = state.conversations.some(
             (c) => c._id.toString() === convo._id.toString(),
           );
+          const shouldActivate = options?.activate ?? true;
 
           return {
             conversations: exists
               ? state.conversations
               : [convo, ...state.conversations],
-            activeConversationId: convo._id,
+            activeConversationId: shouldActivate
+              ? convo._id
+              : state.activeConversationId,
           };
         });
       },

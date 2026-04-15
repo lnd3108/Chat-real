@@ -68,11 +68,13 @@ export const chatServices = {
     name: string,
     memberIds: string[],
   ) {
-    const res = await api.post("/conversations", {
+    const payload = {
       type,
-      name,
       memberIds,
-    });
+      ...(type === "group" ? { name } : {}),
+    };
+
+    const res = await api.post("/conversations", payload);
     return res.data.conversation;
   },
 

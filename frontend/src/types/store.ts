@@ -1,6 +1,17 @@
 import type { Socket } from "socket.io-client";
-import type { Conversation, Message } from "./chat";
+import type { Conversation, LastMessage, Message } from "./chat";
 import type { Friend, FriendRequest, User } from "./user";
+
+export interface ConversationPatch {
+  _id: string;
+  type?: Conversation["type"];
+  group?: Conversation["group"];
+  participants?: Conversation["participants"];
+  lastMessageAt?: string;
+  seenBy?: Conversation["seenBy"] | string[];
+  lastMessage?: LastMessage | null;
+  unreadCounts?: Record<string, number>;
+}
 
 export interface AuthState {
   accessToken: string | null;
@@ -38,7 +49,7 @@ export interface ChatState {
     {
       items: Message[];
       hasMore: boolean; // infinite scroll
-      nextCursor: string | null; // pagination
+      nextCursor: string | null | undefined; // pagination
     }
   >;
 
@@ -66,11 +77,11 @@ export interface ChatState {
   addMessage: (message: Message) => Promise<void>;
 
   //update convo
-  updateConversation: (conversation: any) => void;
+  updateConversation: (conversation: ConversationPatch) => void;
 
   markasSeen: () => Promise<void>;
 
-  addConvo: (convo: Conversation) => void;
+  addConvo: (convo: Conversation, options?: { activate?: boolean }) => void;
   createConversation: (
     type: "direct" | "group",
     name: string,
@@ -83,7 +94,10 @@ export interface ChatState {
 export interface SocketState {
   socket: Socket | null;
   onlineUsers: string[];
+  showOnlineStatus: boolean;
   connectSocket: () => void;
+  loadShowOnlineStatus: () => Promise<void>;
+  updateShowOnlineStatus: (value: boolean) => Promise<void>;
   emitShowOnlineStatus: (value: boolean) => void;
   disconnectSocket: () => void;
 }

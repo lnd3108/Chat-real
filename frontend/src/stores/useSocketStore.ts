@@ -1,19 +1,27 @@
-import { create } from "zustand";
-import { io, type Socket } from "socket.io-client";
-import { useAuthStore } from "./useAuthStore";
+import axios from "@/lib/axios";
 import type { SocketState } from "@/types/store";
+import { io, type Socket } from "socket.io-client";
+import { create } from "zustand";
+import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
 
 const baseURL = import.meta.env.VITE_SOCKET_URL;
+const SHOW_ONLINE_STATUS_KEY = "pref:showOnlineStatus";
+
+const getStoredShowOnlineStatus = () => {
+  const raw = localStorage.getItem(SHOW_ONLINE_STATUS_KEY);
+  return raw === null ? true : raw === "true";
+};
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
   onlineUsers: [],
+  showOnlineStatus: getStoredShowOnlineStatus(),
   connectSocket: () => {
     const accessToken = useAuthStore.getState().accessToken;
     const existingSocket = get().socket;
 
-    if (existingSocket) return; // tránh tạo nhièu socket
+    if (existingSocket) return;
 
     const socket: Socket = io(baseURL, {
       auth: { token: accessToken },
@@ -23,59 +31,52 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     set({ socket });
 
     socket.on("connect", () => {
-      console.log("Đã kết nối thành công với socket");
+      console.log("Connected socket successfully");
+      socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
     });
 
-    //online users
     socket.on("online-users", (userIds) => {
-      // console.log("online-users received:", userIds);
       set({ onlineUsers: userIds });
     });
 
-    // new message
     socket.on("new-message", ({ message, conversation, unreadCounts }) => {
       useChatStore.getState().addMessage(message);
 
-      const lastMessage = {
-        _id: conversation.lastMessage._id,
-        content: conversation.lastMessage.content,
-        createdAt: conversation.lastMessage.createdAt,
-        sender: {
-          _id:
-            conversation.lastMessage.sender?._id ??
-            conversation.lastMessage.senderId,
-          displayName: conversation.lastMessage.sender?.displayName ?? "",
-          avatarUrl: conversation.lastMessage.sender?.avatarUrl ?? null,
-        },
-      };
+      const payloadLastMessage = conversation?.lastMessage ?? message;
+      const senderId =
+        payloadLastMessage?.sender?._id ??
+        payloadLastMessage?.senderId ??
+        message?.senderId;
 
-      // const updatedConversation = {
-      //   ...conversation,
-      //   lastMessage,
-      //   unreadCounts,
-      // };
-
-      // console.log("[new-message] participants:", conversation?.participants);
-      // console.log(
-      //   "[new-message] first participant:",
-      //   conversation?.participants?.[0],
-      // );
-      // console.log("[new-message] unreadCounts:", unreadCounts);
-
-      // if (
-      //   useChatStore.getState().activeConversationId === message.conversationId
-      // ) {
-      //   useChatStore.getState().markasSeen();
-      // }
-
-      // useChatStore.getState().updateConversation(updatedConversation);
+      const lastMessage =
+        payloadLastMessage?._id && senderId
+          ? {
+              _id: payloadLastMessage._id,
+              content: payloadLastMessage.content ?? null,
+              createdAt:
+                payloadLastMessage.createdAt ??
+                conversation?.lastMessageAt ??
+                message?.createdAt,
+              sender: payloadLastMessage.sender
+                ? {
+                    _id: payloadLastMessage.sender._id,
+                    displayName: payloadLastMessage.sender.displayName ?? "",
+                    avatarUrl: payloadLastMessage.sender.avatarUrl ?? null,
+                  }
+                : undefined,
+              senderId,
+            }
+          : undefined;
 
       useChatStore.getState().updateConversation({
-        _id: conversation._id,
-        lastMessage,
+        _id: conversation?._id ?? message.conversationId,
         unreadCounts,
-        seenBy: conversation.seenBy,
-        lastMessageAt: conversation.lastMessageAt,
+        seenBy: conversation?.seenBy,
+        lastMessageAt:
+          conversation?.lastMessageAt ??
+          lastMessage?.createdAt ??
+          message?.createdAt,
+        ...(lastMessage ? { lastMessage } : {}),
       });
 
       if (
@@ -85,7 +86,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
-    // read message
     socket.on("read-message", ({ conversation }) => {
       useChatStore.getState().updateConversation({
         _id: conversation._id,
@@ -94,13 +94,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         lastMessage: conversation.lastMessage,
         lastMessageAt: conversation.lastMessageAt,
       });
-
-      // console.log("[read-message] participants:", conversation?.participants);
     });
 
-    //new Group chat
     socket.on("new-group", (conversation) => {
-      useChatStore.getState().addConvo(conversation);
+      useChatStore.getState().addConvo(conversation, { activate: false });
       socket.emit("join-conversation", conversation._id);
     });
 
@@ -108,9 +105,37 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().removeConversationLocal(conversationId);
     });
 
-    socket.on("conversation:left", ({ conversationId, userId }) => {
+    socket.on("conversation:left", ({ conversationId }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
     });
+  },
+
+  loadShowOnlineStatus: async () => {
+    try {
+      const res = await axios.get("/users/me");
+      const value = res.data?.user?.preferences?.showOnlineStatus ?? true;
+
+      localStorage.setItem(SHOW_ONLINE_STATUS_KEY, String(value));
+      set({ showOnlineStatus: value });
+    } catch (error) {
+      console.error("Failed to load showOnlineStatus:", error);
+    }
+  },
+
+  updateShowOnlineStatus: async (value: boolean) => {
+    const previous = get().showOnlineStatus;
+
+    set({ showOnlineStatus: value });
+    localStorage.setItem(SHOW_ONLINE_STATUS_KEY, String(value));
+
+    try {
+      await axios.patch("/users/me/preferences", { showOnlineStatus: value });
+      get().emitShowOnlineStatus(value);
+    } catch (error) {
+      set({ showOnlineStatus: previous });
+      localStorage.setItem(SHOW_ONLINE_STATUS_KEY, String(previous));
+      throw error;
+    }
   },
 
   emitShowOnlineStatus: (value: boolean) => {

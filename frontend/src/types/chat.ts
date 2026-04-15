@@ -1,9 +1,9 @@
 export interface Participant {
-  userId: string | { _id: string };
-  _id: string;
-  displayName: string;
+  userId?: string | { _id: string; displayName?: string; avatarUrl?: string | null };
+  _id?: string;
+  displayName?: string;
   avatarUrl?: string | null;
-  joinedAt: string;
+  joinedAt?: string;
 }
 
 export interface SeenUser {
@@ -19,13 +19,14 @@ export interface Group {
 
 export interface LastMessage {
   _id: string;
-  content: string;
-  createdAt: string;
-  sender: {
+  content: string | null;
+  createdAt?: string;
+  sender?: {
     _id: string;
     displayName: string;
     avatarUrl?: string | null;
   };
+  senderId?: string;
 }
 
 export interface Conversation {

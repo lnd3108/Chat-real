@@ -1,53 +1,34 @@
-import { Sun, Moon } from "lucide-react";
 import {
   Card,
+  CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useThemeStore } from "@/stores/useThemeStore";
-import { useEffect, useState } from "react";
 import { useSocketStore } from "@/stores/useSocketStore";
-import axios from "@/lib/axios";
+import { useThemeStore } from "@/stores/useThemeStore";
+import { Moon, Sun } from "lucide-react";
+import { useEffect } from "react";
 
 const PreferencesForm = () => {
   const { isDark, toggleTheme } = useThemeStore();
+  const {
+    showOnlineStatus,
+    loadShowOnlineStatus,
+    updateShowOnlineStatus,
+  } = useSocketStore();
 
-  //   các bạn cần handle logic setOnlineStatus
-  const LS_KEY = "pref:showOnlineStatus";
-  const [onlineStatus, setOnlineStatus] = useState<boolean>(() => {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw === null ? true : raw === "true"; // default true nếu chưa có
-  });
-  const { socket } = useSocketStore();
-
-  // ✅ load ban đầu từ backend
   useEffect(() => {
-    (async () => {
-      const res = await axios.get("/users/me");
-      const v = res.data?.user?.preferences?.showOnlineStatus ?? true;
-
-      setOnlineStatus(v);
-      localStorage.setItem(LS_KEY, String(v));
-    })();
-  }, []);
+    loadShowOnlineStatus();
+  }, [loadShowOnlineStatus]);
 
   const handleToggleOnline = async (checked: boolean) => {
-    const prev = onlineStatus;
-
-    setOnlineStatus(checked);
-    localStorage.setItem(LS_KEY, String(checked));
-
     try {
-      await axios.patch("/users/me/preferences", { showOnlineStatus: checked });
-      socket?.emit("preferences:showOnlineStatus", checked);
-    } catch (e) {
-      // rollback
-      setOnlineStatus(prev);
-      localStorage.setItem(LS_KEY, String(prev));
+      await updateShowOnlineStatus(checked);
+    } catch (error) {
+      console.error("Failed to update showOnlineStatus:", error);
     }
   };
 
@@ -56,22 +37,19 @@ const PreferencesForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sun className="h-5 w-5 text-primary" />
-          Tuỳ chỉnh ứng dụng
+          Tuy chinh ung dung
         </CardTitle>
-        <CardDescription>
-          Cá nhân hoá trải nghiệm trò chuyện của bạn
-        </CardDescription>
+        <CardDescription>Ca nhan hoa trai nghiem tro chuyen cua ban</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Dark Mode */}
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="theme-toggle" className="text-base font-medium">
-              Chế độ tối
+              Che do toi
             </Label>
             <p className="text-sm text-muted-foreground">
-              Chuyển đổi giữa giao diện sáng và tối
+              Chuyen doi giua giao dien sang va toi
             </p>
           </div>
 
@@ -87,20 +65,19 @@ const PreferencesForm = () => {
           </div>
         </div>
 
-        {/* Online Status */}
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="online-status" className="text-base font-medium">
-              Hiển thị trạng thái online
+              Hien thi trang thai online
             </Label>
             <p className="text-sm text-muted-foreground">
-              Cho phép người khác thấy khi bạn đang online
+              Cho phep nguoi khac thay khi ban dang online
             </p>
           </div>
 
           <Switch
             id="online-status"
-            checked={onlineStatus}
+            checked={showOnlineStatus}
             onCheckedChange={handleToggleOnline}
             className="data-[state=checked]:bg-primary-glow"
           />
