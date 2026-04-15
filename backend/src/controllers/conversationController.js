@@ -337,8 +337,10 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
-        $pull: { participants: { userId: userObjectId } },
-        $pull: { seenBy: userObjectId },
+        $pull: {
+          participants: { userId: userObjectId },
+          seenBy: userObjectId,
+        },
         $unset: { [`unreadCounts.${userId}`]: "" },
       },
       { new: true },
@@ -520,8 +522,10 @@ export const removeGroupMember = async (req, res) => {
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
-        $pull: { participants: { userId: memberId } },
-        $pull: { seenBy: memberId },
+        $pull: {
+          participants: { userId: memberId },
+          seenBy: memberId,
+        },
         $unset: { [`unreadCounts.${memberId}`]: "" },
       },
       { new: true },
