@@ -7,6 +7,7 @@ import UserAvatar from "./UserAvatar";
 import StatusBadge from "./StatusBadge";
 import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
+import GroupMemberManagerDialog from "./GroupMemberManagerDialog";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
@@ -87,6 +88,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             {chat.type === "direct" ? otherUser?.displayName : chat.group?.name}
           </h2>
         </div>
+
+        {chat.type === "group" && chat.group?.createdBy === user?._id && (
+          <GroupMemberManagerDialog chat={chat} />
+        )}
       </div>
     </header>
   );

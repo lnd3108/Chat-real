@@ -82,4 +82,22 @@ export const chatServices = {
     const res = await api.delete(`/conversations/${conversationId}`);
     return res.data;
   },
+
+  async addGroupMembers(conversationId: string, memberIds: string[]) {
+    const res = await api.patch(
+      `/conversations/${conversationId}/members/add`,
+      {
+        memberIds,
+      },
+    );
+    return res.data;
+  },
+
+  async removeGroupMember(conversationId: string, memberId: string) {
+    const res = await api.patch(
+      `/conversations/${conversationId}/members/remove`,
+      { memberId },
+    );
+    return res.data;
+  },
 };

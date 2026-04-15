@@ -453,16 +453,35 @@ export const addGroupMembers = async (req, res) => {
         $push: { participants: { $each: newParticipants } },
       },
       { new: true },
-    ).populate([
+    );
+
+    const addedUsers = await User.find({
+      _id: { $in: newMemberIds },
+    }).select("displayName");
+
+    for (const addedUser of addedUsers) {
+      const systemMessage = await createSystemMessage(
+        updated,
+        req.user._id,
+        `${addedUser.displayName || "Một thành viên"} vừa tham gia cuộc hội thoại`,
+      );
+      emitNewMessage(io, updated, systemMessage);
+    }
+
+    const populatedConversation = await Conversation.findById(conversationId).populate([
       { path: "participants.userId", select: "displayName avatarUrl" },
       { path: "group.createdBy", select: "displayName avatarUrl" },
     ]);
+
+    if (!populatedConversation) {
+      return res.status(404).json({ message: "Cuộc trò chuyện không tồn tại" });
+    }
 
     // Emit cho các thành viên mới được thêm vào để họ join room và cập nhật UI
     io.to(conversationId).emit("conversation:members-added", {
       conversationId,
       newMembers: newMemberIds,
-      participants: updated.participants.map((p) => ({
+      participants: populatedConversation.participants.map((p) => ({
         _id: p.userId?._id,
         displayName: p.userId?.displayName,
         avatarUrl: p.userId?.avatarUrl ?? null,
@@ -473,13 +492,16 @@ export const addGroupMembers = async (req, res) => {
     newMemberIds.forEach((memberId) => {
       io.to(memberId).emit("added-to-group", {
         groupId: conversationId,
-        groupName: updated.group.name,
+        groupName: populatedConversation.group.name,
       });
     });
 
     return res
       .status(200)
-      .json({ message: "Thêm thành viên thành công", conversation: updated });
+      .json({
+        message: "Thêm thành viên thành công",
+        conversation: populatedConversation,
+      });
   } catch (error) {
     console.error("Lỗi addGroupMembers:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -533,20 +555,8 @@ export const removeGroupMember = async (req, res) => {
         .json({ message: "Thành viên không tồn tại trong nhóm" });
     }
 
-    // Nếu là chủ nhóm đang xóa thành viên khác, cần kiểm tra nếu xóa sẽ còn lại bao nhiêu chủ nhóm (trường hợp có nhiều hơn 1 chủ nhóm)
-    if (!isSelf && isOwner) {
-      const otherOwners = conversation.participants.filter(
-        (p) => p.userId.toString() !== memberId.toString(),
-      ).length;
-      if (otherOwners <= 1) {
-        return res.status(400).json({
-          message:
-            "Không thể xóa thành viên cuối cùng. Hãy chuyển quyền chủ trước",
-        });
-      }
-    }
-
-    // Nếu là chủ nhóm tự rời nhóm thì cần kiểm tra nếu rời sẽ còn lại bao nhiêu thành viên, nếu chỉ còn 1 thành viên thì không cho rời mà phải xóa nhóm
+    // Nhóm hiện chỉ có một chủ nhóm duy nhất, nên admin có thể xóa thành viên khác
+    // miễn là không xóa người không tồn tại và không vi phạm quyền truy cập ở trên.
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
