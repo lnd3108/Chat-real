@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
   },
@@ -23,9 +24,11 @@
     "mongoose": "^8.20.1",
     "multer": "^2.0.2",
     "socket.io": "^4.8.3",
-    "soket.io": "^0.0.1-security"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   }
 }

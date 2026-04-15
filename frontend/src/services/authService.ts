@@ -23,7 +23,17 @@ export const authService = {
       { userName, password },
       { withCredentials: true },
     );
-    return res.data; //access token
+    return res.data as {
+      message: string;
+      accessToken: string;
+      user: {
+        id: string;
+        userName: string;
+        displayName: string;
+        email: string;
+        avatarUrl: string | null;
+      };
+    };
   },
 
   signOut: async () => {

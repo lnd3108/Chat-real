@@ -6,7 +6,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Gắn accessToken vào req header
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
 
@@ -17,38 +16,36 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Tự động gọi refresh api khi access token hết hạn
-
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const originalResquest = error.config;
+    const originalRequest = error.config;
 
-    // nhưng api không cần check
     if (
-      originalResquest.url.includes("/auth/signin") ||
-      originalResquest.url.includes("/auth/signup") ||
-      originalResquest.url.includes("/auth/refresh")
+      originalRequest.url.includes("/auth/signin") ||
+      originalRequest.url.includes("/auth/signup") ||
+      originalRequest.url.includes("/auth/refresh")
     ) {
       return Promise.reject(error);
     }
 
-    originalResquest._retryCount = originalResquest._retryCount || 0;
+    originalRequest._retryCount = originalRequest._retryCount || 0;
 
-    if (error.response?.status === 403 && originalResquest._retryCount < 4) {
-      originalResquest._retryCount += 1;
-
-      console.log("refresh", originalResquest._retryCount);
+    if (error.response?.status === 403 && originalRequest._retryCount < 4) {
+      originalRequest._retryCount += 1;
 
       try {
-        const res = await api.post("/auth/refresh", { withCredentials: true });
+        const res = await api.post(
+          "/auth/refresh",
+          {},
+          { withCredentials: true },
+        );
         const newAccessToken = res.data.accessToken;
 
         useAuthStore.getState().setAccessToken(newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-        originalResquest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return api(originalResquest);
+        return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().clearState();
         return Promise.reject(refreshError);
@@ -56,7 +53,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

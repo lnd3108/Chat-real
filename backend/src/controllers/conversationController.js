@@ -2,6 +2,7 @@ import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { getIo } from "../socket/index.js";
 
+// Tạo cuộc trò chuyện mới, nếu đã tồn tại cuộc trò chuyện 1-1 thì trả về cuộc trò chuyện đó, nếu là nhóm thì tạo mới
 export const createConversation = async (req, res) => {
   try {
     const { type, name, memberIds } = req.body;
@@ -103,6 +104,8 @@ export const createConversation = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+// Lấy danh sách cuộc trò chuyện mà user đang tham gia, sắp xếp theo lastMessageAt giảm dần
 export const getConversation = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -145,10 +148,34 @@ export const getConversation = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+// Lấy tin nhắn trong cuộc trò chuyện với phân trang cursor-based
 export const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { limit = 50, cursor } = req.query;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId).select(
+      "_id participants",
+    );
+
+    if(!conversation){
+      return res.status(404).json({
+        message: "Conversation không tồn tại",
+      })
+    }
+
+    const isMember = conversation.participants.some(
+      (p) => p.userId.toString() === userId.toString(),
+    );
+
+
+    if(!isMember){
+      return res.status(403).json({
+        message: "Bạn không thuộc cuộc trò chuyện này",
+      })
+    }
 
     const query = { conversationId };
 
@@ -181,6 +208,7 @@ export const getMessages = async (req, res) => {
   }
 };
 
+// Lấy danh sách conversationId mà user đang tham gia để join room trong Socket.IO
 export const getUserConversationsForSocketIO = async (userId) => {
   try {
     const conversations = await Conversation.find(
@@ -197,6 +225,7 @@ export const getUserConversationsForSocketIO = async (userId) => {
   }
 };
 
+// Đánh dấu cuộc trò chuyện đã xem, reset unread count về 0 và thêm user vào seenBy
 export const markasSeen = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -254,6 +283,7 @@ export const markasSeen = async (req, res) => {
   }
 };
 
+// Chỉ chủ nhóm mới có thể xóa nhóm, thành viên bình thường chỉ có thể rời nhóm
 export const deleteOrLeaveGroupConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -334,6 +364,244 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi deleteOrLeaveGroupConversation:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Chỉ chủ nhóm mới có thể thêm thành viên mới vào nhóm
+export const addGroupMembers = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { memberIds } = req.body;
+    const userId = req.user._id.toString();
+    const io = getIo();
+
+    // Validate input
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "memberIds phải là array không rỗng" });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || conversation.type !== "group") {
+      return res
+        .status(404)
+        .json({
+          message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
+        });
+    }
+
+    const isOwner =
+      conversation.group?.createdBy?.toString() === userId.toString();
+    if (!isOwner) {
+      return res
+        .status(403)
+        .json({ message: "Chỉ chủ nhóm mới có thể thêm thành viên" });
+    }
+
+    const existing = new Set(
+      conversation.participants.map((p) => p.userId.toString()),
+    );
+
+    const newMemberIds = memberIds.filter((id) => !existing.has(id.toString()));
+
+    if (newMemberIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Tất cả thành viên đã có trong nhóm" });
+    }
+
+    const newParticipants = newMemberIds.map((id) => ({
+      userId: id,
+      joinedAt: new Date(),
+    }));
+
+    const updated = await Conversation.findByIdAndUpdate(
+      conversationId,
+      {
+        $push: { participants: { $each: newParticipants } },
+      },
+      { new: true },
+    ).populate([
+      { path: "participants.userId", select: "displayName avatarUrl" },
+      { path: "group.createdBy", select: "displayName avatarUrl" },
+    ]);
+
+    // Emit cho các thành viên mới được thêm vào để họ join room và cập nhật UI
+    io.to(conversationId).emit("conversation:members-added", {
+      conversationId,
+      newMembers: newMemberIds,
+      participants: updated.participants.map((p) => ({
+        _id: p.userId?._id,
+        displayName: p.userId?.displayName,
+        avatarUrl: p.userId?.avatarUrl ?? null,
+        joinedAt: p.joinedAt,
+      })),
+    });
+
+    newMemberIds.forEach((memberId) => {
+      io.to(memberId).emit("added-to-group", {
+        groupId: conversationId,
+        groupName: updated.group.name,
+      });
+    });
+
+    return res
+      .status(200)
+      .json({ message: "Thêm thành viên thành công", conversation: updated });
+  } catch (error) {
+    console.error("Lỗi addGroupMembers:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Chỉ chủ nhóm mới có thể xóa thành viên khỏi nhóm, thành viên bình thường không có quyền này
+export const removeGroupMember = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user._id.toString();
+    const io = getIo();
+
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId là bắt buộc" });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation || conversation.type !== "group") {
+      return res
+        .status(404)
+        .json({
+          message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
+        });
+    }
+
+    // Kiểm tra xem user có phải là chủ nhóm không
+    const isOwner =
+      conversation.group?.createdBy?.toString() === userId.toString();
+    const isSelf = userId.toString() === memberId.toString();
+
+    if (!isOwner && !isSelf) {
+      return res
+        .status(403)
+        .json({
+          message:
+            "Chỉ chủ nhóm mới có thể xóa thành viên khác, bạn chỉ có thể rời nhóm",
+        });
+    }
+
+    // Kiểm tra xem memberId có phải là thành viên của nhóm không
+    const isMember = conversation.participants?.some(
+      (p) => p.userId.toString() === memberId.toString(),
+    );
+
+    // Nếu không phải thành viên nào đó trong nhóm thì không thể xóa
+    if (!isMember) {
+      return res
+        .status(404)
+        .json({ message: "Thành viên không tồn tại trong nhóm" });
+    }
+
+    // Nếu là chủ nhóm đang xóa thành viên khác, cần kiểm tra nếu xóa sẽ còn lại bao nhiêu chủ nhóm (trường hợp có nhiều hơn 1 chủ nhóm)
+    if (!isSelf && isOwner) {
+      const otherOwners = conversation.participants.filter(
+        (p) => p.userId.toString() !== memberId.toString(),
+      ).length;
+      if (otherOwners <= 1) {
+        return res.status(400).json({
+          message:
+            "Không thể xóa thành viên cuối cùng. Hãy chuyển quyền chủ trước",
+        });
+      }
+    }
+
+    // Nếu là chủ nhóm tự rời nhóm thì cần kiểm tra nếu rời sẽ còn lại bao nhiêu thành viên, nếu chỉ còn 1 thành viên thì không cho rời mà phải xóa nhóm
+    const updated = await Conversation.findByIdAndUpdate(
+      conversationId,
+      {
+        $pull: { participants: { userId: memberId } },
+        $pull: { seenBy: memberId },
+        $unset: { [`unreadCounts.${memberId}`]: "" },
+      },
+      { new: true },
+    );
+
+    // Emit cho thành viên bị xóa để họ rời room và cập nhật UI
+    io.to(memberId).emit("conversation:left", {
+      conversationId,
+      userId: memberId,
+    });
+
+    io.to(conversationId).emit("conversation:member-removed", {
+      conversationId,
+      memberId,
+      participantsCount: updated.participants.length,
+    });
+
+    return res.status(200).json({
+      message: isSelf ? "Bạn đã rời nhóm" : "Đã xóa thành viên khỏi nhóm",
+      succeeded: true,
+    });
+  } catch (error) {
+    console.error("Lỗi removeGroupMember:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Chỉ chủ nhóm mới có thể chỉnh sửa tên nhóm và ảnh đại diện nhóm
+export const getGroupDetails = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findById(conversationId).populate([
+      { path: "participants.userId", select: "displayName avatarUrl email" },
+      { path: "group.createdBy", select: "displayName avatarUrl" },
+    ]);
+
+    if (!conversation) {
+      return res.status(404).json({
+        message: "Cuộc trò chuyện không tồn tại",
+      });
+    }
+
+    const isMember = conversation.participants.some(
+      (p) => p.userId._id.toString() === userId.toString(),
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "Bạn không thuộc cuộc trò chuyện này",
+      });
+    }
+
+    // Kiểm tra xem user có phải là chủ nhóm không
+    const isOwner =
+      conversation.group?.createdBy?._id?.toString() === userId.toString();
+
+    // Chỉ chủ nhóm mới có quyền chỉnh sửa, nhưng cả thành viên đều có thể xem chi tiết nhóm
+    return res.status(200).json({
+      group: {
+        _id: conversation._id,
+        name: conversation.group?.name,
+        createdBy: conversation.group?.createdBy,
+        createdAt: conversation.createdAt,
+        members: conversation.participants.map((p) => ({
+          _id: p.userId._id,
+          displayName: p.userId.displayName,
+          avatarUrl: p.userId.avatarUrl,
+          email: p.userId.email,
+          joinedAt: p.joinedAt,
+          isOwner:
+            p.userId._id.toString() === conversation.group.createdBy.toString(),
+        })),
+        isOwner,
+        memberCount: conversation.participants.length,
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi getGroupDetails:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
