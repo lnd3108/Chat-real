@@ -1,4 +1,4 @@
-import { ChevronsUpDown, UserIcon } from "lucide-react";
+import { ChevronsUpDown, LogOut, UserIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,16 +19,19 @@ import {
 } from "@/components/ui/sidebar";
 
 import type { User } from "@/types/user";
-import Logout from "../auth/Logout";
 import FriendRequestDialog from "../friendRequest/FriendRequestDialog";
 import ProfileDialog from "../profile/ProfileDialog";
 
 import { useFriendStore } from "@/stores/useFriendStore";
 import NotificationMenuItem from "../profile/NotificationMenuItem";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useNavigate } from "react-router";
 
 
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
+  const { signOut } = useAuthStore();
+  const navigate = useNavigate();
 
   const [friendRequestOpen, setFriendRequestOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -41,11 +44,20 @@ export function NavUser({ user }: { user: User }) {
     getAllFriendRequests();
   }, [getAllFriendRequests]);
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/signin");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
@@ -103,8 +115,13 @@ export function NavUser({ user }: { user: User }) {
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem className="cursor-pointer" variant="destructive">
-                <Logout />
+              <DropdownMenuItem
+                className="cursor-pointer"
+                variant="destructive"
+                onSelect={() => void handleLogout()}
+              >
+                <LogOut className="text-destructive" />
+                Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
