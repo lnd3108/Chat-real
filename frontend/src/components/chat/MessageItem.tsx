@@ -33,6 +33,26 @@ const MessageItem = ({
     (p: Participant) => p._id?.toString() === message.senderId?.toString()
   );
 
+  if (message.type === "system") {
+    return (
+      <>
+        {isShowTime && (
+          <div className="w-full flex justify-center my-3">
+            <span className="text-xs text-muted-foreground px-2 py-1 rounded-full bg-muted/40">
+              {formatMessageTime(new Date(message.createdAt))}
+            </span>
+          </div>
+        )}
+
+        <div className="my-3 flex justify-center">
+          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+            {message.content}
+          </span>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {/* TimeStamp */}

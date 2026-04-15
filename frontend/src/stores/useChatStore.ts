@@ -233,8 +233,17 @@ export const useChatStore = create<ChatState>()(
           }),
         }));
       },
+      setConversationParticipants: (conversationId, participants) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c._id === conversationId ? { ...c, participants } : c,
+          ),
+        }));
+      },
 
       removeConversationLocal: (conversationId: string) => {
+        useSocketStore.getState().socket?.emit("leave-conversation", conversationId);
+
         set((state) => {
           const nextConvos = state.conversations.filter(
             (c) => c._id !== conversationId,

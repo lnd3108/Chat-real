@@ -78,6 +78,10 @@ export interface ChatState {
 
   //update convo
   updateConversation: (conversation: ConversationPatch) => void;
+  setConversationParticipants: (
+    conversationId: string,
+    participants: Conversation["participants"],
+  ) => void;
 
   markasSeen: () => Promise<void>;
 

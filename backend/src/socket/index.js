@@ -73,6 +73,10 @@ export const initSocket = (server) => {
       socket.join(conversationId);
     });
 
+    socket.on("leave-conversation", (conversationId) => {
+      socket.leave(conversationId);
+    });
+
     // ✅ Khi toggle preference: chỉ đổi visibleByUser (KHÔNG đụng socketsByUser)
     socket.on("preferences:showOnlineStatus", (val) => {
       if (typeof val === "boolean") {

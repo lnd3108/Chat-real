@@ -14,6 +14,11 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    type: {
+      type: String,
+      enum: ["user", "system"],
+      default: "user",
+    },
     content: {
       type: String,
       trim: true,

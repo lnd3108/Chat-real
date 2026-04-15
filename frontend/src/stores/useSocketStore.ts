@@ -4,6 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
+import { toast } from "sonner";
 
 const baseURL = import.meta.env.VITE_SOCKET_URL;
 const SHOW_ONLINE_STATUS_KEY = "pref:showOnlineStatus";
@@ -107,6 +108,41 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:left", ({ conversationId }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
+    });
+
+    socket.on("conversation:member-left", ({ conversationId, userId }) => {
+      const { conversations, setConversationParticipants } = useChatStore.getState();
+      const conversation = conversations.find((c) => c._id === conversationId);
+      if (!conversation) return;
+
+      const participants = conversation.participants.filter((p: any) => {
+        const participantId =
+          typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
+        return participantId !== userId;
+      });
+
+      setConversationParticipants(conversationId, participants);
+      toast.message("Một thành viên đã rời nhóm");
+    });
+
+    socket.on("conversation:member-removed", ({ conversationId, memberId }) => {
+      const { conversations, setConversationParticipants } = useChatStore.getState();
+      const conversation = conversations.find((c) => c._id === conversationId);
+      if (!conversation) return;
+
+      const participants = conversation.participants.filter((p: any) => {
+        const participantId =
+          typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
+        return participantId !== memberId;
+      });
+
+      setConversationParticipants(conversationId, participants);
+      toast.message("Một thành viên đã bị xóa khỏi nhóm");
+    });
+
+    socket.on("conversation:members-added", ({ conversationId, participants }) => {
+      useChatStore.getState().setConversationParticipants(conversationId, participants);
+      toast.message("Nhóm vừa có thêm thành viên mới");
     });
   },
 

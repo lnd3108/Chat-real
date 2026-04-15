@@ -1,6 +1,25 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import User from "../models/User.js";
 import { getIo } from "../socket/index.js";
+import {
+  emitNewMessage,
+  updateConversationAfterCreateMessage,
+} from "../utils/messageHelper.js";
+
+const createSystemMessage = async (conversation, actorId, content) => {
+  const message = await Message.create({
+    conversationId: conversation._id,
+    senderId: actorId,
+    type: "system",
+    content,
+  });
+
+  updateConversationAfterCreateMessage(conversation, message, actorId);
+  await conversation.save();
+
+  return message;
+};
 
 // Tạo cuộc trò chuyện mới, nếu đã tồn tại cuộc trò chuyện 1-1 thì trả về cuộc trò chuyện đó, nếu là nhóm thì tạo mới
 export const createConversation = async (req, res) => {
@@ -346,6 +365,15 @@ export const deleteOrLeaveGroupConversation = async (req, res) => {
       { new: true },
     );
 
+    if (updated) {
+      const systemMessage = await createSystemMessage(
+        updated,
+        userObjectId,
+        `${req.user.displayName || "Một thành viên"} đã rời nhóm`,
+      );
+      emitNewMessage(io, updated, systemMessage);
+    }
+
     // Emit cho chính user đó để UI remove conversation khỏi list
     io.to(userId).emit("conversation:left", {
       conversationId,
@@ -530,6 +558,27 @@ export const removeGroupMember = async (req, res) => {
       },
       { new: true },
     );
+
+    if (updated) {
+      const targetUser = await User.findById(memberId).select("displayName");
+      const actorName =
+        req.user.displayName ||
+        (isSelf ? "Một thành viên" : "Chủ nhóm");
+      const targetName =
+        targetUser?.displayName ||
+        (isSelf ? req.user.displayName : "Một thành viên");
+
+      const systemContent = isSelf
+        ? `${actorName} đã rời nhóm`
+        : `${targetName} đã bị xóa khỏi nhóm`;
+
+      const systemMessage = await createSystemMessage(
+        updated,
+        req.user._id,
+        systemContent,
+      );
+      emitNewMessage(io, updated, systemMessage);
+    }
 
     // Emit cho thành viên bị xóa để họ rời room và cập nhật UI
     io.to(memberId).emit("conversation:left", {
