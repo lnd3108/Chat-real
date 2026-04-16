@@ -224,6 +224,14 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().setConversationParticipants(conversationId, participants);
       toast.message("Nhóm vừa có thêm thành viên mới");
     });
+    socket.on("conversation:updated", ({ conversation }) => {
+      useChatStore.getState().updateConversation({
+        _id: conversation._id,
+        group: conversation.group,
+        participants: conversation.participants,
+        moveToTop: false,
+      });
+    });
     socket.on("added-to-group", ({ groupName }) => {
       toast.success(`Bạn vừa được thêm vào ${groupName}`);
     });

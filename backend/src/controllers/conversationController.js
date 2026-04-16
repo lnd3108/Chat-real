@@ -1,6 +1,7 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
+import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
 import { getIo } from "../socket/index.js";
 import {
   emitNewMessage,
@@ -19,6 +20,16 @@ const createSystemMessage = async (conversation, actorId, content) => {
   await conversation.save();
 
   return message;
+};
+
+const populateConversationForClient = async (conversation) => {
+  await conversation.populate([
+    { path: "participants.userId", select: "displayName avatarUrl" },
+    { path: "seenBy", select: "displayName avatarUrl" },
+    { path: "lastMessage.senderId", select: "displayName avatarUrl" },
+  ]);
+
+  return conversation;
 };
 
 const formatConversationForClient = (conversation) => {
@@ -130,6 +141,8 @@ export const createConversation = async (req, res) => {
         participants,
         group: {
           name,
+          avatarUrl: null,
+          avatarId: null,
           createdBy: userId,
         },
         lastMessageAt: new Date(),
@@ -142,11 +155,7 @@ export const createConversation = async (req, res) => {
         .json({ message: "Conversation type không hợp lệ" });
     }
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await populateConversationForClient(conversation);
 
     const formatted = formatConversationForClient(conversation);
 
@@ -698,6 +707,61 @@ export const removeGroupMember = async (req, res) => {
 };
 
 // Chỉ chủ nhóm mới có thể chỉnh sửa tên nhóm và ảnh đại diện nhóm
+export const uploadGroupAvatar = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id.toString();
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "KhÃ´ng cÃ³ file Ä‘Æ°á»£c táº£i lÃªn" });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({
+        message: "Cuá»™c trÃ² chuyá»‡n khÃ´ng tá»“n táº¡i hoáº·c khÃ´ng pháº£i nhÃ³m",
+      });
+    }
+
+    const isMember = conversation.participants.some(
+      (participant) => participant.userId.toString() === userId,
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "Báº¡n khÃ´ng thuá»™c cuá»™c trÃ² chuyá»‡n nÃ y",
+      });
+    }
+
+    const uploadResult = await uploadImageFromBuffer(file.buffer, {
+      folder: "chat_app/group_avatars",
+      transformation: [{ width: 256, height: 256, crop: "fill" }],
+    });
+
+    conversation.group.avatarUrl = uploadResult.secure_url;
+    conversation.group.avatarId = uploadResult.public_id;
+
+    await conversation.save();
+    await populateConversationForClient(conversation);
+
+    const formattedConversation = formatConversationForClient(conversation);
+
+    getIo().to(conversationId).emit("conversation:updated", {
+      conversation: formattedConversation,
+    });
+
+    return res.status(200).json({
+      message: "Cáº­p nháº­t áº£nh nhÃ³m thÃ nh cÃ´ng",
+      conversation: formattedConversation,
+    });
+  } catch (error) {
+    console.error("Lá»—i uploadGroupAvatar:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+  }
+};
+
 export const getGroupDetails = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -733,6 +797,7 @@ export const getGroupDetails = async (req, res) => {
       group: {
         _id: conversation._id,
         name: conversation.group?.name,
+        avatarUrl: conversation.group?.avatarUrl ?? null,
         createdBy: conversation.group?.createdBy,
         createdAt: conversation.createdAt,
         members: conversation.participants.map((p) => ({

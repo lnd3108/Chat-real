@@ -137,6 +137,17 @@ export const chatServices = {
     return res.data;
   },
 
+  async uploadGroupAvatar(conversationId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await api.post(`/conversations/${conversationId}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    return res.data.conversation;
+  },
+
   async editMessage(messageId: string, content: string) {
     const res = await api.patch(`/messages/${messageId}`, { content });
     return res.data.message as Message;

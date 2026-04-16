@@ -8,9 +8,11 @@ import {
   addGroupMembers,
   removeGroupMember,
   getGroupDetails,
+  uploadGroupAvatar,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
 import { validateRequest } from "../middlewares/validationMiddleware.js";
+import { upload } from "../middlewares/uploadMiddleWare.js";
 import {
   createConversationSchema,
   addGroupMemberSchema,
@@ -23,6 +25,7 @@ router.post("/", checkFriendship, validateRequest(createConversationSchema), cre
 router.get("/", getConversation);
 router.get("/:conversationId/messages", getMessages);
 router.get("/:conversationId/details", getGroupDetails);
+router.post("/:conversationId/avatar", upload.single("file"), uploadGroupAvatar);
 router.patch("/:conversationId/seen", markasSeen);
 router.patch(
   "/:conversationId/members/add",
