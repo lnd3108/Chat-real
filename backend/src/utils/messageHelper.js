@@ -8,6 +8,7 @@ export const buildLastMessagePayload = (message, senderIdOverride) => {
     _id: message._id,
     content: lastMessageContent,
     imgUrl: message.isDeletedForEveryone ? null : (message.imgUrl ?? null),
+    isDeletedForEveryone: Boolean(message.isDeletedForEveryone),
     senderId,
     createdAt: message.createdAt,
   };

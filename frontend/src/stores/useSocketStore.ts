@@ -72,6 +72,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
               _id: payloadLastMessage._id,
               content: payloadLastMessage.content ?? null,
               imgUrl: payloadLastMessage.imgUrl ?? message?.imgUrl ?? null,
+              isDeletedForEveryone:
+                payloadLastMessage.isDeletedForEveryone ??
+                message?.isDeletedForEveryone ??
+                false,
               createdAt:
                 payloadLastMessage.createdAt ??
                 conversation?.lastMessageAt ??

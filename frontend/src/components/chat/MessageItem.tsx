@@ -68,6 +68,9 @@ const MessageItem = ({
   const reactionBadges = (message.reactions ?? []).filter(
     (reaction) => reaction.userIds.length > 0,
   );
+  const deletedMessageLabel = message.isOwn
+    ? "Bạn đã xóa một tin nhắn"
+    : `${participant?.displayName ?? "Người dùng"} đã xóa một tin nhắn`;
 
   if (message.type === "system") {
     return (
@@ -147,7 +150,7 @@ const MessageItem = ({
 
               {message.isDeletedForEveryone ? (
                 <p className="text-sm italic text-muted-foreground">
-                  Bạn đã xóa một tin nhắn
+                  {deletedMessageLabel}
                 </p>
               ) : (
                 <>

@@ -24,6 +24,7 @@ export interface LastMessage {
   _id: string;
   content: string | null;
   imgUrl?: string | null;
+  isDeletedForEveryone?: boolean;
   createdAt?: string;
   sender?: {
     _id: string;

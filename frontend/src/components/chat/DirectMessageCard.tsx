@@ -49,7 +49,11 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
 
   const otherId = String(getParticipantId(otherRaw));
   const unreadCount = convo.unreadCounts?.[user._id] ?? 0;
-  const lastMessage = convo.lastMessage?.content ?? "";
+  const lastMessage = convo.lastMessage?.isDeletedForEveryone
+    ? convo.lastMessage.senderId === user._id
+      ? "Bạn đã xóa một tin nhắn"
+      : `${otherUser.displayName ?? "Người dùng"} đã xóa một tin nhắn`
+    : (convo.lastMessage?.content ?? "");
 
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
