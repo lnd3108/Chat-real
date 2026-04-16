@@ -87,7 +87,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         const otherUser = participants.find((p) => p._id !== user._id);
 
         if (!otherUser?._id) {
-          toast.error("Khong tim thay nguoi nhan.");
+          toast.error("Không tìm thấy người nhận.");
           return;
         }
 
@@ -125,12 +125,12 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         <div className="flex items-start justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-primary">
-              {editingMessage ? "Dang chinh sua tin nhan" : "Dang tra loi"}
+              {editingMessage ? "Đang chỉnh sửa tin nhắn" : "Đang trả lời"}
             </p>
             <p className="truncate text-sm text-muted-foreground">
               {editingMessage
-                ? editingMessage.content || "Tin nhan hinh anh"
-                : replyingTo?.content || (replyingTo?.imgUrl ? "Hinh anh" : "Tin nhan")}
+                ? editingMessage.content || "Tin nhắn hình ảnh"
+                : replyingTo?.content || (replyingTo?.imgUrl ? "Hình ảnh" : "Tin nhắn")}
             </p>
           </div>
           <Button
@@ -161,7 +161,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="size-7 animate-spin text-primary" />
                 <span className="text-xs font-medium text-foreground/80">
-                  Dang tai anh...
+                  Đang tải ảnh...
                 </span>
               </div>
             </div>

@@ -9,7 +9,7 @@ import {
 import { getIo } from "../socket/index.js";
 import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
 
-const RECALL_PLACEHOLDER = "Ban da xoa mot tin nhan";
+const RECALL_PLACEHOLDER = "Bạn đã xóa một tin nhắn";
 
 const normalizeMessageForClient = (message, viewerId) => {
   if (!message) return null;
@@ -115,7 +115,7 @@ const createAndEmitMessage = async ({
 const ensureConversationMember = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) {
-    return { error: { status: 404, message: "Conversation khong ton tai" } };
+    return { error: { status: 404, message: "Cuộc trò chuyện không tồn tại" } };
   }
 
   const isMember = conversation.participants.some(
@@ -123,7 +123,7 @@ const ensureConversationMember = async (conversationId, userId) => {
   );
 
   if (!isMember) {
-    return { error: { status: 403, message: "Ban khong thuoc cuoc tro chuyen nay" } };
+    return { error: { status: 403, message: "Bạn không thuộc cuộc trò chuyện này" } };
   }
 
   return { conversation };
@@ -132,7 +132,7 @@ const ensureConversationMember = async (conversationId, userId) => {
 const loadMessageContext = async (messageId, userId) => {
   const message = await Message.findById(messageId);
   if (!message) {
-    return { error: { status: 404, message: "Tin nhan khong ton tai" } };
+    return { error: { status: 404, message: "Tin nhắn không tồn tại" } };
   }
 
   const { conversation, error } = await ensureConversationMember(
@@ -154,7 +154,7 @@ export const sendDirectMessage = async (req, res) => {
     const file = req.file;
 
     if (!content?.trim() && !file) {
-      return res.status(400).json({ message: "Thieu noi dung" });
+      return res.status(400).json({ message: "Thiếu nội dung" });
     }
 
     let conversation = null;
@@ -187,8 +187,8 @@ export const sendDirectMessage = async (req, res) => {
       .status(201)
       .json({ message: normalizeMessageForClient(message, senderId) });
   } catch (error) {
-    console.error("Loi xay ra khi gui tin nhan truc tiep", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -200,7 +200,7 @@ export const sendGroupMessage = async (req, res) => {
     const file = req.file;
 
     if (!content?.trim() && !file) {
-      return res.status(400).json({ message: "Thieu noi dung" });
+      return res.status(400).json({ message: "Thiếu nội dung" });
     }
 
     const message = await createAndEmitMessage({
@@ -216,8 +216,8 @@ export const sendGroupMessage = async (req, res) => {
       .status(201)
       .json({ message: normalizeMessageForClient(message, senderId) });
   } catch (error) {
-    console.error("Loi xay ra khi gui tin nhan nhom", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi xảy ra khi gửi tin nhắn nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -228,7 +228,7 @@ export const editMessage = async (req, res) => {
     const userId = req.user._id;
 
     if (!content?.trim()) {
-      return res.status(400).json({ message: "Noi dung khong duoc de trong" });
+      return res.status(400).json({ message: "Nội dung không được để trống" });
     }
 
     const { message, conversation, error } = await loadMessageContext(
@@ -240,15 +240,15 @@ export const editMessage = async (req, res) => {
     }
 
     if (message.type === "system") {
-      return res.status(400).json({ message: "Khong the sua tin nhan he thong" });
+      return res.status(400).json({ message: "Không thể sửa tin nhắn hệ thống" });
     }
 
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Ban khong the sua tin nhan nay" });
+      return res.status(403).json({ message: "Bạn không thể sửa tin nhắn này" });
     }
 
     if (message.isDeletedForEveryone) {
-      return res.status(400).json({ message: "Tin nhan da thu hoi" });
+      return res.status(400).json({ message: "Tin nhắn đã bị thu hồi" });
     }
 
     message.content = content.trim();
@@ -265,8 +265,8 @@ export const editMessage = async (req, res) => {
       .status(200)
       .json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
-    console.error("Loi khi sua tin nhan", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi khi sửa tin nhắn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -296,8 +296,8 @@ export const deleteMessageForMe = async (req, res) => {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Loi khi thu hoi tin nhan phia minh", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi khi thu hồi tin nhắn phía mình", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -315,11 +315,11 @@ export const deleteMessageForEveryone = async (req, res) => {
     }
 
     if (message.type === "system") {
-      return res.status(400).json({ message: "Khong the thu hoi tin nhan he thong" });
+      return res.status(400).json({ message: "Không thể thu hồi tin nhắn hệ thống" });
     }
 
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Ban khong the thu hoi tin nhan nay" });
+      return res.status(403).json({ message: "Bạn không thể thu hồi tin nhắn này" });
     }
 
     message.content = null;
@@ -340,8 +340,8 @@ export const deleteMessageForEveryone = async (req, res) => {
       .status(200)
       .json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
-    console.error("Loi khi thu hoi tin nhan cho tat ca", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi khi thu hồi tin nhắn cho tất cả", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -352,7 +352,7 @@ export const toggleReaction = async (req, res) => {
     const userId = req.user._id;
 
     if (!emoji?.trim()) {
-      return res.status(400).json({ message: "Emoji la bat buoc" });
+      return res.status(400).json({ message: "Emoji là bắt buộc" });
     }
 
     const { message, conversation, error } = await loadMessageContext(
@@ -364,7 +364,7 @@ export const toggleReaction = async (req, res) => {
     }
 
     if (message.isDeletedForEveryone) {
-      return res.status(400).json({ message: "Khong the reaction vao tin nhan da thu hoi" });
+      return res.status(400).json({ message: "Không thể thả biểu cảm vào tin nhắn đã thu hồi" });
     }
 
     const reaction = message.reactions.find((item) => item.emoji === emoji);
@@ -391,8 +391,8 @@ export const toggleReaction = async (req, res) => {
       .status(200)
       .json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
-    console.error("Loi khi reaction tin nhan", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi khi thả biểu cảm vào tin nhắn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 

@@ -1,8 +1,8 @@
 export const buildLastMessagePayload = (message, senderIdOverride) => {
   const senderId = senderIdOverride ?? message.senderId;
   const lastMessageContent = message.isDeletedForEveryone
-    ? "Ban da xoa mot tin nhan"
-    : message.content?.trim() || (message.imgUrl ? "[Hinh anh]" : null);
+    ? "Bạn đã xóa một tin nhắn"
+    : message.content?.trim() || (message.imgUrl ? "[Hình ảnh]" : null);
 
   return {
     _id: message._id,

@@ -136,18 +136,18 @@ const MessageItem = ({
                 <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-xs">
                   <p className="font-medium text-primary">
                     {message.replyTo.senderId === user?._id
-                      ? "Ban"
-                      : (replySender?.displayName ?? "Nguoi gui")}
+                      ? "Bạn"
+                      : (replySender?.displayName ?? "Người gửi")}
                   </p>
                   <p className="truncate text-muted-foreground">
-                    {message.replyTo.content || (message.replyTo.imgUrl ? "Hinh anh" : "Tin nhan")}
+                    {message.replyTo.content || (message.replyTo.imgUrl ? "Hình ảnh" : "Tin nhắn")}
                   </p>
                 </div>
               )}
 
               {message.isDeletedForEveryone ? (
                 <p className="text-sm italic text-muted-foreground">
-                  Ban da xoa mot tin nhan
+                  Bạn đã xóa một tin nhắn
                 </p>
               ) : (
                 <>
@@ -165,7 +165,7 @@ const MessageItem = ({
                   )}
                   {message.editedAt && (
                     <p className="text-[11px] italic text-muted-foreground">
-                      Da chinh sua
+                      Đã chỉnh sửa
                     </p>
                   )}
                 </>
@@ -242,12 +242,12 @@ const MessageItem = ({
                   {canEdit && (
                     <DropdownMenuItem onClick={() => setEditingMessage(message)}>
                       <Pencil className="size-4" />
-                      Sua tin nhan
+                      Sửa tin nhắn
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => void deleteMessageForMe(message._id)}>
                     <Trash2 className="size-4" />
-                    Thu hoi phia minh
+                    Thu hồi phía mình
                   </DropdownMenuItem>
                   {canRecallForEveryone && (
                     <>
@@ -257,7 +257,7 @@ const MessageItem = ({
                         onClick={() => void deleteMessageForEveryone(message._id)}
                       >
                         <Heart className="size-4" />
-                        Thu hoi cho ca hai ben
+                        Thu hồi cho cả hai bên
                       </DropdownMenuItem>
                     </>
                   )}
