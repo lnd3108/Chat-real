@@ -3,14 +3,15 @@ import type { Conversation } from "@/types/chat";
 import { SidebarTrigger } from "../ui/sidebar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Separator } from "@radix-ui/react-separator";
+import { Settings } from "lucide-react";
 import UserAvatar from "./UserAvatar";
 import StatusBadge from "./StatusBadge";
 import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
-import GroupMemberManagerDialog from "./GroupMemberManagerDialog";
-import GroupSettingsDialog from "./GroupSettingsDialog";
+import GroupInfoDialog from "./GroupInfoDialog";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import { Button } from "../ui/button";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
@@ -95,20 +96,38 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             )}
           </div>
 
-          <h2 className="font-semibold text-foreground">
-            {activeChat.type === "direct"
-              ? otherUser?.displayName
-              : activeChat.group?.name}
-          </h2>
+          {activeChat.type === "direct" ? (
+            <h2 className="font-semibold text-foreground">{otherUser?.displayName}</h2>
+          ) : (
+            <GroupInfoDialog
+              chat={activeChat}
+              trigger={
+                <button
+                  type="button"
+                  className="min-w-0 text-left transition-opacity hover:opacity-80"
+                >
+                  <h2 className="truncate font-semibold text-foreground">
+                    {activeChat.group?.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {activeChat.participants.length} thành viên
+                  </p>
+                </button>
+              }
+            />
+          )}
         </div>
 
         {activeChat.type === "group" && (
-          <div className="flex items-center">
-            <GroupSettingsDialog chat={activeChat} />
-            {activeChat.group?.createdBy === user?._id && (
-              <GroupMemberManagerDialog chat={activeChat} />
-            )}
-          </div>
+          <GroupInfoDialog
+            chat={activeChat}
+            trigger={
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                <Settings className="size-4" />
+                <span className="sr-only">Cài đặt nhóm</span>
+              </Button>
+            }
+          />
         )}
       </div>
     </header>
