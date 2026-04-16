@@ -10,7 +10,13 @@ import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
 import GroupInfoDialog from "./GroupInfoDialog";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
-import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
 import { Button } from "../ui/button";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
@@ -84,6 +90,10 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   className="max-h-[100vh] w-screen max-w-screen border-0 bg-black/95 p-0 shadow-none"
                   showCloseButton={false}
                 >
+                  <DialogTitle className="sr-only">Ảnh đại diện nhóm</DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Xem phóng to ảnh đại diện của nhóm chat hiện tại.
+                  </DialogDescription>
                   {activeChat.group?.avatarUrl && (
                     <img
                       src={activeChat.group.avatarUrl}

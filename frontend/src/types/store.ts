@@ -75,6 +75,7 @@ export interface ChatState {
     recipientId: string,
     image: File,
     content?: string,
+    options?: { onUploadProgress?: (progress: number) => void },
   ) => Promise<void>;
   sendGroupMessage: (
     conversationId: string,
@@ -85,6 +86,7 @@ export interface ChatState {
     conversationId: string,
     image: File,
     content?: string,
+    options?: { onUploadProgress?: (progress: number) => void },
   ) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;
   deleteMessageForMe: (messageId: string) => Promise<void>;

@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { ConversationResponse, Message } from "@/types/chat";
+import type { AxiosProgressEvent } from "axios";
 
 interface FetchMessagesProps {
   messages: Message[];
@@ -7,6 +8,11 @@ interface FetchMessagesProps {
 }
 
 const pageLimit = 50;
+const uploadTimeoutMs = 30000;
+const toUploadPercent = (event: AxiosProgressEvent) => {
+  if (!event.total) return 0;
+  return Math.min(100, Math.max(0, Math.round((event.loaded / event.total) * 100)));
+};
 
 export const chatServices = {
   async fetchConversations(): Promise<ConversationResponse> {
@@ -62,6 +68,7 @@ export const chatServices = {
     content: string = "",
     conversationId?: string,
     replyToMessageId?: string,
+    onUploadProgress?: (progress: number) => void,
   ) {
     const formData = new FormData();
     formData.append("recipientId", recipientId);
@@ -72,6 +79,10 @@ export const chatServices = {
 
     const res = await api.post("/messages/direct/with-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: uploadTimeoutMs,
+      onUploadProgress: (event) => {
+        onUploadProgress?.(toUploadPercent(event));
+      },
     });
     return res.data.message;
   },
@@ -81,6 +92,7 @@ export const chatServices = {
     image: File,
     content: string = "",
     replyToMessageId?: string,
+    onUploadProgress?: (progress: number) => void,
   ) {
     const formData = new FormData();
     formData.append("conversationId", conversationId);
@@ -90,6 +102,10 @@ export const chatServices = {
 
     const res = await api.post("/messages/group/with-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: uploadTimeoutMs,
+      onUploadProgress: (event) => {
+        onUploadProgress?.(toUploadPercent(event));
+      },
     });
     return res.data.message;
   },
@@ -143,6 +159,7 @@ export const chatServices = {
 
     const res = await api.post(`/conversations/${conversationId}/avatar`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: uploadTimeoutMs,
     });
 
     return res.data.conversation;

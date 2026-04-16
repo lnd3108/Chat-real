@@ -1,5 +1,6 @@
 ﻿import { cn, formatMessageTime } from "@/lib/utils";
 import type { Conversation, Message, Participant } from "@/types/chat";
+import { useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import UserAvatar from "./UserAvatar";
@@ -25,7 +26,15 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import {
   Heart,
+  Loader2,
   MessageSquareReply,
   MoreHorizontal,
   Pencil,
@@ -56,6 +65,9 @@ const MessageItem = ({
     setReplyingTo,
     toggleReaction,
   } = useChatStore();
+  const [pendingAction, setPendingAction] = useState<
+    "reaction" | "delete-me" | "delete-all" | null
+  >(null);
   const prev = index + 1 < messages.length ? messages[index + 1] : undefined;
   const reactionOptions = ["👍", "❤️", "😂", "😮", "😡"];
 
@@ -83,6 +95,40 @@ const MessageItem = ({
   const deletedMessageLabel = message.isOwn
     ? "Bạn đã xóa một tin nhắn"
     : `${participant?.displayName ?? "Người dùng"} đã xóa một tin nhắn`;
+  const isBusy = pendingAction !== null;
+
+  const handleToggleReaction = async (emoji: string) => {
+    if (isBusy) return;
+
+    try {
+      setPendingAction("reaction");
+      await toggleReaction(message._id, emoji);
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleDeleteForMe = async () => {
+    if (isBusy) return;
+
+    try {
+      setPendingAction("delete-me");
+      await deleteMessageForMe(message._id);
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleDeleteForEveryone = async () => {
+    if (isBusy) return;
+
+    try {
+      setPendingAction("delete-all");
+      await deleteMessageForEveryone(message._id);
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   if (message.type === "system") {
     return (
@@ -166,11 +212,37 @@ const MessageItem = ({
               ) : (
                 <>
                   {message.imgUrl && (
-                    <img
-                      src={message.imgUrl}
-                      alt="Message attachment"
-                      className="max-h-72 w-auto max-w-full rounded-lg object-cover"
-                    />
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="overflow-hidden rounded-lg transition-opacity hover:opacity-90"
+                          aria-label="Phóng to ảnh trong cuộc trò chuyện"
+                        >
+                          <img
+                            src={message.imgUrl}
+                            alt="Message attachment"
+                            className="max-h-72 w-auto max-w-full cursor-zoom-in rounded-lg object-cover"
+                          />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent
+                        className="max-h-[100vh] w-screen max-w-screen border-0 bg-black/95 p-0 shadow-none"
+                        showCloseButton={false}
+                      >
+                        <DialogTitle className="sr-only">
+                          Ảnh trong cuộc trò chuyện
+                        </DialogTitle>
+                        <DialogDescription className="sr-only">
+                          Xem phóng to ảnh được gửi trong tin nhắn.
+                        </DialogDescription>
+                        <img
+                          src={message.imgUrl}
+                          alt="Message attachment enlarged"
+                          className="h-screen w-screen object-contain"
+                        />
+                      </DialogContent>
+                    </Dialog>
                   )}
                   {message.content && (
                     <p className="break-words text-sm leading-relaxed">
@@ -195,15 +267,22 @@ const MessageItem = ({
                   <button
                     key={`${message._id}-${reaction.emoji}`}
                     type="button"
-                    onClick={() => void toggleReaction(message._id, reaction.emoji)}
+                    onClick={() => void handleToggleReaction(reaction.emoji)}
+                    disabled={isBusy}
                     className={cn(
-                      "rounded-full border px-2 py-0.5 text-xs transition-smooth",
+                      "rounded-full border px-2 py-0.5 text-xs transition-smooth disabled:cursor-not-allowed disabled:opacity-70",
                       reactedByMe
                         ? "border-primary/40 bg-primary/15 text-primary"
                         : "border-border bg-background text-muted-foreground",
                     )}
                   >
-                    {reaction.emoji} {reaction.userIds.length}
+                    {pendingAction === "reaction" ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <>
+                        {reaction.emoji} {reaction.userIds.length}
+                      </>
+                    )}
                   </button>
                 );
               })}
@@ -214,8 +293,17 @@ const MessageItem = ({
             {!message.isDeletedForEveryone && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-7 rounded-full">
-                    <SmilePlus className="size-4" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 rounded-full"
+                    disabled={isBusy}
+                  >
+                    {pendingAction === "reaction" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <SmilePlus className="size-4" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
@@ -224,8 +312,9 @@ const MessageItem = ({
                       <button
                         key={emoji}
                         type="button"
-                        className="rounded-md px-2 py-1 text-lg hover:bg-accent"
-                        onClick={() => void toggleReaction(message._id, emoji)}
+                        className="rounded-md px-2 py-1 text-lg hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => void handleToggleReaction(emoji)}
+                        disabled={isBusy}
                       >
                         {emoji}
                       </button>
@@ -240,6 +329,7 @@ const MessageItem = ({
               variant="ghost"
               size="icon"
               className="size-7 rounded-full"
+              disabled={isBusy}
               onClick={() => setReplyingTo(message)}
             >
               <MessageSquareReply className="size-4" />
@@ -248,13 +338,25 @@ const MessageItem = ({
             {!message.isDeletedForEveryone && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-7 rounded-full">
-                    <MoreHorizontal className="size-4" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 rounded-full"
+                    disabled={isBusy}
+                  >
+                    {pendingAction === "delete-me" || pendingAction === "delete-all" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="size-4" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
                   {canEdit && (
-                    <DropdownMenuItem onClick={() => setEditingMessage(message)}>
+                    <DropdownMenuItem
+                      onClick={() => setEditingMessage(message)}
+                      disabled={isBusy}
+                    >
                       <Pencil className="size-4" />
                       Sửa tin nhắn
                     </DropdownMenuItem>
@@ -262,7 +364,10 @@ const MessageItem = ({
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        disabled={isBusy}
+                      >
                         <Trash2 className="size-4" />
                         Thu hồi phía mình
                       </DropdownMenuItem>
@@ -278,9 +383,17 @@ const MessageItem = ({
                         <AlertDialogCancel>Hủy</AlertDialogCancel>
                         <AlertDialogAction
                           variant="destructive"
-                          onClick={() => void deleteMessageForMe(message._id)}
+                          onClick={() => void handleDeleteForMe()}
+                          disabled={isBusy}
                         >
-                          Xác nhận xóa
+                          {pendingAction === "delete-me" ? (
+                            <>
+                              <Loader2 className="size-4 animate-spin" />
+                              Đang xóa...
+                            </>
+                          ) : (
+                            "Xác nhận xóa"
+                          )}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -294,6 +407,7 @@ const MessageItem = ({
                           <DropdownMenuItem
                             variant="destructive"
                             onSelect={(e) => e.preventDefault()}
+                            disabled={isBusy}
                           >
                             <Heart className="size-4" />
                             Thu hồi cho cả hai bên
@@ -312,9 +426,17 @@ const MessageItem = ({
                             <AlertDialogCancel>Hủy</AlertDialogCancel>
                             <AlertDialogAction
                               variant="destructive"
-                              onClick={() => void deleteMessageForEveryone(message._id)}
+                              onClick={() => void handleDeleteForEveryone()}
+                              disabled={isBusy}
                             >
-                              Xác nhận xóa
+                              {pendingAction === "delete-all" ? (
+                                <>
+                                  <Loader2 className="size-4 animate-spin" />
+                                  Đang thu hồi...
+                                </>
+                              ) : (
+                                "Xác nhận xóa"
+                              )}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

@@ -1,12 +1,13 @@
-import { useAuthStore } from "@/stores/useAuthStore";
-import type { Conversation } from "@/types/chat";
+﻿import axios from "axios";
 import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
 import { ImagePlus, Loader2, Send, X } from "lucide-react";
+import { toast } from "sonner";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
+import type { Conversation } from "@/types/chat";
+import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import EmojiPicker from "./EmojiPicker";
-import { useChatStore } from "@/stores/useChatStore";
-import { toast } from "sonner";
 
 const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const { user } = useAuthStore();
@@ -25,6 +26,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [pendingAction, setPendingAction] = useState<
+    "message" | "image" | "edit" | null
+  >(null);
 
   useEffect(() => {
     if (!editingMessage) return;
@@ -78,11 +83,16 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   };
 
   const sendMessage = async () => {
+    if (sending) return;
     if (!value.trim() && !image) return;
     const currValue = value;
+    const hasImage = Boolean(image);
+    const nextAction = editingMessage ? "edit" : hasImage ? "image" : "message";
 
     try {
       setSending(true);
+      setPendingAction(nextAction);
+      setUploadProgress(hasImage ? 0 : 100);
 
       if (editingMessage?._id) {
         await editMessage(editingMessage._id, currValue);
@@ -100,12 +110,16 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         }
 
         if (image) {
-          await sendDirectMessageWithImage(otherUser._id, image, currValue);
+          await sendDirectMessageWithImage(otherUser._id, image, currValue, {
+            onUploadProgress: setUploadProgress,
+          });
         } else {
           await sendDirectMessage(otherUser._id, currValue);
         }
       } else if (image) {
-        await sendGroupMessageWithImage(selectedConvo._id, image, currValue);
+        await sendGroupMessageWithImage(selectedConvo._id, image, currValue, {
+          onUploadProgress: setUploadProgress,
+        });
       } else {
         await sendGroupMessage(selectedConvo._id, currValue);
       }
@@ -114,21 +128,47 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       resetImage();
     } catch (error) {
       console.error(error);
-      toast.error("Gửi tin nhắn thất bại. Vui lòng thử lại.");
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.message
+          ? error.response.data.message
+          : axios.isAxiosError(error) && error.code === "ECONNABORTED"
+            ? "Tải ảnh lên quá lâu hoặc thất bại. Vui lòng thử lại."
+            : "Gửi tin nhắn thất bại. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setSending(false);
+      setPendingAction(null);
+      setUploadProgress(0);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void sendMessage();
     }
   };
 
+  const statusText =
+    pendingAction === "edit"
+      ? "Đang lưu chỉnh sửa..."
+      : pendingAction === "image"
+        ? uploadProgress > 0
+          ? `Đang tải ảnh ${uploadProgress}%`
+          : "Đang chuẩn bị tải ảnh..."
+        : pendingAction === "message"
+          ? "Đang gửi tin nhắn..."
+          : null;
+
   return (
-    <div className="space-y-2 p-3 bg-background">
+    <div className="space-y-2 bg-background p-3">
+      {statusText && (
+        <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
+          <Loader2 className="size-4 animate-spin" />
+          <span className="font-medium">{statusText}</span>
+        </div>
+      )}
+
       {(replyingTo || editingMessage) && (
         <div className="flex items-start justify-between rounded-xl border border-border/60 bg-card px-3 py-2">
           <div className="min-w-0">
@@ -164,13 +204,23 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             alt="Preview"
             className="max-h-28 rounded-lg object-cover transition-opacity duration-200"
           />
-          {sending && (
+          {pendingAction === "image" && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/65 backdrop-blur-[1px]">
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="size-7 animate-spin text-primary" />
-                <span className="text-xs font-medium text-foreground/80">
-                  Đang tải ảnh...
-                </span>
+              <div className="w-full max-w-[180px] px-4">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="size-7 animate-spin text-primary" />
+                  <span className="text-xs font-medium text-foreground/80">
+                    {uploadProgress > 0
+                      ? `Đang tải ảnh ${uploadProgress}%`
+                      : "Đang tải ảnh..."}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background/70">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-200"
+                    style={{ width: `${Math.max(uploadProgress, 8)}%` }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -187,15 +237,19 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </div>
       )}
 
-      <div className="flex items-center gap-2 min-h-[56]">
+      <div className="flex min-h-[56] items-center gap-2">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="hover:bg-primary/10 transition-smooth"
+          className="transition-smooth hover:bg-primary/10"
           asChild
         >
-          <label className="cursor-pointer">
+          <label
+            className={
+              sending ? "cursor-not-allowed pointer-events-none" : "cursor-pointer"
+            }
+          >
             <input
               type="file"
               accept="image/*"
@@ -207,21 +261,21 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           </label>
         </Button>
 
-        <div className="flex-1 relative">
+        <div className="relative flex-1">
           <Input
             onKeyDown={handleKeyPress}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Soạn tin nhắn..."
-            className="pr-20 h-9 bg-white border-border/50 focus:border-primary/50 transition-smooth resize-none"
+            className="h-9 resize-none border-border/50 bg-white pr-20 transition-smooth focus:border-primary/50"
             disabled={sending}
           />
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
             <Button
               asChild
               variant="ghost"
               size="icon"
-              className="size-8 hover:bg-background/10 transition-smooth"
+              className="size-8 transition-smooth hover:bg-background/10"
             >
               <div>
                 <EmojiPicker
@@ -234,10 +288,27 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
         <Button
           onClick={() => void sendMessage()}
-          className="bg-gradient-chat hover:shadow-glow transition-smooth hover:scale-105"
+          className="min-w-24 bg-gradient-chat transition-smooth hover:scale-105 hover:shadow-glow"
           disabled={sending || (!value.trim() && !image)}
+          aria-label={statusText ?? "Gửi tin nhắn"}
         >
-          <Send className="size-4 text-white" />
+          {sending ? (
+            <>
+              <Loader2 className="size-4 animate-spin text-white" />
+              <span className="text-white">
+                {pendingAction === "edit"
+                  ? "Đang lưu"
+                  : pendingAction === "image"
+                    ? "Đang tải"
+                    : "Đang gửi"}
+              </span>
+            </>
+          ) : (
+            <>
+              <Send className="size-4 text-white" />
+              <span className="text-white">Gửi</span>
+            </>
+          )}
         </Button>
       </div>
     </div>

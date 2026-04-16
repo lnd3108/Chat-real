@@ -9,7 +9,7 @@ import {
   sendMessageWithImage,
   toggleReaction,
 } from "../controllers/messageController.js";
-import { upload } from "../middlewares/uploadMiddleWare.js";
+import { handleSingleImageUpload, upload } from "../middlewares/uploadMiddleWare.js";
 import {
   checkFriendship,
   checkGroupMemberShip,
@@ -30,7 +30,7 @@ router.post(
 );
 router.post(
   "/direct/with-image",
-  upload.single("image"),
+  handleSingleImageUpload("image"),
   checkFriendship,
   sendDirectMessage,
 );
@@ -42,13 +42,13 @@ router.post(
 );
 router.post(
   "/group/with-image",
-  upload.single("image"),
+  handleSingleImageUpload("image"),
   checkGroupMemberShip,
   sendGroupMessage,
 );
 router.post(
   "/legacy/group/with-image",
-  upload.single("image"),
+  handleSingleImageUpload("image"),
   checkGroupMemberShip,
   sendMessageWithImage,
 );

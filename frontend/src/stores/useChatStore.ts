@@ -154,10 +154,16 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (error: unknown) {
           console.error("Failed to send direct message", error);
+          throw error;
         }
       },
 
-      sendDirectMessageWithImage: async (recipientId, image, content = "") => {
+      sendDirectMessageWithImage: async (
+        recipientId,
+        image,
+        content = "",
+        options,
+      ) => {
         try {
           const { activeConversationId, conversations, replyingTo } = get();
           const me = useAuthStore.getState().user?._id;
@@ -184,6 +190,7 @@ export const useChatStore = create<ChatState>()(
             content,
             activeConversationId || undefined,
             replyingTo?._id,
+            options?.onUploadProgress,
           );
 
           set((state) => ({
@@ -196,6 +203,7 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (error) {
           console.error("Failed to send direct image", error);
+          throw error;
         }
       },
 
@@ -217,16 +225,23 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (error) {
           console.error("Failed to send group message", error);
+          throw error;
         }
       },
 
-      sendGroupMessageWithImage: async (conversationId, image, content = "") => {
+      sendGroupMessageWithImage: async (
+        conversationId,
+        image,
+        content = "",
+        options,
+      ) => {
         try {
           await chatServices.sendGroupMessageWithImage(
             conversationId,
             image,
             content,
             get().replyingTo?._id,
+            options?.onUploadProgress,
           );
           set((state) => ({
             conversations: state.conversations.map((conversation) =>
@@ -238,6 +253,7 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (error) {
           console.error("Failed to send group image", error);
+          throw error;
         }
       },
 

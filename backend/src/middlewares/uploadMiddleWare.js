@@ -6,6 +6,28 @@ export const upload = multer({
   limits: { fileSize: 1024 * 1024 * 5 }, // 5MB limit
 });
 
+export const handleSingleImageUpload = (fieldName) => (req, res, next) => {
+  upload.single(fieldName)(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ message: "Hình ảnh phải nhỏ hơn 5MB." });
+      }
+
+      return res.status(400).json({
+        message: "Tải ảnh lên thất bại. Vui lòng thử lại.",
+      });
+    }
+
+    return res.status(400).json({
+      message: error.message || "Không thể tải ảnh lên.",
+    });
+  });
+};
+
 export const uploadImageFromBuffer = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
