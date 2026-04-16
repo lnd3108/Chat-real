@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
+import axios from "axios";
 
 type EditableField = {
   key: keyof Pick<User, "displayName" | "userName" | "email" | "phone">;
@@ -23,10 +24,10 @@ type EditableField = {
 };
 
 const PERSONAL_FIELDS: EditableField[] = [
-  { key: "displayName", label: "Tên hiển thị" },
-  { key: "userName", label: "Tên người dùng" },
+  { key: "displayName", label: "Ten hien thi" },
+  { key: "userName", label: "Ten nguoi dung" },
   { key: "email", label: "Email", type: "email" },
-  { key: "phone", label: "Số điện thoại" },
+  { key: "phone", label: "So dien thoai" },
 ];
 
 type Props = {
@@ -105,14 +106,15 @@ const PersonalInForm = ({ userInfo }: Props) => {
         setUser(res.data.user);
       }
 
-      toast.success(res.data?.message || "Cập nhật thành công ✅");
-      setMsg(res.data?.message || "Cập nhật thành công ✅");
-
-      // await fetchMe();
-    } catch (err: any) {
+      const message = res.data?.message || "Cap nhat thanh cong";
+      toast.success(message);
+      setMsg(message);
+    } catch (error: unknown) {
       const message =
-        err?.response?.data?.message ?? "Cập nhật thất bại, thử lại!";
-      console.error("Failed to update user info:", err);
+        axios.isAxiosError(error) && error.response?.data?.message
+          ? error.response.data.message
+          : "Cap nhat that bai, thu lai!";
+      console.error("Failed to update user info:", error);
       toast.error(message);
       setMsg(message);
     } finally {
@@ -125,16 +127,15 @@ const PersonalInForm = ({ userInfo }: Props) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Heart className="size-5 text-primary" />
-          Thông Tin Cá Nhân
+          Thong Tin Ca Nhan
         </CardTitle>
         <CardDescription>
-          Quản lý thông tin cá nhân của bạn như tên, email và số điện thoại.
+          Quan ly thong tin ca nhan cua ban nhu ten, email va so dien thoai.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {PERSONAL_FIELDS.map(({ key, label, type }) => (
             <div key={key} className="space-y-2">
               <Label htmlFor={key}>{label}</Label>
@@ -149,28 +150,26 @@ const PersonalInForm = ({ userInfo }: Props) => {
           ))}
         </div>
 
-        {/* bio */}
         <div className="space-y-2">
-          <Label htmlFor="bio">Giới thiệu</Label>
+          <Label htmlFor="bio">Gioi thieu</Label>
           <Textarea
             id="bio"
             rows={3}
             value={form.bio}
             onChange={handleChange("bio")}
-            className="glass-light border-border/30 resize-none"
+            className="glass-light resize-none border-border/30"
           />
         </div>
 
-        {/* message */}
         {msg && <div className="text-sm text-muted-foreground">{msg}</div>}
 
         <Button
           disabled={!isChanged || loading}
           onClick={handleSave}
-          className="w-full md:w-auto bg-gradient-primary hover:opacity-90 transition-opacity"
+          className="w-full bg-gradient-primary transition-opacity hover:opacity-90 md:w-auto"
         >
-          <Save className="size-4 mr-2" />
-          {loading ? "Đang lưu..." : "Lưu thay đổi"}
+          <Save className="mr-2 size-4" />
+          {loading ? "Dang luu..." : "Luu thay doi"}
         </Button>
       </CardContent>
     </Card>

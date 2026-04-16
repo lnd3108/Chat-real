@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { getParticipantId } from "@/lib/chatParticipants";
 import { notifyIncomingMessage } from "@/lib/messageNotifications";
 import type { SocketState } from "@/types/store";
 import { io, type Socket } from "socket.io-client";
@@ -42,9 +43,22 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
 
     socket.on("new-message", ({ message, conversation, unreadCounts }) => {
-      useChatStore.getState().addMessage(message);
+      const {
+        addConvo,
+        addMessage,
+        activeConversationId,
+        fetchMessages,
+        markasSeen,
+        messages,
+        setActiveConversation,
+        updateConversation,
+      } = useChatStore.getState();
       const { user } = useAuthStore.getState();
-      const { activeConversationId } = useChatStore.getState();
+
+      if (conversation?.participants?.length) {
+        addConvo(conversation, { activate: false });
+        socket.emit("join-conversation", conversation._id);
+      }
 
       const payloadLastMessage = conversation?.lastMessage ?? message;
       const senderId =
@@ -73,8 +87,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
             }
           : undefined;
 
-      useChatStore.getState().updateConversation({
+      updateConversation({
         _id: conversation?._id ?? message.conversationId,
+        type: conversation?.type,
+        group: conversation?.group,
+        participants: conversation?.participants,
         unreadCounts,
         seenBy: conversation?.seenBy,
         lastMessageAt:
@@ -84,9 +101,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         moveToTop: true,
         ...(lastMessage ? { lastMessage } : {}),
       });
+      void addMessage(message);
 
       if (activeConversationId === message.conversationId) {
-        useChatStore.getState().markasSeen();
+        void markasSeen();
       }
 
       if (message.senderId === user?._id) {
@@ -104,9 +122,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
 
       const openConversation = async () => {
-        const { messages, setActiveConversation, fetchMessages, markasSeen } =
-          useChatStore.getState();
-
         setActiveConversation(message.conversationId);
 
         if (!messages[message.conversationId]) {
@@ -184,11 +199,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       const conversation = conversations.find((c) => c._id === conversationId);
       if (!conversation) return;
 
-      const participants = conversation.participants.filter((p: any) => {
-        const participantId =
-          typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
-        return participantId !== userId;
-      });
+      const participants = conversation.participants.filter(
+        (participant) => getParticipantId(participant) !== userId,
+      );
 
       setConversationParticipants(conversationId, participants);
       toast.message("Một thành viên đã rời nhóm");
@@ -199,11 +212,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       const conversation = conversations.find((c) => c._id === conversationId);
       if (!conversation) return;
 
-      const participants = conversation.participants.filter((p: any) => {
-        const participantId =
-          typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
-        return participantId !== memberId;
-      });
+      const participants = conversation.participants.filter(
+        (participant) => getParticipantId(participant) !== memberId,
+      );
 
       setConversationParticipants(conversationId, participants);
       toast.message("Một thành viên đã bị xóa khỏi nhóm");

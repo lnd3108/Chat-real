@@ -32,7 +32,7 @@ const FriendListModal = ({
   const loading = loadingProp ?? loadingStore;
 
   const handleAddConversation = async (friendId: string) => {
-    const convo = await createConversation("direct", "", [friendId]);
+    await createConversation("direct", "", [friendId]);
 
     // convo đã fetchMessages bên store rồi -> đóng dialog
     onPick?.();

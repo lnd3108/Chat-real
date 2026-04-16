@@ -1,9 +1,10 @@
 import { useChatStore } from "@/stores/useChatStore";
 import ChatWelcomeScreen from "./ChatWelcomeScreen";
 import MessageItem from "./MessageItem";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import InfiniteScroll from "react-infinite-scroll-component";
+import { getLastMessageSenderId, normalizeSeenUser } from "@/lib/chatParticipants";
 
 const ChatWindowBody = () => {
   const {
@@ -12,55 +13,28 @@ const ChatWindowBody = () => {
     messages: allMessages,
     fetchMessages,
   } = useChatStore();
-
-  const [lastMessageStatus, setLastMessageStatus] = useState<
-    "delivered" | "seen"
-  >("delivered");
+  const currentUserId = useAuthStore((state) => state.user?._id);
 
   const messages = allMessages[activeConversationId!]?.items ?? [];
   const reversedMessages = [...messages].reverse();
   const hasMore = allMessages[activeConversationId!]?.hasMore ?? false;
   const key = `chat-scroll-${activeConversationId}`;
-  const selectedConvo = conversations.find(
-    (c) => c._id === activeConversationId,
-  );
+  const selectedConvo = conversations.find((c) => c._id === activeConversationId);
 
-  //ref
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const me = useAuthStore.getState().user?._id;
-    const lastMessage = selectedConvo?.lastMessage;
-    if (!me || !lastMessage) {
-      return;
-    }
+  const lastMessage = selectedConvo?.lastMessage;
+  const lastSenderId = getLastMessageSenderId(lastMessage);
+  const seenByOther = Boolean(
+    currentUserId &&
+      selectedConvo?.seenBy?.some((seenUser) => normalizeSeenUser(seenUser)._id !== currentUserId),
+  );
+  const lastMessageStatus: "delivered" | "seen" =
+    currentUserId && lastMessage && lastSenderId === currentUserId && seenByOther
+      ? "seen"
+      : "delivered";
 
-    // chỉ show seen/delivered nếu last msg là của mình
-    const lastSenderId =
-      (lastMessage as any)?.sender?._id ?? (lastMessage as any)?.senderId;
-
-    if (!lastSenderId) return;
-
-    if (lastSenderId !== me) {
-      setLastMessageStatus("delivered");
-      return;
-    }
-
-    // seen khi có người khác mình trong seenBy
-    const seenByOther = (selectedConvo?.seenBy ?? []).some((u: any) => {
-      const id = typeof u === "string" ? u : u?._id;
-      return id && id !== me;
-    });
-
-    setLastMessageStatus(seenByOther ? "seen" : "delivered");
-  }, [
-    selectedConvo?._id,
-    selectedConvo?.lastMessage?._id,
-    selectedConvo?.seenBy,
-  ]);
-
-  //Kéo xuống dưới khi load convo
   useLayoutEffect(() => {
     if (!messagesEndRef.current) {
       return;
@@ -80,7 +54,7 @@ const ChatWindowBody = () => {
     try {
       await fetchMessages(activeConversationId);
     } catch (error) {
-      console.error("Lỗi xảy ra khi fetch thêm tin", error);
+      console.error("Loi xay ra khi fetch them tin", error);
     }
   };
 
@@ -106,40 +80,40 @@ const ChatWindowBody = () => {
     const item = sessionStorage.getItem(key);
 
     if (item) {
-      const { scrollTop } = JSON.parse(item);
+      const { scrollTop } = JSON.parse(item) as { scrollTop: number };
       requestAnimationFrame(() => {
         container.scrollTop = scrollTop;
       });
     }
-  }, [messages.length]);
+  }, [key, messages.length]);
 
   if (!selectedConvo) {
     return <ChatWelcomeScreen />;
   }
 
-  if (!messages?.length) {
+  if (!messages.length) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        Chưa có tin nhắn nào trong cuộc trò chuyện này.
+        Chua co tin nhan nao trong cuoc tro chuyen nay.
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-primary-foreground h-full flex flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-primary-foreground p-4">
       <div
         id="scrollableDiv"
         ref={containerRef}
         onScroll={handleScrollSave}
-        className="flex flex-col-reverse overflow-y-auto overflow-x-hidden beautiful-scroll-bar"
+        className="beautiful-scroll-bar flex flex-col-reverse overflow-x-hidden overflow-y-auto"
       >
-        <div ref={messagesEndRef}></div>
+        <div ref={messagesEndRef} />
         <InfiniteScroll
           dataLength={messages.length}
           next={fetchMoreMessages}
           hasMore={hasMore}
           scrollableTarget="scrollableDiv"
-          loader={<p>Đang tải....</p>}
+          loader={<p>Dang tai...</p>}
           inverse={true}
           style={{
             display: "flex",

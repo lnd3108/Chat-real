@@ -8,89 +8,72 @@ import StatusBadge from "./StatusBadge";
 import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
 import GroupMemberManagerDialog from "./GroupMemberManagerDialog";
+import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 
 const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
   const { user } = useAuthStore();
   const { onlineUsers } = useSocketStore();
 
-  let otherUser;
+  const activeChat = chat ?? conversations.find((c) => c._id === activeConversationId);
 
-  chat = chat ?? conversations.find((c) => c._id === activeConversationId);
-
-  if (!chat) {
+  if (!activeChat) {
     return (
-      <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-4 py-2 w-full">
+      <header className="sticky top-0 z-10 flex w-full items-center gap-2 px-4 py-2 md:hidden">
         <SidebarTrigger className="-ml-1 text-foreground" />
       </header>
     );
   }
 
-  // if (chat.type === "direct") {
-  //   const otherUsers = chat.participants.filter((p) => p._id !== user?._id);
-  //   otherUser = otherUsers.length > 0 ? otherUsers[0] : null;
+  const otherParticipant =
+    activeChat.type === "direct"
+      ? activeChat.participants.find(
+          (participant) => getParticipantId(participant) !== user?._id,
+        )
+      : undefined;
+  const otherUser = getParticipantProfile(otherParticipant);
+  const otherId = getParticipantId(otherParticipant);
 
-  //   if (!user || !otherUser) return;
-  // }
-
-  if (chat.type === "direct") {
-    const getId = (p: any) =>
-      typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
-
-    const getUserObj = (p: any) =>
-      p?.userId && typeof p.userId === "object" ? p.userId : p;
-
-    const other = chat.participants.find((p: any) => getId(p) !== user?._id);
-    otherUser = other ? getUserObj(other) : null;
-
-    if (!user || !otherUser) return null;
+  if (activeChat.type === "direct" && (!user || !otherUser)) {
+    return null;
   }
 
-  const otherId =
-    typeof (otherUser as any)?.userId === "string"
-      ? (otherUser as any).userId
-      : (otherUser as any)?.userId?._id ?? (otherUser as any)?._id ?? "";
-
   return (
-    <header className="sticky top-0 z-10 px-4 py-2 flex items-center bg-background">
-      <div className="flex items-center gap-2 w-full">
+    <header className="sticky top-0 z-10 flex items-center bg-background px-4 py-2">
+      <div className="flex w-full items-center gap-2">
         <SidebarTrigger className="-ml-1 text-foreground" />
         <Separator
           orientation="vertical"
           className="mr-2 data-[orientation=vertical]:h-4"
         />
 
-        <div className="p-2 w-full flex items-center gap-3">
-          {/* avatar */}
+        <div className="flex w-full items-center gap-3 p-2">
           <div className="relative">
-            {chat.type === "direct" ? (
+            {activeChat.type === "direct" ? (
               <>
                 <UserAvatar
-                  type={"sidebar"}
+                  type="sidebar"
                   name={otherUser?.displayName || "ChatRealTime"}
                   avatarUrl={otherUser?.avatarUrl || undefined}
                 />
-                {/* todo: socketIO */}
                 <StatusBadge
                   status={onlineUsers.includes(otherId) ? "online" : "offline"}
                 />
               </>
             ) : (
-              <GroupChatAvatar
-                participants={chat.participants}
-                type="sidebar"
-              />
+              <GroupChatAvatar participants={activeChat.participants} type="sidebar" />
             )}
           </div>
 
-          {/* name */}
           <h2 className="font-semibold text-foreground">
-            {chat.type === "direct" ? otherUser?.displayName : chat.group?.name}
+            {activeChat.type === "direct"
+              ? otherUser?.displayName
+              : activeChat.group?.name}
           </h2>
         </div>
 
-        {chat.type === "group" && chat.group?.createdBy === user?._id && (
-          <GroupMemberManagerDialog chat={chat} />
+        {activeChat.type === "group" && activeChat.group?.createdBy === user?._id && (
+          <GroupMemberManagerDialog chat={activeChat} />
         )}
       </div>
     </header>

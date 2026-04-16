@@ -4,6 +4,10 @@ import { Smile } from "lucide-react";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 
+type EmojiSelection = {
+  native?: string;
+};
+
 interface EmojiPickerProps {
   onChange: (value: string) => void;
 }
@@ -20,12 +24,12 @@ const EmojiPicker = ({ onChange }: EmojiPickerProps) => {
       <PopoverContent
         side="right"
         sideOffset={40}
-        className="bg-transparent border-none shadow-none drop-shadow-none mb-12"
+        className="mb-12 border-none bg-transparent shadow-none drop-shadow-none"
       >
         <Picker
           theme={isDark ? "dark" : "light"}
           data={data}
-          onEmojiSelect={(emoji: any) => onChange(emoji.native)}
+          onEmojiSelect={(emoji: EmojiSelection) => onChange(emoji.native ?? "")}
           emojiSize={24}
         />
       </PopoverContent>

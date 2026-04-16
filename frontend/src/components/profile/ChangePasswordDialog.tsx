@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
 
 import {
   Dialog,
@@ -47,8 +48,9 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
   });
 
   const isValid = useMemo(() => {
-    if (!form.currentPassword || !form.newPassword || !form.confirmPassword)
+    if (!form.currentPassword || !form.newPassword || !form.confirmPassword) {
       return false;
+    }
     if (form.newPassword.length < MIN_PASSWORD_LEN) return false;
     if (form.newPassword !== form.confirmPassword) return false;
     return true;
@@ -77,7 +79,7 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
       setLoading(true);
 
       if (!isValid) {
-        toast.error("Vui lòng nhập đúng thông tin mật khẩu.");
+        toast.error("Vui long nhap dung thong tin mat khau.");
         return;
       }
 
@@ -86,8 +88,7 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
       });
 
       toast.success(
-        res?.data?.message ||
-          "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
+        res?.data?.message || "Doi mat khau thanh cong! Vui long dang nhap lai.",
       );
 
       setOpen(false);
@@ -95,11 +96,12 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
 
       clearState();
       window.location.href = "/signin";
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message ||
-          "Đổi mật khẩu thất bại. Vui lòng thử lại!",
-      );
+    } catch (error: unknown) {
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.message
+          ? error.response.data.message
+          : "Doi mat khau that bai. Vui long thu lai!";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -111,18 +113,16 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-primary" />
-            Đổi mật khẩu
+            Doi mat khau
           </DialogTitle>
           <DialogDescription>
-            Nhập mật khẩu hiện tại và mật khẩu mới. Sau khi đổi sẽ cần đăng nhập
-            lại.
+            Nhap mat khau hien tai va mat khau moi. Sau khi doi se can dang nhap lai.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          {/* Current Password */}
+        <div className="mt-2 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+            <Label htmlFor="currentPassword">Mat khau hien tai</Label>
             <div className="relative">
               <Input
                 id="currentPassword"
@@ -135,25 +135,20 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
                   }))
                 }
                 className="glass-light border-border/30 pr-10"
-                placeholder="Nhập mật khẩu hiện tại"
+                placeholder="Nhap mat khau hien tai"
               />
               <button
                 type="button"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShow((s) => ({ ...s, current: !s.current }))}
               >
-                {show.current ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
+                {show.current ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
           </div>
 
-          {/* New Password */}
           <div className="space-y-2">
-            <Label htmlFor="newPassword">Mật khẩu mới</Label>
+            <Label htmlFor="newPassword">Mat khau moi</Label>
             <div className="relative">
               <Input
                 id="newPassword"
@@ -166,31 +161,26 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
                   }))
                 }
                 className="glass-light border-border/30 pr-10"
-                placeholder={`Ít nhất ${MIN_PASSWORD_LEN} ký tự`}
+                placeholder={`It nhat ${MIN_PASSWORD_LEN} ky tu`}
               />
               <button
                 type="button"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShow((s) => ({ ...s, next: !s.next }))}
               >
-                {show.next ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
+                {show.next ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
 
             {form.newPassword && form.newPassword.length < MIN_PASSWORD_LEN && (
               <p className="text-xs text-destructive">
-                Mật khẩu mới phải có ít nhất {MIN_PASSWORD_LEN} ký tự.
+                Mat khau moi phai co it nhat {MIN_PASSWORD_LEN} ky tu.
               </p>
             )}
           </div>
 
-          {/* Confirm Password */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+            <Label htmlFor="confirmPassword">Xac nhan mat khau moi</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -203,38 +193,31 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
                   }))
                 }
                 className="glass-light border-border/30 pr-10"
-                placeholder="Nhập lại mật khẩu mới"
+                placeholder="Nhap lai mat khau moi"
               />
               <button
                 type="button"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShow((s) => ({ ...s, confirm: !s.confirm }))}
               >
-                {show.confirm ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
+                {show.confirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
 
-            {form.confirmPassword &&
-              form.newPassword !== form.confirmPassword && (
-                <p className="text-xs text-destructive">
-                  Mật khẩu xác nhận không khớp.
-                </p>
-              )}
+            {form.confirmPassword && form.newPassword !== form.confirmPassword && (
+              <p className="text-xs text-destructive">Mat khau xac nhan khong khop.</p>
+            )}
           </div>
 
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
-              className="flex-1 glass-light border-border/30"
+              className="glass-light flex-1 border-border/30"
               onClick={() => handleCloseDialog(false)}
               disabled={loading}
             >
-              Huỷ
+              Huy
             </Button>
 
             <Button
@@ -243,7 +226,7 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
               disabled={!isValid || loading}
               onClick={handleChangePassword}
             >
-              {loading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+              {loading ? "Dang cap nhat..." : "Cap nhat mat khau"}
             </Button>
           </div>
         </div>

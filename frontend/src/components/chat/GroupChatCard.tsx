@@ -31,13 +31,13 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
     setActiveConversation,
     messages,
     fetchMessages,
+    deleteOrLeaveGroupConversation,
   } = useChatStore();
 
   if (!user) return null;
 
   const unreadCount = convo.unreadCounts[user._id];
   const name = convo.group?.name ?? "";
-  const { deleteOrLeaveGroupConversation } = useChatStore();
   const isOwner = convo.group?.createdBy === user._id;
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);

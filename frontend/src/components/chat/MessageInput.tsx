@@ -26,8 +26,6 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
-  if (!user) return;
-
   useEffect(() => {
     if (!editingMessage) return;
     setValue(editingMessage.content ?? "");
@@ -36,7 +34,17 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-  }, [editingMessage]);
+  }, [editingMessage, previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  if (!user) return null;
 
   const resetImage = () => {
     if (previewUrl) {

@@ -30,6 +30,15 @@ const ChatWindowLayout = () => {
       return;
     }
 
+     const isVisible =
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible" &&
+      document.hasFocus();
+
+    if (!isVisible) {
+      return;
+    }
+
     const markSeen = async () => {
       try {
         await markasSeen();
@@ -40,7 +49,7 @@ const ChatWindowLayout = () => {
 
     if (!activeConversationId || !selectedConvo?.lastMessage?._id) return;
     markSeen();
-  }, [activeConversationId, selectedConvo?.lastMessage?._id]);
+  }, [activeConversationId, markasSeen, selectedConvo, selectedConvo?.lastMessage?._id]);
 
   if (!selectedConvo) {
     return <ChatWelcomeScreen />;

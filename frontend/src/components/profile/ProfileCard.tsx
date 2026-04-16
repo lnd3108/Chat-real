@@ -13,17 +13,14 @@ interface ProfileCardProps {
 const ProfileCard = ({ user }: ProfileCardProps) => {
   const { onlineUsers } = useSocketStore();
 
-  if (!user) return;
+  if (!user) return null;
 
-  if (!user.bio) {
-    user.bio = "This user has no bio.🛠️";
-  }
-
-  const isOnline = onlineUsers.includes(user._id) ? true : false;
+  const bio = user.bio?.trim() || "This user has no bio.";
+  const isOnline = onlineUsers.includes(user._id);
 
   return (
     <Card className="overflow-hidden p-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-      <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5">
+      <CardContent className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:p-6">
         <div className="relative shrink-0">
           <UserAvatar
             type="profile"
@@ -34,16 +31,12 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
           <AvatarUploader />
         </div>
 
-        <div className="text-center sm:text-left flex-1">
+        <div className="flex-1 text-center sm:text-left">
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             {user.displayName}
           </h1>
 
-          {user.bio && (
-            <p className="text-white/70 text-sm mt-2 line-clamp-2">
-              {user.bio}
-            </p>
-          )}
+          <p className="mt-2 line-clamp-2 text-sm text-white/70">{bio}</p>
         </div>
 
         <Badge

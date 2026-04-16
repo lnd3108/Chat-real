@@ -41,16 +41,28 @@ export const syncConversationLastMessage = (conversation, message) => {
   });
 };
 
-export const emitNewMessage = (io, conversation, message) => {
-  io.to(conversation._id.toString()).emit("new-message", {
+export const emitNewMessage = (io, conversation, message, conversationPayload) => {
+  const payload = {
     message,
-    conversation: {
-      _id: conversation._id,
-      lastMessage: conversation.lastMessage,
-      lastMessageAt: conversation.lastMessageAt,
-    },
+    conversation:
+      conversationPayload ?? {
+        _id: conversation._id,
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
+      },
     unreadCounts: conversation.unreadCounts,
-  });
+  };
+
+  io.to(conversation._id.toString()).emit("new-message", payload);
+
+  if (conversation.type === "direct") {
+    conversation.participants.forEach((participant) => {
+      const userId = participant.userId?.toString();
+      if (!userId) return;
+
+      io.to(userId).emit("new-message", payload);
+    });
+  }
 };
 
 export const emitMessageUpdated = (io, conversation, message) => {

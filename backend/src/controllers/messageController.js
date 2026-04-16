@@ -74,6 +74,31 @@ const syncConversationAndEmitUpdate = async (conversation, message) => {
   return latestMessage;
 };
 
+const buildConversationSocketPayload = async (conversation) => {
+  await conversation.populate({
+    path: "participants.userId",
+    select: "displayName avatarUrl",
+  });
+
+  return {
+    _id: conversation._id,
+    type: conversation.type,
+    group: conversation.group ?? null,
+    participants: (conversation.participants || []).map((participant) => ({
+      _id: participant.userId?._id,
+      displayName: participant.userId?.displayName,
+      avatarUrl: participant.userId?.avatarUrl ?? null,
+      joinedAt: participant.joinedAt,
+    })),
+    lastMessage: conversation.lastMessage,
+    lastMessageAt: conversation.lastMessageAt,
+    seenBy: [],
+    unreadCounts: Object.fromEntries(conversation.unreadCounts || []),
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+  };
+};
+
 const createAndEmitMessage = async ({
   conversation,
   conversationId,
@@ -81,6 +106,7 @@ const createAndEmitMessage = async ({
   content,
   file,
   replyToMessageId,
+  includeConversationPayload = false,
 }) => {
   let imgUrl = null;
 
@@ -106,8 +132,12 @@ const createAndEmitMessage = async ({
   updateConversationAfterCreateMessage(conversation, message, senderId);
   await conversation.save();
 
+  const conversationPayload = includeConversationPayload
+    ? await buildConversationSocketPayload(conversation)
+    : undefined;
+
   const io = getIo();
-  emitNewMessage(io, conversation, message);
+  emitNewMessage(io, conversation, message, conversationPayload);
 
   return message;
 };
@@ -158,6 +188,7 @@ export const sendDirectMessage = async (req, res) => {
     }
 
     let conversation = null;
+    let isNewConversation = false;
 
     if (conversationId) {
       conversation = await Conversation.findById(conversationId);
@@ -172,6 +203,7 @@ export const sendDirectMessage = async (req, res) => {
         ],
         lastMessageAt: new Date(),
       });
+      isNewConversation = true;
     }
 
     const message = await createAndEmitMessage({
@@ -181,6 +213,7 @@ export const sendDirectMessage = async (req, res) => {
       content,
       file,
       replyToMessageId,
+      includeConversationPayload: isNewConversation,
     });
 
     return res

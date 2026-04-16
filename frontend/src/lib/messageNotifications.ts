@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
+import { getParticipantId } from "./chatParticipants";
 
 type NotificationSetting = {
   enableAll: boolean;
@@ -19,11 +20,6 @@ const defaultSettings: NotificationSetting = {
   friendRequestNotification: true,
   systemNotification: true,
 };
-
-const getParticipantId = (participant: any) =>
-  typeof participant?.userId === "string"
-    ? participant.userId
-    : participant?.userId?._id ?? participant?._id;
 
 export const getNotificationSettings = (): NotificationSetting => {
   if (typeof window === "undefined") {
@@ -85,9 +81,11 @@ const getSenderName = (
     return "Ai do";
   }
 
+  const participants = conversation.participants ?? [];
+
   if (conversation.type === "group") {
     const sender =
-      conversation.participants.find(
+      participants.find(
         (participant) => getParticipantId(participant) === message.senderId,
       ) ?? null;
 
@@ -95,7 +93,7 @@ const getSenderName = (
   }
 
   const otherParticipant =
-    conversation.participants.find(
+    participants.find(
       (participant) => getParticipantId(participant) !== currentUserId,
     ) ?? null;
 
@@ -145,13 +143,10 @@ export const notifyIncomingMessage = ({
     isWindowInBackground() &&
     Notification.permission === "granted"
   ) {
-    const notification = new Notification(
-      getNotificationTitle(conversation, senderName),
-      {
-        body,
-        tag: `message-${message.conversationId}`,
-      },
-    );
+    const notification = new Notification(getNotificationTitle(conversation, senderName), {
+      body,
+      tag: `message-${message.conversationId}`,
+    });
 
     notification.onclick = () => {
       window.focus();

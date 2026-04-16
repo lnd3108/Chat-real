@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { chatServices } from "@/services/chatServices";
-import { useChatStore } from "@/stores/useChatStore";
 
 interface MessageInputProps {
   conversationId: string;
@@ -12,8 +11,6 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { activeConversationId } = useChatStore();
 
   // Validate props
   if (!conversationId) {

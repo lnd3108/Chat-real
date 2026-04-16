@@ -3,29 +3,44 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
 
 const ProtectedRoute = () => {
-  const { accessToken, user, loading, refresh, fetchMe } = useAuthStore();
+  const { accessToken, loading, refresh, fetchMe } = useAuthStore();
   const [starting, setStarting] = useState(true);
 
-  const init = async () => {
-    // Có thể xảy ra khi rêfresh trang
-    if (!accessToken) {
-      await refresh();
-    }
-
-    if (accessToken && !user) {
-      await fetchMe();
-    }
-
-    setStarting(false);
-  };
   useEffect(() => {
-    init();
-  }, []);
+    let cancelled = false;
+
+    const init = async () => {
+      try {
+        let token = useAuthStore.getState().accessToken;
+        let currentUser = useAuthStore.getState().user;
+
+        if (!token) {
+          await refresh();
+          token = useAuthStore.getState().accessToken;
+          currentUser = useAuthStore.getState().user;
+        }
+
+        if (token && !currentUser) {
+          await fetchMe();
+        }
+      } finally {
+        if (!cancelled) {
+          setStarting(false);
+        }
+      }
+    };
+
+    void init();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh, fetchMe]);
 
   if (starting || loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        Đang tải trang .............{" "}
+        Dang tai trang...
       </div>
     );
   }
@@ -34,7 +49,7 @@ const ProtectedRoute = () => {
     return <Navigate to="/signin" replace />;
   }
 
-  return <Outlet></Outlet>;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

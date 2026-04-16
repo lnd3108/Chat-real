@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { MoreHorizontal, Trash2 } from "lucide-react";
+import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 
 const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   const { user } = useAuthStore();
@@ -40,19 +41,13 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
 
   if (!user) return null;
 
-  // const otherUser = convo.participants.find((p) => p._id !== user._id);
-  const getId = (p: any) =>
-    typeof p?.userId === "string" ? p.userId : p?.userId?._id ?? p?._id;
+  const otherRaw = convo.participants.find(
+    (participant) => getParticipantId(participant) !== user._id,
+  );
+  const otherUser = getParticipantProfile(otherRaw);
+  if (!otherRaw || !otherUser) return null;
 
-  const getUserObj = (p: any) =>
-    p?.userId && typeof p.userId === "object" ? p.userId : p;
-
-  const otherRaw = convo.participants.find((p: any) => getId(p) !== user._id);
-  const otherUser = otherRaw ? getUserObj(otherRaw) : null;
-  if (!otherUser) return null;
-
-  const otherId = String(getId(otherRaw));
-
+  const otherId = String(getParticipantId(otherRaw));
   const unreadCount = convo.unreadCounts?.[user._id] ?? 0;
   const lastMessage = convo.lastMessage?.content ?? "";
 
@@ -82,7 +77,6 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
             name={otherUser.displayName ?? ""}
             avatarUrl={otherUser.avatarUrl ?? undefined}
           />
-          {/* todo: socket io */}
           <StatusBadge
             status={onlineUsers.includes(otherId) ? "online" : "offline"}
           />
@@ -92,10 +86,10 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
       subtitle={
         <p
           className={cn(
-            "text-sm truncate",
+            "truncate text-sm",
             unreadCount > 0
               ? "font-medium text-foreground"
-              : "text-muted-foreground"
+              : "text-muted-foreground",
           )}
         >
           {lastMessage}
@@ -117,24 +111,25 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
                   onSelect={(e) => e.preventDefault()}
                 >
                   <Trash2 className="mr-2 size-4" />
-                  Xóa đoạn chat
+                  Xoa doan chat
                 </DropdownMenuItem>
               </AlertDialogTrigger>
 
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Xóa lịch sử chat?</AlertDialogTitle>
+                  <AlertDialogTitle>Xoa lich su chat?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Lịch sử chat sẽ chỉ bị xóa ở phía bạn. Người còn lại vẫn giữ nguyên cuộc trò chuyện.
+                    Lich su chat se chi bi xoa o phia ban. Nguoi con lai van giu
+                    nguyen cuoc tro chuyen.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
 
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogCancel>Huy</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => deleteOrLeaveGroupConversation(convo._id)}
                   >
-                    Xóa
+                    Xoa
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

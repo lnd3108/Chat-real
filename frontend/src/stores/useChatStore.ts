@@ -1,5 +1,11 @@
 import { chatServices } from "@/services/chatServices";
-import type { Message } from "@/types/chat";
+import {
+  getLastMessageSenderId,
+  getParticipantId,
+  hasHydratedParticipants,
+  normalizeSeenUser,
+} from "@/lib/chatParticipants";
+import type { Conversation, Message } from "@/types/chat";
 import type { ChatState } from "@/types/store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -7,11 +13,6 @@ import { useAuthStore } from "./useAuthStore";
 import { useSocketStore } from "./useSocketStore";
 
 const inflightMessageFetches = new Map<string, Promise<void>>();
-
-const getParticipantId = (participant: any) =>
-  typeof participant?.userId === "string"
-    ? participant.userId
-    : participant?.userId?._id ?? participant?._id;
 
 const normalizeIncomingMessage = (message: Message, userId?: string) => ({
   ...message,
@@ -151,8 +152,8 @@ export const useChatStore = create<ChatState>()(
             ),
             replyingTo: null,
           }));
-        } catch (error: any) {
-          console.error("Failed to send direct message", error?.response?.data || error);
+        } catch (error: unknown) {
+          console.error("Failed to send direct message", error);
         }
       },
 
@@ -364,9 +365,8 @@ export const useChatStore = create<ChatState>()(
         set({ editingMessage: message, replyingTo: null }),
 
       updateConversation: (conversation) => {
-        const seenBy = conversation.seenBy?.map((item: any) =>
-          typeof item === "string" ? { _id: item } : item?._id ? { _id: item._id } : item,
-        );
+        const seenBy = conversation.seenBy?.map(normalizeSeenUser);
+        const { moveToTop, ...conversationData } = conversation;
 
         set((state) => {
           const currentIndex = state.conversations.findIndex(
@@ -378,31 +378,25 @@ export const useChatStore = create<ChatState>()(
           }
 
           const current = state.conversations[currentIndex];
-          const merged: any = { ...current, ...conversation };
+          const merged: Conversation = {
+            ...current,
+            ...conversationData,
+            seenBy: seenBy ?? current.seenBy,
+          };
 
-          if (seenBy) merged.seenBy = seenBy;
-
-          const incoming = conversation?.participants;
-          const participantsHydrated =
-            Array.isArray(incoming) &&
-            incoming.length > 0 &&
-            incoming.some(
-              (participant: any) =>
-                typeof participant?.userId === "object" ||
-                !!participant?.displayName ||
-                !!participant?.avatarUrl,
-            );
+          const incoming = conversationData.participants;
+          const participantsHydrated = hasHydratedParticipants(incoming);
 
           if (!participantsHydrated) merged.participants = current.participants;
-          if (conversation?.group == null) merged.group = current.group;
-          if (!conversation?.type) merged.type = current.type;
-          if (!conversation?.lastMessage) merged.lastMessage = current.lastMessage;
+          if (conversationData.group == null) merged.group = current.group;
+          if (!conversationData.type) merged.type = current.type;
+          if (!conversationData.lastMessage) merged.lastMessage = current.lastMessage;
 
           const nextConversations = [...state.conversations];
           nextConversations[currentIndex] = merged;
 
           const shouldMoveToTop =
-            conversation.moveToTop ??
+            moveToTop ??
             Boolean(conversation.lastMessage || conversation.lastMessageAt);
 
           if (!shouldMoveToTop || currentIndex === 0) {
@@ -454,10 +448,10 @@ export const useChatStore = create<ChatState>()(
 
           await chatServices.deleteOrLeaveGroupConversation(id);
           get().removeConversationLocal(id);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(
             "deleteOrLeaveGroupConversation failed:",
-            error?.response?.data || error,
+            error,
           );
         }
       },
@@ -471,9 +465,7 @@ export const useChatStore = create<ChatState>()(
           const convo = conversations.find((conversation) => conversation._id === activeConversationId);
           if (!convo?.lastMessage) return;
 
-          const senderId =
-            (convo.lastMessage as any)?.sender?._id ??
-            (convo.lastMessage as any)?.senderId;
+          const senderId = getLastMessageSenderId(convo.lastMessage);
 
           if (!senderId || senderId === user._id) return;
 

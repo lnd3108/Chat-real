@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useFriendStore } from "@/stores/useFriendStore";
+import type { Friend } from "@/types/user";
 
 import BlockTab, { type BlockedUser } from "./BlockTab";
 import ReportTab, { type ReportPayload } from "./ReportTab";
@@ -22,70 +23,75 @@ type Props = {
   setOpen: (val: boolean) => void;
 };
 
+type FriendLike = Friend & {
+  userId?: Partial<Friend>;
+  friendId?: Partial<Friend>;
+};
+
 const STORAGE_BLOCKED_KEY = "chat_blocked_users";
 const STORAGE_REPORTS_KEY = "chat_reports";
 
+const normalizeFriend = (friend: FriendLike): FriendItem => {
+  const user = friend.userId ?? friend.friendId ?? friend;
+
+  return {
+    _id: user._id || friend._id,
+    userName: user.userName || friend.userName || "",
+    displayName: user.displayName || friend.displayName || "",
+    avatarUrl: user.avatarUrl || friend.avatarUrl,
+  };
+};
+
+const getBlockedUsers = (): BlockedUser[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_BLOCKED_KEY);
+    return raw ? (JSON.parse(raw) as BlockedUser[]) : [];
+  } catch {
+    return [];
+  }
+};
+
 const BlockReportDialog = ({ open, setOpen }: Props) => {
   const [tab, setTab] = useState<"block" | "report">("block");
+  const { friends, getFriends } = useFriendStore();
 
-  // friend store
-  const { friends, getFriends } = useFriendStore() as any;
-
-  // block state
-  const [blocked, setBlockedState] = useState<BlockedUser[]>([]);
+  const [blocked, setBlockedState] = useState<BlockedUser[]>(getBlockedUsers);
   const [blockUserName, setBlockUserName] = useState("");
   const [blockReason, setBlockReason] = useState("");
 
-  // report state
   const [report, setReport] = useState<ReportPayload>({
     targetUserName: "",
     reason: "Spam",
     description: "",
   });
 
-  const normalizeFriend = (f: any) => {
-    // nhiều backend trả về friend.userId hoặc friend.friendId
-    const u = f?.userId || f?.friendId || f;
-
-    return {
-      _id: u?._id || f?._id,
-      userName: u?.userName || f?.userName || "",
-      displayName: u?.displayName || f?.displayName || "",
-      avatarUrl: u?.avatarUrl || f?.avatarUrl,
-    };
-  };
-
   const friendList: FriendItem[] = (friends || [])
-    .map(normalizeFriend)
-    .filter((x: FriendItem) => x.userName && x.displayName);
+    .map((friend) => normalizeFriend(friend as FriendLike))
+    .filter((friend) => friend.userName && friend.displayName);
 
-  // load when open
   useEffect(() => {
     if (!open) return;
-
-    setTab("block");
-    getFriends?.();
-
-    // load blocked list
-    try {
-      const raw = localStorage.getItem(STORAGE_BLOCKED_KEY);
-      setBlockedState(raw ? JSON.parse(raw) : []);
-    } catch {
-      setBlockedState([]);
-    }
+    void getFriends();
   }, [open, getFriends]);
 
-  // save blocked to localStorage
   const setBlocked = (next: BlockedUser[]) => {
     setBlockedState(next);
     localStorage.setItem(STORAGE_BLOCKED_KEY, JSON.stringify(next));
   };
 
-  // send report -> localStorage
+  const onOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+
+    if (nextOpen) {
+      setTab("block");
+      setBlockedState(getBlockedUsers());
+    }
+  };
+
   const onSendReport = () => {
     try {
       const raw = localStorage.getItem(STORAGE_REPORTS_KEY);
-      const list = raw ? JSON.parse(raw) : [];
+      const list = raw ? (JSON.parse(raw) as Array<ReportPayload & { createdAt: string }>) : [];
       list.push({
         ...report,
         targetUserName: report.targetUserName.trim(),
@@ -93,7 +99,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       });
       localStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(list));
 
-      toast.success("Đã gửi báo cáo ✅");
+      toast.success("Da gui bao cao");
       setReport({
         targetUserName: "",
         reason: "Spam",
@@ -101,27 +107,27 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       });
       setTab("block");
     } catch {
-      toast.error("Gửi báo cáo thất bại, thử lại nhé.");
+      toast.error("Gui bao cao that bai, thu lai.");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-strong border-border/30">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldBan className="h-5 w-5 text-primary" />
-            Chặn & Báo cáo
+            Chan va Bao cao
           </DialogTitle>
           <DialogDescription>
-            Chặn người dùng để không nhận tin nhắn / báo cáo hành vi xấu
+            Chan nguoi dung de khong nhan tin nhan hoac bao cao hanh vi xau
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "block" | "report")}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="block">Chặn</TabsTrigger>
-            <TabsTrigger value="report">Báo cáo</TabsTrigger>
+            <TabsTrigger value="block">Chan</TabsTrigger>
+            <TabsTrigger value="report">Bao cao</TabsTrigger>
           </TabsList>
 
           <TabsContent value="block">

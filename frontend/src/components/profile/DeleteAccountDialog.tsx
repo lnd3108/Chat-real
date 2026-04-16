@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
 
 import {
   Dialog,
@@ -20,7 +21,7 @@ type Props = {
   setOpen: (val: boolean) => void;
 };
 
-const DELETE_CONFIRM_WORD = "DELETE"; // hoặc "XOA"
+const DELETE_CONFIRM_WORD = "DELETE";
 
 const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const clearState = useAuthStore((s) => s.clearState);
@@ -28,9 +29,10 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
-  const canDelete = useMemo(() => {
-    return confirmText.trim().toUpperCase() === DELETE_CONFIRM_WORD;
-  }, [confirmText]);
+  const canDelete = useMemo(
+    () => confirmText.trim().toUpperCase() === DELETE_CONFIRM_WORD,
+    [confirmText],
+  );
 
   const closeDialog = () => {
     setOpen(false);
@@ -42,7 +44,7 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
       setDeleteLoading(true);
 
       if (!canDelete) {
-        toast.error(`Nhập đúng "${DELETE_CONFIRM_WORD}" để xác nhận xoá.`);
+        toast.error(`Nhap dung "${DELETE_CONFIRM_WORD}" de xac nhan xoa.`);
         return;
       }
 
@@ -50,14 +52,16 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
         withCredentials: true,
       });
 
-      toast.success(res?.data?.message || "Xoá tài khoản thành công!");
+      toast.success(res?.data?.message || "Xoa tai khoan thanh cong!");
 
       clearState();
       window.location.href = "/signin";
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Xoá tài khoản thất bại. Thử lại nhé!",
-      );
+    } catch (error: unknown) {
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.message
+          ? error.response.data.message
+          : "Xoa tai khoan that bai. Thu lai nhe!";
+      toast.error(message);
     } finally {
       setDeleteLoading(false);
       closeDialog();
@@ -70,34 +74,33 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="h-5 w-5" />
-            Xoá tài khoản
+            Xoa tai khoan
           </DialogTitle>
           <DialogDescription>
-            Hành động này <b>không thể hoàn tác</b>. Toàn bộ dữ liệu tài khoản
-            của bạn sẽ bị xoá vĩnh viễn.
+            Hanh dong nay khong the hoan tac. Toan bo du lieu tai khoan cua ban se bi xoa vinh vien.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 mt-2">
+        <div className="mt-2 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Nhập <b>{DELETE_CONFIRM_WORD}</b> để xác nhận.
+            Nhap <b>{DELETE_CONFIRM_WORD}</b> de xac nhan.
           </p>
 
           <Input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             className="glass-light border-border/30"
-            placeholder={`Gõ ${DELETE_CONFIRM_WORD} để xoá`}
+            placeholder={`Go ${DELETE_CONFIRM_WORD} de xoa`}
           />
 
           <div className="flex gap-2 pt-1">
             <Button
               variant="outline"
-              className="flex-1 glass-light border-border/30"
+              className="glass-light flex-1 border-border/30"
               onClick={closeDialog}
               disabled={deleteLoading}
             >
-              Huỷ
+              Huy
             </Button>
 
             <Button
@@ -106,7 +109,7 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
               disabled={!canDelete || deleteLoading}
               onClick={handleDeleteAccount}
             >
-              {deleteLoading ? "Đang xoá..." : "Xoá vĩnh viễn"}
+              {deleteLoading ? "Dang xoa..." : "Xoa vinh vien"}
             </Button>
           </div>
         </div>

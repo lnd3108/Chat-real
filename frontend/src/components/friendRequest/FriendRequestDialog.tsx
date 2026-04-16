@@ -19,39 +19,42 @@ const FriendRequestDialog = ({
   const [tab, setTab] = useState<"received" | "sent">(defaultTab);
   const { getAllFriendRequests } = useFriendStore();
 
-  // ✅ chỉ load khi mở dialog
   useEffect(() => {
     if (!open) return;
-
-    // ✅ reset tab đúng UX mỗi lần mở
-    setTab(defaultTab);
 
     const loadRequest = async () => {
       try {
         await getAllFriendRequests();
       } catch (error) {
-        console.error("Lỗi xảy ra khi load requests", error);
+        console.error("Loi xay ra khi load requests", error);
       }
     };
 
-    loadRequest();
-  }, [open, defaultTab, getAllFriendRequests]);
+    void loadRequest();
+  }, [open, getAllFriendRequests]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setTab(defaultTab);
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>Lời mời kết bạn</DialogTitle>
+          <DialogTitle>Loi moi ket ban</DialogTitle>
         </DialogHeader>
 
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as any)}
+          onValueChange={(value) => setTab(value as "received" | "sent")}
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="received">Đã nhận</TabsTrigger>
-            <TabsTrigger value="sent">Đã gửi</TabsTrigger>
+            <TabsTrigger value="received">Da nhan</TabsTrigger>
+            <TabsTrigger value="sent">Da gui</TabsTrigger>
           </TabsList>
 
           <TabsContent value="received">

@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import Session from "../models/Session.js";
-import crypto, { sign } from "crypto";
+import crypto from "crypto";
 import { signUpSchema, signInSchema } from "../libs/validation.js";
 
 const ACCESS_TOKEN_TTL = "30m"; //Thường dưới 15m

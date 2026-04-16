@@ -1,5 +1,5 @@
 import type { Participant } from "@/types/chat";
-import { Ellipsis, User } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import UserAvatar from "./UserAvatar";
 
 interface GroupChatAvatarProps {
@@ -17,7 +17,7 @@ const GroupChatAvatar = ({ participants, type }: GroupChatAvatarProps) => {
       <UserAvatar
         key={i}
         type={type}
-        name={member.displayName}
+        name={member.displayName ?? "Unknown user"}
         avatarUrl={member.avatarUrl ?? undefined}
       />
     );
