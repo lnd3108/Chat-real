@@ -31,7 +31,7 @@ export interface LastMessage {
     displayName: string;
     avatarUrl?: string | null;
   };
-  senderId?: string;
+  senderId?: string | { _id?: string };
 }
 
 export interface MessageReply {

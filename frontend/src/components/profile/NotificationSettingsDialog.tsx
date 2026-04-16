@@ -57,16 +57,16 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
   const handleSave = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      toast.success("Da luu cai dat thong bao");
+      toast.success("Đã lưu cài đặt thông báo");
       setOpen(false);
     } catch {
-      toast.error("Luu that bai. Thu lai.");
+      toast.error("Lưu thất bại. Thử lại.");
     }
   };
 
   const handleReset = () => {
     setSettings(defaultSettings);
-    toast.message("Da reset ve mac dinh");
+    toast.message("Đã reset về mặc định");
   };
 
   return (
@@ -75,17 +75,17 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BellRing className="h-5 w-5 text-primary" />
-            Cai dat thong bao
+            Cài đặt thông báo
           </DialogTitle>
-          <DialogDescription>Bat/tat thong bao theo nhu cau cua ban</DialogDescription>
+          <DialogDescription>Bật/tắt thông báo theo nhu cầu của bạn</DialogDescription>
         </DialogHeader>
 
         <div className="mt-2 space-y-4">
           <div className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3">
             <div>
-              <p className="font-medium">Bat tat ca thong bao</p>
+              <p className="font-medium">Bật tất cả thông báo</p>
               <p className="text-xs text-muted-foreground">
-                Tat muc nay se tat toan bo thong bao phia duoi
+                Tắt mục này sẽ tắt toàn bộ thông báo phía dưới
               </p>
             </div>
             <Switch
@@ -97,12 +97,12 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
           <Separator />
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold">Tin nhan</p>
+            <p className="text-sm font-semibold">Tin nhắn</p>
 
             <div className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3">
               <div>
-                <p className="font-medium">Thong bao tin nhan</p>
-                <p className="text-xs text-muted-foreground">Hien popup khi co tin nhan moi</p>
+                <p className="font-medium">Thông báo tin nhắn</p>
+                <p className="text-xs text-muted-foreground">Hiện popup khi có tin nhắn mới</p>
               </div>
               <Switch
                 checked={settings.messageNotification}
@@ -113,8 +113,8 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
 
             <div className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3">
               <div>
-                <p className="font-medium">Am thanh tin nhan</p>
-                <p className="text-xs text-muted-foreground">Phat am thanh khi nhan tin nhan</p>
+                <p className="font-medium">Âm thanh tin nhắn</p>
+                <p className="text-xs text-muted-foreground">Phát âm thanh khi nhận tin nhắn</p>
               </div>
               <Switch
                 checked={settings.messageSound}
@@ -125,12 +125,12 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold">Ket ban</p>
+            <p className="text-sm font-semibold">Kết bạn</p>
 
             <div className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3">
               <div>
-                <p className="font-medium">Loi moi ket ban</p>
-                <p className="text-xs text-muted-foreground">Thong bao khi co request moi</p>
+                <p className="font-medium">Lời mời kết bạn</p>
+                <p className="text-xs text-muted-foreground">Thông báo khi có request mới</p>
               </div>
               <Switch
                 checked={settings.friendRequestNotification}
@@ -141,12 +141,12 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold">He thong</p>
+            <p className="text-sm font-semibold">Hệ thống</p>
 
             <div className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3">
               <div>
-                <p className="font-medium">Thong bao he thong</p>
-                <p className="text-xs text-muted-foreground">Bao tri, cap nhat, canh bao bao mat...</p>
+                <p className="font-medium">Thông báo hệ thống</p>
+                <p className="text-xs text-muted-foreground">Bảo trì, cập nhật, cảnh báo bảo mật...</p>
               </div>
               <Switch
                 checked={settings.systemNotification}
@@ -166,7 +166,7 @@ const NotificationSettingsDialog = ({ open, setOpen }: Props) => {
             </Button>
 
             <Button className="flex-1 bg-gradient-primary" onClick={handleSave}>
-              Luu cai dat
+              Lưu cài đặt
             </Button>
           </div>
         </div>

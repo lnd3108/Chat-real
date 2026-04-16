@@ -67,14 +67,14 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
     try {
       setAddingIds((state) => [...state, friend._id]);
       await chatServices.addGroupMembers(chat._id, [friend._id]);
-      toast.success(`Da them ${friend.displayName} vao nhom`);
+      toast.success(`Đã thêm ${friend.displayName} vào nhóm`);
       setSearch("");
     } catch (error) {
       console.error("addGroupMembers failed", error);
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
-          : "Khong the them thanh vien vao nhom";
+          : "Không thể thêm thành viên vào nhóm";
       toast.error(message);
     } finally {
       setAddingIds((state) => state.filter((id) => id !== friend._id));
@@ -85,13 +85,13 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
     try {
       setRemovingId(memberId);
       await chatServices.removeGroupMember(chat._id, memberId);
-      toast.success(`Da xoa ${displayName} khoi nhom`);
+      toast.success(`Đã xóa ${displayName} khỏi nhóm`);
     } catch (error) {
       console.error("removeGroupMember failed", error);
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
-          : "Khong the xoa thanh vien khoi nhom";
+          : "Không thể xóa thành viên khỏi nhóm";
       toast.error(message);
     } finally {
       setRemovingId(null);
@@ -103,23 +103,23 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
           <Users className="size-4" />
-          <span className="sr-only">Quan ly thanh vien nhom</span>
+          <span className="sr-only">Quản lý thành viên nhóm</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Quan ly thanh vien</DialogTitle>
+          <DialogTitle>Quản lý thành viên</DialogTitle>
           <DialogDescription>
-            Chu nhom co the them ban be vao nhom hoac xoa thanh vien hien tai.
+            Chủ nhóm có thể thêm bạn bè vào nhóm hoặc xóa thành viên hiện tại.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Them thanh vien</h3>
+            <h3 className="text-sm font-semibold">Thêm thành viên</h3>
             <Input
-              placeholder="Tim ban be de them..."
+              placeholder="Tìm bạn bè để thêm..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -149,21 +149,21 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
                       disabled={addingIds.includes(friend._id)}
                     >
                       <UserPlus className="mr-2 size-4" />
-                      Them
+                      Thêm
                     </Button>
                   </div>
                 ))}
 
               {!loading && availableFriends.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Khong co ban be phu hop de them.
+                  Không có bạn bè phù hợp để thêm.
                 </p>
               )}
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Thanh vien hien tai</h3>
+            <h3 className="text-sm font-semibold">Thành viên hiện tại</h3>
 
             <div className="max-h-56 space-y-2 overflow-y-auto pr-2">
               {members.map((member) => (
@@ -190,7 +190,7 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
                       disabled={removingId === member._id}
                     >
                       <UserMinus className="mr-2 size-4" />
-                      Xoa
+                      Xóa
                     </Button>
                   )}
                 </div>

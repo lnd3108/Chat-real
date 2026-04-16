@@ -45,10 +45,10 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
         moveToTop: false,
       });
 
-      toast.success("Da cap nhat anh dai dien nhom");
+      toast.success("Đã cập nhật ảnh đại diện nhóm");
     } catch (error) {
       console.error("uploadGroupAvatar failed", error);
-      toast.error("Khong the cap nhat anh dai dien nhom");
+      toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);
     }
@@ -59,15 +59,15 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
           <Settings className="size-4" />
-          <span className="sr-only">Cai dat nhom</span>
+          <span className="sr-only">Cài đặt nhóm</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Cai dat nhom</DialogTitle>
+          <DialogTitle>Cài đặt nhóm</DialogTitle>
           <DialogDescription>
-            Moi thanh vien deu co the thay doi anh dai dien nhom.
+            Mọi thành viên đều có thể thay đổi ảnh đại diện nhóm.
           </DialogDescription>
         </DialogHeader>
 
@@ -84,15 +84,15 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{chat.group?.name}</p>
               <p className="text-sm text-muted-foreground">
-                {chat.participants.length} thanh vien
+                {chat.participants.length} thành viên
               </p>
             </div>
           </div>
 
           <div className="rounded-xl border border-dashed border-border/70 p-4">
-            <p className="text-sm font-medium">Anh dai dien nhom</p>
+            <p className="text-sm font-medium">Ảnh đại diện nhóm</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Khi thay anh moi, anh cu tren Cloudinary se duoc xoa tu dong.
+              Khi thay ảnh mới, ảnh cũ trên Cloudinary sẽ được xóa tự động.
             </p>
 
             <Button
@@ -104,12 +104,12 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
               {avatarUploading ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Dang tai anh len...
+                  Đang tải ảnh lên...
                 </>
               ) : (
                 <>
                   <Camera className="mr-2 size-4" />
-                  Thay anh dai dien nhom
+                  Thay ảnh đại diện nhóm
                 </>
               )}
             </Button>

@@ -18,7 +18,18 @@ export const getParticipantProfile = (participant?: Participant | null) => {
 
 export const getLastMessageSenderId = (
   lastMessage?: LastMessage | null,
-): string => lastMessage?.sender?._id ?? lastMessage?.senderId ?? "";
+): string => {
+  if (!lastMessage) return "";
+  if (lastMessage.sender?._id) return lastMessage.sender._id;
+
+  const rawSenderId = lastMessage.senderId;
+  if (typeof rawSenderId === "string") return rawSenderId;
+  if (rawSenderId && typeof rawSenderId === "object") {
+    return rawSenderId._id ?? "";
+  }
+
+  return "";
+};
 
 export const normalizeSeenUser = (
   seenUser: SeenUser | string,

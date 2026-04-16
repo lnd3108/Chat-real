@@ -1,4 +1,4 @@
-import { cn, formatMessageTime } from "@/lib/utils";
+﻿import { cn, formatMessageTime } from "@/lib/utils";
 import type { Conversation, Message, Participant } from "@/types/chat";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -6,6 +6,17 @@ import UserAvatar from "./UserAvatar";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,7 +73,8 @@ const MessageItem = ({
   const replySender = selectedConvo.participants.find(
     (p: Participant) => p._id?.toString() === message.replyTo?.senderId?.toString(),
   );
-  const canEdit = message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
+  const canEdit =
+    message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
   const canRecallForEveryone =
     message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
   const reactionBadges = (message.reactions ?? []).filter(
@@ -76,8 +88,8 @@ const MessageItem = ({
     return (
       <>
         {isShowTime && (
-          <div className="w-full flex justify-center my-3">
-            <span className="text-xs text-muted-foreground px-2 py-1 rounded-full bg-muted/40">
+          <div className="my-3 flex w-full justify-center">
+            <span className="rounded-full bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
               {formatMessageTime(new Date(message.createdAt))}
             </span>
           </div>
@@ -95,8 +107,8 @@ const MessageItem = ({
   return (
     <>
       {isShowTime && (
-        <div className="w-full flex justify-center my-3">
-          <span className="text-xs text-muted-foreground px-2 py-1 rounded-full bg-muted/40">
+        <div className="my-3 flex w-full justify-center">
+          <span className="rounded-full bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
             {formatMessageTime(new Date(message.createdAt))}
           </span>
         </div>
@@ -104,7 +116,7 @@ const MessageItem = ({
 
       <div
         className={cn(
-          "flex gap-2 message-bounce mt-1",
+          "message-bounce mt-1 flex gap-2",
           message.isOwn ? "justify-end" : "justify-start",
         )}
       >
@@ -122,16 +134,14 @@ const MessageItem = ({
 
         <div
           className={cn(
-            "max-w-xs lg:max-w-md space-y-1 flex flex-col",
+            "flex max-w-xs flex-col space-y-1 lg:max-w-md",
             message.isOwn ? "items-end" : "items-start",
           )}
         >
           <Card
             className={cn(
               "p-3",
-              message.isOwn
-                ? "chat-bubble-sent border-0"
-                : "chat-bubble-received",
+              message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
             )}
           >
             <div className="space-y-2">
@@ -140,10 +150,11 @@ const MessageItem = ({
                   <p className="font-medium text-primary">
                     {message.replyTo.senderId === user?._id
                       ? "Bạn"
-                      : (replySender?.displayName ?? "Người gửi")}
+                      : replySender?.displayName ?? "Người gửi"}
                   </p>
                   <p className="truncate text-muted-foreground">
-                    {message.replyTo.content || (message.replyTo.imgUrl ? "Hình ảnh" : "Tin nhắn")}
+                    {message.replyTo.content ||
+                      (message.replyTo.imgUrl ? "Hình ảnh" : "Tin nhắn")}
                   </p>
                 </div>
               )}
@@ -162,7 +173,7 @@ const MessageItem = ({
                     />
                   )}
                   {message.content && (
-                    <p className="text-sm leading-relaxed break-words">
+                    <p className="break-words text-sm leading-relaxed">
                       {message.content}
                     </p>
                   )}
@@ -248,20 +259,66 @@ const MessageItem = ({
                       Sửa tin nhắn
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => void deleteMessageForMe(message._id)}>
-                    <Trash2 className="size-4" />
-                    Thu hồi phía mình
-                  </DropdownMenuItem>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="size-4" />
+                        Thu hồi phía mình
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent size="sm">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Thu hồi tin nhắn?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tin nhắn sẽ chỉ biến mất ở phía bạn.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          onClick={() => void deleteMessageForMe(message._id)}
+                        >
+                          Xác nhận xóa
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
                   {canRecallForEveryone && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => void deleteMessageForEveryone(message._id)}
-                      >
-                        <Heart className="size-4" />
-                        Thu hồi cho cả hai bên
-                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Heart className="size-4" />
+                            Thu hồi cho cả hai bên
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent size="sm">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Thu hồi cho cả hai bên?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Người còn lại sẽ thấy trạng thái tin nhắn đã bị thu hồi.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => void deleteMessageForEveryone(message._id)}
+                            >
+                              Xác nhận xóa
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </>
                   )}
                 </DropdownMenuContent>
@@ -273,7 +330,7 @@ const MessageItem = ({
             <Badge
               variant="outline"
               className={cn(
-                "text-xs px-1.5 py-0.5 h-4 border-0",
+                "h-4 border-0 px-1.5 py-0.5 text-xs",
                 lastMessageStatus === "seen"
                   ? "bg-primary/20 text-primary"
                   : "bg-muted text-muted-foreground",

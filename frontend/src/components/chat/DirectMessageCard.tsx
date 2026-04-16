@@ -1,4 +1,4 @@
-import type { Conversation } from "@/types/chat";
+﻿import type { Conversation } from "@/types/chat";
 import ChatCard from "./ChatCard";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -26,7 +26,11 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { MoreHorizontal, Trash2 } from "lucide-react";
-import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
+import {
+  getLastMessageSenderId,
+  getParticipantId,
+  getParticipantProfile,
+} from "@/lib/chatParticipants";
 
 const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   const { user } = useAuthStore();
@@ -49,9 +53,14 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
 
   const otherId = String(getParticipantId(otherRaw));
   const unreadCount = convo.unreadCounts?.[user._id] ?? 0;
-  const lastMessage = convo.lastMessage?.isDeletedForEveryone
-    ? convo.lastMessage.senderId === user._id
-      ? "Bạn đã xóa một tin nhắn"
+  const recallPlaceholder = "Bạn đã xóa một tin nhắn";
+  const lastMessageSenderId = getLastMessageSenderId(convo.lastMessage);
+  const isRecallMessage =
+    convo.lastMessage?.isDeletedForEveryone ||
+    convo.lastMessage?.content === recallPlaceholder;
+  const lastMessage = isRecallMessage
+    ? lastMessageSenderId === user._id
+      ? recallPlaceholder
       : `${otherUser.displayName ?? "Người dùng"} đã xóa một tin nhắn`
     : (convo.lastMessage?.content ?? "");
 
@@ -115,25 +124,25 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
                   onSelect={(e) => e.preventDefault()}
                 >
                   <Trash2 className="mr-2 size-4" />
-                  Xoa doan chat
+                  Xóa đoạn chat
                 </DropdownMenuItem>
               </AlertDialogTrigger>
 
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Xoa lich su chat?</AlertDialogTitle>
+                  <AlertDialogTitle>Xóa lịch sử chat?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Lich su chat se chi bi xoa o phia ban. Nguoi con lai van giu
-                    nguyen cuoc tro chuyen.
+                    Lịch sử chat sẽ chỉ bị xóa ở phía bạn. Người còn lại vẫn giữ
+                    nguyên cuộc trò chuyện.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
 
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Huy</AlertDialogCancel>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => deleteOrLeaveGroupConversation(convo._id)}
                   >
-                    Xoa
+                    Xóa
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -24,10 +24,10 @@ type EditableField = {
 };
 
 const PERSONAL_FIELDS: EditableField[] = [
-  { key: "displayName", label: "Ten hien thi" },
-  { key: "userName", label: "Ten nguoi dung" },
+  { key: "displayName", label: "Tên hiển thị" },
+  { key: "userName", label: "Tên người dùng" },
   { key: "email", label: "Email", type: "email" },
-  { key: "phone", label: "So dien thoai" },
+  { key: "phone", label: "Số điện thoại" },
 ];
 
 type Props = {
@@ -106,14 +106,14 @@ const PersonalInForm = ({ userInfo }: Props) => {
         setUser(res.data.user);
       }
 
-      const message = res.data?.message || "Cap nhat thanh cong";
+      const message = res.data?.message || "Cập nhật thành công";
       toast.success(message);
       setMsg(message);
     } catch (error: unknown) {
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
-          : "Cap nhat that bai, thu lai!";
+          : "Cập nhật thất bại, thử lại!";
       console.error("Failed to update user info:", error);
       toast.error(message);
       setMsg(message);
@@ -127,10 +127,10 @@ const PersonalInForm = ({ userInfo }: Props) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Heart className="size-5 text-primary" />
-          Thong Tin Ca Nhan
+          Thông Tin Cá Nhân
         </CardTitle>
         <CardDescription>
-          Quan ly thong tin ca nhan cua ban nhu ten, email va so dien thoai.
+          Quản lý thông tin cá nhân của bạn như tên, email và số điện thoại.
         </CardDescription>
       </CardHeader>
 
@@ -151,7 +151,7 @@ const PersonalInForm = ({ userInfo }: Props) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bio">Gioi thieu</Label>
+          <Label htmlFor="bio">Giới thiệu</Label>
           <Textarea
             id="bio"
             rows={3}
@@ -169,7 +169,7 @@ const PersonalInForm = ({ userInfo }: Props) => {
           className="w-full bg-gradient-primary transition-opacity hover:opacity-90 md:w-auto"
         >
           <Save className="mr-2 size-4" />
-          {loading ? "Dang luu..." : "Luu thay doi"}
+          {loading ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
       </CardContent>
     </Card>

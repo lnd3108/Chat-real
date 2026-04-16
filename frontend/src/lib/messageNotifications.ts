@@ -66,10 +66,10 @@ const getMessagePreview = (message: Message) => {
   }
 
   if (message.imgUrl) {
-    return "Da gui mot hinh anh";
+    return "Đã gửi một hình ảnh";
   }
 
-  return "Mo doan chat de xem ngay";
+  return "Mở đoạn chat để xem ngay";
 };
 
 const getSenderName = (
@@ -89,7 +89,7 @@ const getSenderName = (
         (participant) => getParticipantId(participant) === message.senderId,
       ) ?? null;
 
-    return sender?.displayName ?? "Thanh vien";
+    return sender?.displayName ?? "Thành viên";
   }
 
   const otherParticipant =
@@ -97,7 +97,7 @@ const getSenderName = (
       (participant) => getParticipantId(participant) !== currentUserId,
     ) ?? null;
 
-  return otherParticipant?.displayName ?? "Nguoi dung";
+  return otherParticipant?.displayName ?? "Người dùng";
 };
 
 const getNotificationTitle = (
@@ -109,7 +109,7 @@ const getNotificationTitle = (
   }
 
   if (conversation.type === "group") {
-    return `${senderName} trong ${conversation.group?.name ?? "nhom chat"}`;
+    return `${senderName} trong ${conversation.group?.name ?? "nhóm chat"}`;
   }
 
   return senderName;
@@ -134,7 +134,7 @@ export const notifyIncomingMessage = ({
   }
 
   const senderName = getSenderName(conversation, message, currentUserId);
-  const body = `${senderName} vua nhan tin cho ban, check ngay nhe`;
+  const body = `${senderName} vừa nhắn tin cho bạn, kiểm tra ngay nhé`;
   const description = getMessagePreview(message);
 
   if (
@@ -161,7 +161,7 @@ export const notifyIncomingMessage = ({
     description,
     action: onOpenConversation
       ? {
-          label: "Mo",
+          label: "Mở",
           onClick: onOpenConversation,
         }
       : undefined,

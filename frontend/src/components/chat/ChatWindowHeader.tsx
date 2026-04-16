@@ -69,7 +69,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                     type="button"
                     disabled={!activeChat.group?.avatarUrl}
                     className="relative block rounded-full transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-100"
-                    aria-label="Xem anh dai dien nhom"
+                    aria-label="Xem ảnh đại diện nhóm"
                   >
                     <GroupChatAvatar
                       participants={activeChat.participants}
