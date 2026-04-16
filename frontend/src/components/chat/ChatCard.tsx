@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { formatOnlineTime, cn } from "@/lib/utils";
 import { MoreHorizontal } from "lucide-react";
@@ -26,6 +27,28 @@ const ChatCard = ({
   subtitle,
   actions,
 }: ChatCardProps) => {
+  const [, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!timestamp) return;
+
+    const updateNow = () => setNow(Date.now());
+    const msUntilNextMinute = 60000 - (Date.now() % 60000);
+    let intervalId: number | undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      updateNow();
+      intervalId = window.setInterval(updateNow, 60000);
+    }, msUntilNextMinute);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [timestamp?.getTime()]);
+
   return (
     <Card
       key={convoId}
