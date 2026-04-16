@@ -30,7 +30,25 @@ function App() {
 
   return (
     <>
-      <Toaster richColors />
+      <Toaster
+        theme={isDark ? "dark" : "light"}
+        position="bottom-right"
+        closeButton
+        toastOptions={{
+          duration: 4000,
+          className:
+            "border border-border/70 bg-background text-foreground shadow-xl rounded-2xl",
+          descriptionClassName: "text-muted-foreground",
+          actionButtonStyle: {
+            background: isDark ? "hsl(262 83% 58%)" : "hsl(221 83% 53%)",
+            color: "white",
+            borderRadius: "10px",
+          },
+          cancelButtonStyle: {
+            borderRadius: "10px",
+          },
+        }}
+      />
       <BrowserRouter>
         <Routes>
           {/* Public routes */}

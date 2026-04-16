@@ -158,6 +158,7 @@ export const notifyIncomingMessage = ({
   }
 
   toast.message(body, {
+    id: `message-toast-${message._id}`,
     description,
     action: onOpenConversation
       ? {

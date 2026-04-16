@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Camera, Loader2, UserMinus, UserPlus } from "lucide-react";
+import { Camera, Loader2, LogOut, Trash2, TriangleAlert, UserMinus, UserPlus } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { chatServices } from "@/services/chatServices";
@@ -29,6 +29,7 @@ interface GroupInfoDialogProps {
 
 const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const { user } = useAuthStore();
+  const { deleteOrLeaveGroupConversation } = useChatStore();
   const { friends, getFriends, loading } = useFriendStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -36,6 +37,8 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [addingIds, setAddingIds] = useState<string[]>([]);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [actionType, setActionType] = useState<"leave" | "delete" | null>(null);
+  const [submittingAction, setSubmittingAction] = useState(false);
 
   const isOwner = chat.group?.createdBy === user?._id;
 
@@ -43,6 +46,12 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
     if (!open || !isOwner) return;
     void getFriends();
   }, [getFriends, isOwner, open]);
+
+  useEffect(() => {
+    if (open) return;
+    setActionType(null);
+    setSubmittingAction(false);
+  }, [open]);
 
   const members = useMemo(() => {
     const mapped = chat.participants.map((participant: Participant) => {
@@ -140,6 +149,24 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
       toast.error(message);
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  const handleConfirmDangerAction = async () => {
+    if (!actionType || submittingAction) return;
+
+    if (actionType === "leave" && isOwner) {
+      toast.warning("Không thể rời nhóm vì bạn là admin. Hãy xóa nhóm nếu muốn kết thúc nhóm này.");
+      return;
+    }
+
+    try {
+      setSubmittingAction(true);
+      await deleteOrLeaveGroupConversation(chat._id);
+      setOpen(false);
+    } finally {
+      setSubmittingAction(false);
+      setActionType(null);
     }
   };
 
@@ -312,6 +339,128 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
                 </div>
               ))}
             </div>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Rời nhóm hoặc xóa nhóm</p>
+              <p className="text-sm text-muted-foreground">
+                {isOwner
+                  ? "Bạn là chủ nhóm. Bạn có thể xóa nhóm, nhưng không thể rời nhóm khi vẫn còn là admin."
+                  : "Bạn có thể rời khỏi nhóm này bất cứ lúc nào."}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-border/70"
+                onClick={() => setActionType("leave")}
+              >
+                <LogOut className="mr-2 size-4" />
+                Rời nhóm
+              </Button>
+
+              {isOwner && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setActionType("delete")}
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Xóa nhóm
+                </Button>
+              )}
+            </div>
+
+            {actionType && (
+              <div className="rounded-xl border border-destructive/30 bg-background/80 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
+                    <TriangleAlert className="size-4" />
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-3">
+                    {actionType === "delete" ? (
+                      <>
+                        <div>
+                          <p className="text-sm font-semibold">Xác nhận xóa nhóm</p>
+                          <p className="text-sm text-muted-foreground">
+                            Nhóm sẽ bị xóa vĩnh viễn cho tất cả thành viên và không thể khôi phục.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setActionType(null)}
+                            disabled={submittingAction}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleConfirmDangerAction}
+                            disabled={submittingAction}
+                          >
+                            {submittingAction ? (
+                              <>
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                                Đang xóa...
+                              </>
+                            ) : (
+                              "Xác nhận"
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {isOwner ? "Không thể rời nhóm" : "Xác nhận rời nhóm"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {isOwner
+                              ? "Không thể rời nhóm vì bạn là admin. Bạn cần xóa nhóm nếu muốn kết thúc nhóm này."
+                              : "Sau khi rời nhóm, cuộc trò chuyện này sẽ bị xóa khỏi danh sách của bạn."}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setActionType(null)}
+                            disabled={submittingAction}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={isOwner ? "secondary" : "destructive"}
+                            onClick={handleConfirmDangerAction}
+                            disabled={isOwner || submittingAction}
+                          >
+                            {submittingAction ? (
+                              <>
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                                Đang xử lý...
+                              </>
+                            ) : (
+                              "Xác nhận"
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </DialogContent>

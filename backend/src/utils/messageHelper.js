@@ -55,15 +55,6 @@ export const emitNewMessage = (io, conversation, message, conversationPayload) =
   };
 
   io.to(conversation._id.toString()).emit("new-message", payload);
-
-  if (conversation.type === "direct") {
-    conversation.participants.forEach((participant) => {
-      const userId = participant.userId?.toString();
-      if (!userId) return;
-
-      io.to(userId).emit("new-message", payload);
-    });
-  }
 };
 
 export const emitMessageUpdated = (io, conversation, message) => {
