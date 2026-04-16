@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { notifyIncomingMessage } from "@/lib/messageNotifications";
 import type { SocketState } from "@/types/store";
 import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
@@ -42,6 +43,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("new-message", ({ message, conversation, unreadCounts }) => {
       useChatStore.getState().addMessage(message);
+      const { user } = useAuthStore.getState();
+      const { activeConversationId } = useChatStore.getState();
 
       const payloadLastMessage = conversation?.lastMessage ?? message;
       const senderId =
@@ -82,11 +85,47 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         ...(lastMessage ? { lastMessage } : {}),
       });
 
-      if (
-        useChatStore.getState().activeConversationId === message.conversationId
-      ) {
+      if (activeConversationId === message.conversationId) {
         useChatStore.getState().markasSeen();
       }
+
+      if (message.senderId === user?._id) {
+        return;
+      }
+
+      const isCurrentConversation = activeConversationId === message.conversationId;
+      const isWindowVisible =
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        document.hasFocus();
+
+      if (isCurrentConversation && isWindowVisible) {
+        return;
+      }
+
+      const openConversation = async () => {
+        const { messages, setActiveConversation, fetchMessages, markasSeen } =
+          useChatStore.getState();
+
+        setActiveConversation(message.conversationId);
+
+        if (!messages[message.conversationId]) {
+          await fetchMessages(message.conversationId);
+        }
+
+        if (document.visibilityState === "visible" && document.hasFocus()) {
+          await markasSeen();
+        }
+      };
+
+      notifyIncomingMessage({
+        conversation,
+        message,
+        currentUserId: user?._id,
+        onOpenConversation: () => {
+          void openConversation();
+        },
+      });
     });
 
     socket.on("message:updated", ({ message, conversation }) => {

@@ -8,6 +8,7 @@ import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
 import { useSocketStore } from "./stores/useSocketStore";
+import { requestDesktopNotificationPermission } from "./lib/messageNotifications";
 
 function App() {
   const { isDark, setTheme } = useThemeStore();
@@ -21,6 +22,7 @@ function App() {
   useEffect(() => {
     if (accessToken) {
       connectSocket();
+      requestDesktopNotificationPermission();
     }
 
     return () => disconnectSocket();
