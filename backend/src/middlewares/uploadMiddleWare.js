@@ -26,3 +26,36 @@ export const uploadImageFromBuffer = (buffer, options) => {
     uploadStream.end(buffer);
   });
 };
+
+const extractPublicIdFromCloudinaryUrl = (url) => {
+  if (!url) return null;
+
+  try {
+    const parsedUrl = new URL(url);
+    const uploadMarker = "/upload/";
+    const uploadIndex = parsedUrl.pathname.indexOf(uploadMarker);
+
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    let assetPath = parsedUrl.pathname.slice(uploadIndex + uploadMarker.length);
+    assetPath = assetPath.replace(/^v\d+\//, "");
+    assetPath = assetPath.replace(/\.[^/.]+$/, "");
+
+    return assetPath || null;
+  } catch {
+    return null;
+  }
+};
+
+export const deleteImageFromCloudinary = async (publicId) => {
+  if (!publicId) return null;
+  return cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+};
+
+export const deleteImageFromCloudinaryUrl = async (url) => {
+  const publicId = extractPublicIdFromCloudinaryUrl(url);
+  if (!publicId) return null;
+  return deleteImageFromCloudinary(publicId);
+};

@@ -7,7 +7,11 @@ import {
   updateConversationAfterCreateMessage,
 } from "../utils/messageHelper.js";
 import { getIo } from "../socket/index.js";
-import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
+import {
+  deleteImageFromCloudinary,
+  deleteImageFromCloudinaryUrl,
+  uploadImageFromBuffer,
+} from "../middlewares/uploadMiddleWare.js";
 
 const RECALL_PLACEHOLDER = "Bạn đã xóa một tin nhắn";
 
@@ -109,6 +113,7 @@ const createAndEmitMessage = async ({
   includeConversationPayload = false,
 }) => {
   let imgUrl = null;
+  let imgPublicId = null;
 
   if (file) {
     const result = await uploadImageFromBuffer(file.buffer, {
@@ -116,6 +121,7 @@ const createAndEmitMessage = async ({
       transformation: [{ width: 1600, height: 1600, crop: "limit" }],
     });
     imgUrl = result.secure_url;
+    imgPublicId = result.public_id;
   }
 
   const normalizedContent = content?.trim() || null;
@@ -126,6 +132,7 @@ const createAndEmitMessage = async ({
     senderId,
     content: normalizedContent,
     imgUrl,
+    imgPublicId,
     replyTo,
   });
 
@@ -355,8 +362,22 @@ export const deleteMessageForEveryone = async (req, res) => {
       return res.status(403).json({ message: "Bạn không thể thu hồi tin nhắn này" });
     }
 
+    const currentImgPublicId = message.imgPublicId;
+    const currentImgUrl = message.imgUrl;
+
+    if (currentImgPublicId || currentImgUrl) {
+      const deleteImagePromise = currentImgPublicId
+        ? deleteImageFromCloudinary(currentImgPublicId)
+        : deleteImageFromCloudinaryUrl(currentImgUrl);
+
+      await deleteImagePromise.catch((deleteError) => {
+        console.error("KhÃ´ng thá»ƒ xÃ³a áº£nh tin nháº¯n trÃªn Cloudinary:", deleteError);
+      });
+    }
+
     message.content = null;
     message.imgUrl = null;
+    message.imgPublicId = null;
     message.replyTo = null;
     message.reactions = [];
     message.isDeletedForEveryone = true;

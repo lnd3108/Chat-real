@@ -1,4 +1,7 @@
-import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
+import {
+  deleteImageFromCloudinary,
+  uploadImageFromBuffer,
+} from "../middlewares/uploadMiddleWare.js";
 import User from "../models/User.js";
 
 export const authMe = async (req, res) => {
@@ -45,7 +48,15 @@ export const uploadAvatar = async (req, res) => {
       return res.status(400).json({ message: "Không có file được tải lên" });
     }
 
+    const currentUser = await User.findById(userId).select("avatarId");
     const result = await uploadImageFromBuffer(file.buffer);
+
+    if (currentUser?.avatarId) {
+      await deleteImageFromCloudinary(currentUser.avatarId).catch((error) => {
+        console.error("KhÃ´ng thá»ƒ xÃ³a avatar cÅ© trÃªn Cloudinary:", error);
+      });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {

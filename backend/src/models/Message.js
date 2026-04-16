@@ -70,6 +70,10 @@ const messageSchema = new mongoose.Schema(
     imgUrl: {
       type: String,
     },
+    imgPublicId: {
+      type: String,
+      default: null,
+    },
     replyTo: {
       type: replyToSchema,
       default: null,

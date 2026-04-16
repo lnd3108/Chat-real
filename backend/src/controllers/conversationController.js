@@ -1,7 +1,10 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import { uploadImageFromBuffer } from "../middlewares/uploadMiddleWare.js";
+import {
+  deleteImageFromCloudinary,
+  uploadImageFromBuffer,
+} from "../middlewares/uploadMiddleWare.js";
 import { getIo } from "../socket/index.js";
 import {
   emitNewMessage,
@@ -739,6 +742,13 @@ export const uploadGroupAvatar = async (req, res) => {
       folder: "chat_app/group_avatars",
       transformation: [{ width: 256, height: 256, crop: "fill" }],
     });
+    const previousAvatarId = conversation.group?.avatarId;
+
+    if (previousAvatarId) {
+      await deleteImageFromCloudinary(previousAvatarId).catch((error) => {
+        console.error("KhÃ´ng thá»ƒ xÃ³a avatar nhÃ³m cÅ© trÃªn Cloudinary:", error);
+      });
+    }
 
     conversation.group.avatarUrl = uploadResult.secure_url;
     conversation.group.avatarId = uploadResult.public_id;
