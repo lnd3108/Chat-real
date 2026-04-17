@@ -2,6 +2,7 @@ import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
 import { getParticipantId } from "./chatParticipants";
+import { isGroupNotificationEnabled } from "./groupNotificationSettings";
 
 type NotificationSetting = {
   enableAll: boolean;
@@ -128,6 +129,10 @@ export const notifyIncomingMessage = ({
   currentUserId,
   onOpenConversation,
 }: NotifyIncomingMessageArgs) => {
+  if (conversation?.type === "group" && !isGroupNotificationEnabled(conversation._id)) {
+    return;
+  }
+
   const settings = getNotificationSettings();
   if (!settings.enableAll || !settings.messageNotification) {
     return;

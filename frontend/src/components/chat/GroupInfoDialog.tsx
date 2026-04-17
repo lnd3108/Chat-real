@@ -36,17 +36,24 @@ import UserAvatar from "./UserAvatar";
 
 interface GroupInfoDialogProps {
   chat: Conversation;
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
+const GroupInfoDialog = ({
+  chat,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: GroupInfoDialogProps) => {
   const { user } = useAuthStore();
   const { deleteOrLeaveGroupConversation, fetchMessages, messages } = useChatStore();
   const { friends, getFriends, loading } = useFriendStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const dangerActionRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [addingIds, setAddingIds] = useState<string[]>([]);
@@ -57,6 +64,14 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [sharedAssetsLoading, setSharedAssetsLoading] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) {
+      setInternalOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   const isOwner = chat.group?.createdBy === user?._id;
 
@@ -250,7 +265,7 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
     try {
       setSubmittingAction(true);
       await deleteOrLeaveGroupConversation(chat._id);
-      setOpen(false);
+      handleOpenChange(false);
     } finally {
       setSubmittingAction(false);
       setActionType(null);
@@ -258,8 +273,8 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
 
       <DialogContent className="max-h-[88vh] sm:max-w-2xl">
         <DialogHeader className="pr-8">
