@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Label } from "../ui/label";
 import { useAuthStore } from "@/stores/useAuthStore";
 
@@ -151,7 +152,14 @@ export function SignupForm({
                 className="w-full"
                 disabled={isSubmitting || loading}
               >
-                {loading ? "Đang tạo tài khoản và gửi mã..." : "Tạo tài khoản"}
+                {loading ? (
+                  <>
+                    <LoadingSpinner className="mr-2 size-4" />
+                    Đang tạo tài khoản và gửi mã...
+                  </>
+                ) : (
+                  "Tạo tài khoản"
+                )}
               </Button>
 
               <div className="text-center text-sm">
