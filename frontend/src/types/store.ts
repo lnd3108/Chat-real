@@ -143,3 +143,36 @@ export interface FriendState {
 export interface UserState {
   updateAvatarUrl: (formData: FormData) => Promise<void>;
 }
+
+export interface AppNotification {
+  id: string;
+  type:
+    | "friend_request"
+    | "new_message"
+    | "added_to_group"
+    | "conversation_removed"
+    | "conversation_deleted";
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+  actorName?: string;
+  entityId?: string;
+  conversationId?: string;
+  messageId?: string;
+}
+
+export interface NotificationState {
+  items: AppNotification[];
+  addNotification: (
+    notification: Omit<AppNotification, "isRead" | "createdAt"> & {
+      isRead?: boolean;
+      createdAt?: string;
+    },
+  ) => void;
+  syncFriendRequestNotifications: (requests: FriendRequest[]) => void;
+  removeNotificationByEntity: (entityId: string) => void;
+  removeNotification: (id: string) => void;
+  markAllAsRead: () => void;
+  unreadCount: () => number;
+}

@@ -1,5 +1,5 @@
 import { ChevronsUpDown, LogOut, UserIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,13 +19,14 @@ import {
 } from "@/components/ui/sidebar";
 
 import type { User } from "@/types/user";
-import FriendRequestDialog from "../friendRequest/FriendRequestDialog";
 import ProfileDialog from "../profile/ProfileDialog";
 
 import { useFriendStore } from "@/stores/useFriendStore";
 import NotificationMenuItem from "../profile/NotificationMenuItem";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNavigate } from "react-router";
+import { useNotificationStore } from "@/stores/useNotificationStore";
+import NotificationCenterDialog from "../profile/NotificationCenterDialog";
 
 
 export function NavUser({ user }: { user: User }) {
@@ -33,12 +34,11 @@ export function NavUser({ user }: { user: User }) {
   const { signOut } = useAuthStore();
   const navigate = useNavigate();
 
-  const [friendRequestOpen, setFriendRequestOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const { receivedList, getAllFriendRequests } = useFriendStore();
-
-  const notiCount = useMemo(() => receivedList?.length ?? 0, [receivedList]);
+  const { getAllFriendRequests } = useFriendStore();
+  const notiCount = useNotificationStore((state) => state.unreadCount());
 
   useEffect(() => {
     getAllFriendRequests();
@@ -109,7 +109,7 @@ export function NavUser({ user }: { user: User }) {
 
                 <NotificationMenuItem
                   count={notiCount}
-                  onClick={() => setFriendRequestOpen(true)}
+                  onClick={() => setNotificationOpen(true)}
                 />
               </DropdownMenuGroup>
 
@@ -128,10 +128,9 @@ export function NavUser({ user }: { user: User }) {
         </SidebarMenuItem>
       </SidebarMenu>
 
-      <FriendRequestDialog
-        open={friendRequestOpen}
-        setOpen={setFriendRequestOpen}
-        defaultTab="received"
+      <NotificationCenterDialog
+        open={notificationOpen}
+        setOpen={setNotificationOpen}
       />
 
       <ProfileDialog open={profileOpen} setOpen={setProfileOpen} />

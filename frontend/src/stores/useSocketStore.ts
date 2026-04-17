@@ -1,11 +1,13 @@
 import axios from "@/lib/axios";
-import { getParticipantId } from "@/lib/chatParticipants";
+import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 import { notifyIncomingMessage } from "@/lib/messageNotifications";
 import type { SocketState } from "@/types/store";
+import type { Participant } from "@/types/chat";
 import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
+import { useNotificationStore } from "./useNotificationStore";
 import { toast } from "sonner";
 
 const baseURL = import.meta.env.VITE_SOCKET_URL;
@@ -101,6 +103,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         updateConversation,
       } = useChatStore.getState();
       const { user } = useAuthStore.getState();
+      const senderParticipant = conversation?.participants?.find(
+        (participant: Participant) => getParticipantId(participant) === message.senderId,
+      );
+      const senderProfile = getParticipantProfile(senderParticipant);
 
       if (conversation?.participants?.length) {
         addConvo(conversation, { activate: false });
@@ -161,6 +167,17 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       if (message.senderId === user?._id) {
         return;
       }
+
+      useNotificationStore.getState().addNotification({
+        id: `message-${message._id}`,
+        type: "new_message",
+        title: "Tin nhắn mới",
+        message: `${senderProfile?.displayName ?? "Ai đó"} vừa gửi tin nhắn cho bạn`,
+        actorName: senderProfile?.displayName,
+        entityId: message._id,
+        conversationId: message.conversationId,
+        messageId: message._id,
+      });
 
       const isCurrentConversation = activeConversationId === message.conversationId;
       const isWindowVisible =
@@ -230,6 +247,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:deleted", ({ conversationId }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
+      useNotificationStore.getState().addNotification({
+        id: `conversation-deleted-${conversationId}-${Date.now()}`,
+        type: "conversation_deleted",
+        title: "Cuộc trò chuyện đã bị xóa",
+        message: "Một cuộc trò chuyện đã bị xóa khỏi danh sách của bạn",
+        entityId: conversationId,
+      });
     });
 
     socket.on("conversation:direct-cleared", ({ conversationId }) => {
@@ -238,6 +262,15 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:left", ({ conversationId, groupName, removedByOther }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
+      useNotificationStore.getState().addNotification({
+        id: `conversation-left-${conversationId}-${Date.now()}`,
+        type: "conversation_removed",
+        title: removedByOther ? "Bạn đã bị xóa khỏi nhóm" : "Bạn đã rời nhóm",
+        message: removedByOther
+          ? `Bạn đã bị xóa khỏi ${groupName ?? "nhóm"}`
+          : `Bạn đã rời ${groupName ?? "nhóm"}`,
+        entityId: conversationId,
+      });
       toast.message(
         removedByOther
           ? `Bạn đã bị xóa khỏi ${groupName ?? "nhóm"}`
@@ -284,6 +317,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
     });
     socket.on("added-to-group", ({ groupName }) => {
+      useNotificationStore.getState().addNotification({
+        id: `added-to-group-${groupName}-${Date.now()}`,
+        type: "added_to_group",
+        title: "Bạn được thêm vào nhóm",
+        message: `Bạn vừa được thêm vào ${groupName}`,
+      });
       toast.success(`Bạn vừa được thêm vào ${groupName}`);
     });
   },

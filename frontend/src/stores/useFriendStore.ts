@@ -1,6 +1,7 @@
 import { friendService } from "@/services/friendService";
 import type { FriendState } from "@/types/store";
 import { create } from "zustand";
+import { useNotificationStore } from "./useNotificationStore";
 
 export const useFriendStore = create<FriendState>((set) => ({
   friends: [],
@@ -50,6 +51,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       const { received, sent } = result;
 
       set({ receivedList: received, sentList: sent });
+      useNotificationStore.getState().syncFriendRequestNotifications(received);
     } catch (error) {
       console.error("loi xayr ra khi getAllFriendRequests", error);
     } finally {
@@ -65,6 +67,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set((state) => ({
         receivedList: state.receivedList.filter((r) => r._id !== requestId),
       }));
+      useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
       console.error("Loi xay ra khi acceptRequest", error);
     }
@@ -79,6 +82,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set((state) => ({
         receivedList: state.receivedList.filter((r) => r._id !== requestId),
       }));
+      useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
       console.error("Loi xay ra khi declineRequest", error);
     } finally {
