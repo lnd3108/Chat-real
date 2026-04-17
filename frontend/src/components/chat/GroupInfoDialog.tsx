@@ -171,11 +171,9 @@ const GroupInfoDialog = ({
     [friends, memberIds, search],
   );
 
-  const conversationMessages = messages[chat._id]?.items ?? [];
-
   const sharedMedia = useMemo(
     () =>
-      conversationMessages
+      (messages[chat._id]?.items ?? [])
         .filter(
           (message): message is Message & { imgUrl: string } =>
             !!message.imgUrl && !message.isDeletedForEveryone && !message.isHiddenForMe,
@@ -183,7 +181,7 @@ const GroupInfoDialog = ({
         .sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
-    [conversationMessages],
+    [chat._id, messages],
   );
 
   const previewMedia = sharedMedia.slice(0, 8);

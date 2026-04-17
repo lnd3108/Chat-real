@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import type { Conversation, Message } from "@/types/chat";
 import { getParticipantId } from "./chatParticipants";
 import { isGroupNotificationEnabled } from "./groupNotificationSettings";
+import { isDirectNotificationEnabled } from "./directChatPreferences";
 
 type NotificationSetting = {
   enableAll: boolean;
@@ -130,6 +131,10 @@ export const notifyIncomingMessage = ({
   onOpenConversation,
 }: NotifyIncomingMessageArgs) => {
   if (conversation?.type === "group" && !isGroupNotificationEnabled(conversation._id)) {
+    return;
+  }
+
+  if (conversation?.type === "direct" && !isDirectNotificationEnabled(conversation._id)) {
     return;
   }
 

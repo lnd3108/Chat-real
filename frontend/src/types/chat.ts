@@ -1,10 +1,20 @@
 export interface Participant {
   userId?:
     | string
-    | { _id: string; displayName?: string; avatarUrl?: string | null };
+    | {
+        _id: string;
+        userName?: string;
+        displayName?: string;
+        avatarUrl?: string | null;
+        bio?: string | null;
+        phone?: string | null;
+        email?: string;
+      };
   _id?: string;
+  userName?: string;
   displayName?: string;
   avatarUrl?: string | null;
+  bio?: string | null;
   joinedAt?: string;
 }
 

@@ -4,9 +4,9 @@ import { toast } from "sonner";
 
 import type { Conversation } from "@/types/chat";
 import {
-  isGroupNotificationEnabled,
-  setGroupNotificationEnabled,
-} from "@/lib/groupNotificationSettings";
+  isDirectNotificationEnabled,
+  setDirectNotificationEnabled,
+} from "@/lib/directChatPreferences";
 import {
   Dialog,
   DialogContent,
@@ -16,23 +16,29 @@ import {
 } from "../ui/dialog";
 import { Switch } from "../ui/switch";
 
-interface GroupNotificationSettingsDialogProps {
+interface DirectNotificationSettingsDialogProps {
   chat: Conversation;
+  displayName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const GroupNotificationSettingsDialog = ({
+const DirectNotificationSettingsDialog = ({
   chat,
+  displayName,
   open,
   onOpenChange,
-}: GroupNotificationSettingsDialogProps) => {
-  const [enabled, setEnabled] = useState(() => isGroupNotificationEnabled(chat._id));
+}: DirectNotificationSettingsDialogProps) => {
+  const [enabled, setEnabled] = useState(() => isDirectNotificationEnabled(chat._id));
 
   const handleToggle = (nextValue: boolean) => {
     setEnabled(nextValue);
-    setGroupNotificationEnabled(chat._id, nextValue);
-    toast.success(nextValue ? "Đã bật thông báo cho nhóm" : "Đã tắt thông báo cho nhóm");
+    setDirectNotificationEnabled(chat._id, nextValue);
+    toast.success(
+      nextValue
+        ? "Đã bật thông báo cho đoạn chat này"
+        : "Đã tắt thông báo cho đoạn chat này",
+    );
   };
 
   return (
@@ -41,19 +47,20 @@ const GroupNotificationSettingsDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {enabled ? <Bell className="size-4" /> : <BellOff className="size-4" />}
-            Cài đặt thông báo nhóm
+            Cài đặt thông báo
           </DialogTitle>
           <DialogDescription>
-            Bật hoặc tắt thông báo riêng cho nhóm {chat.group?.name ?? "này"}.
+            Bật hoặc tắt thông báo riêng cho cuộc trò chuyện với{" "}
+            {displayName || "người dùng này"}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium">Thông báo nhóm</p>
+              <p className="text-sm font-medium">Thông báo direct chat</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Khi tắt, nhóm này sẽ không hiện popup thông báo tin nhắn mới.
+                Khi tắt, cuộc trò chuyện này sẽ không hiện popup thông báo tin nhắn mới.
               </p>
             </div>
 
@@ -65,4 +72,4 @@ const GroupNotificationSettingsDialog = ({
   );
 };
 
-export default GroupNotificationSettingsDialog;
+export default DirectNotificationSettingsDialog;

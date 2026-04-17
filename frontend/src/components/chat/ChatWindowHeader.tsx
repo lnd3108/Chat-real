@@ -10,6 +10,8 @@ import GroupChatAvatar from "./GroupChatAvatar";
 import { useSocketStore } from "@/stores/useSocketStore";
 import GroupInfoDialog from "./GroupInfoDialog";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
+import DirectProfileDialog from "./DirectProfileDialog";
+import DirectInfoDialog from "./DirectInfoDialog";
 import {
   Dialog,
   DialogContent,
@@ -60,13 +62,30 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
           <div className="relative">
             {activeChat.type === "direct" ? (
               <>
-                <UserAvatar
-                  type="sidebar"
-                  name={otherUser?.displayName || "ChatRealTime"}
+                <DirectProfileDialog
+                  displayName={otherUser?.displayName || "ChatRealTime"}
+                  userName={otherUser?.userName}
                   avatarUrl={otherUser?.avatarUrl || undefined}
-                />
-                <StatusBadge
-                  status={onlineUsers.includes(otherId) ? "online" : "offline"}
+                  bio={otherUser?.bio}
+                  statusLabel={
+                    onlineUsers.includes(otherId) ? "Đang hoạt động" : "Ngoại tuyến"
+                  }
+                  trigger={
+                    <button
+                      type="button"
+                      className="relative block rounded-full transition-opacity hover:opacity-90"
+                      aria-label="Xem hồ sơ người dùng"
+                    >
+                      <UserAvatar
+                        type="sidebar"
+                        name={otherUser?.displayName || "ChatRealTime"}
+                        avatarUrl={otherUser?.avatarUrl || undefined}
+                      />
+                      <StatusBadge
+                        status={onlineUsers.includes(otherId) ? "online" : "offline"}
+                      />
+                    </button>
+                  }
                 />
               </>
             ) : (
@@ -135,6 +154,22 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
                 <Settings className="size-4" />
                 <span className="sr-only">Cài đặt nhóm</span>
+              </Button>
+            }
+          />
+        )}
+
+        {activeChat.type === "direct" && (
+          <DirectInfoDialog
+            chat={activeChat}
+            displayName={otherUser?.displayName || "ChatRealTime"}
+            userName={otherUser?.userName}
+            avatarUrl={otherUser?.avatarUrl || undefined}
+            bio={otherUser?.bio}
+            trigger={
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                <Settings className="size-4" />
+                <span className="sr-only">Cài đặt đoạn chat</span>
               </Button>
             }
           />
