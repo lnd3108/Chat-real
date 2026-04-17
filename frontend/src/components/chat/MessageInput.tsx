@@ -1,5 +1,5 @@
 ﻿import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -30,6 +30,9 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [pendingAction, setPendingAction] = useState<
     "message" | "image" | "edit" | null
   >(null);
+  const uploadProgressValueRef = useRef(0);
+  const uploadProgressTargetRef = useRef(0);
+  const uploadProgressTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!editingMessage) return;
@@ -49,7 +52,69 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     };
   }, [previewUrl]);
 
+  useEffect(() => {
+    uploadProgressValueRef.current = uploadProgress;
+  }, [uploadProgress]);
+
   if (!user) return null;
+
+  const runUploadProgressAnimation = () => {
+    if (uploadProgressTimerRef.current) return;
+
+    const tick = () => {
+      const current = uploadProgressValueRef.current;
+      const target = uploadProgressTargetRef.current;
+
+      if (current >= target) {
+        uploadProgressTimerRef.current = null;
+        return;
+      }
+
+      const gap = target - current;
+      const step = gap > 20 ? 4 : gap > 10 ? 3 : gap > 4 ? 2 : 1;
+      const next = Math.min(current + step, target);
+
+      uploadProgressValueRef.current = next;
+      setUploadProgress(next);
+
+      if (next < target) {
+        uploadProgressTimerRef.current = window.setTimeout(tick, 40);
+      } else {
+        uploadProgressTimerRef.current = null;
+      }
+    };
+
+    uploadProgressTimerRef.current = window.setTimeout(tick, 40);
+  };
+
+  const setUploadProgressTarget = (progress: number) => {
+    uploadProgressTargetRef.current = Math.max(0, Math.min(progress, 100));
+    runUploadProgressAnimation();
+  };
+
+  const finishUploadProgress = async () => {
+    setUploadProgressTarget(100);
+
+    await new Promise<void>((resolve) => {
+      const waitForComplete = () => {
+        if (uploadProgressTargetRef.current !== 100) {
+          resolve();
+          return;
+        }
+
+        if (uploadProgressValueRef.current >= 100) {
+          resolve();
+          return;
+        }
+
+        window.setTimeout(waitForComplete, 30);
+      };
+
+      waitForComplete();
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 120));
+  };
 
   const resetImage = () => {
     if (previewUrl) {
@@ -92,6 +157,8 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     try {
       setSending(true);
       setPendingAction(nextAction);
+      uploadProgressValueRef.current = hasImage ? 0 : 100;
+      uploadProgressTargetRef.current = hasImage ? 0 : 100;
       setUploadProgress(hasImage ? 0 : 100);
 
       if (editingMessage?._id) {
@@ -111,15 +178,19 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
         if (image) {
           await sendDirectMessageWithImage(otherUser._id, image, currValue, {
-            onUploadProgress: setUploadProgress,
+            onUploadProgress: (progress) =>
+              setUploadProgressTarget(Math.min(progress, 95)),
           });
+          await finishUploadProgress();
         } else {
           await sendDirectMessage(otherUser._id, currValue);
         }
       } else if (image) {
         await sendGroupMessageWithImage(selectedConvo._id, image, currValue, {
-          onUploadProgress: setUploadProgress,
+          onUploadProgress: (progress) =>
+            setUploadProgressTarget(Math.min(progress, 95)),
         });
+        await finishUploadProgress();
       } else {
         await sendGroupMessage(selectedConvo._id, currValue);
       }
@@ -138,6 +209,12 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     } finally {
       setSending(false);
       setPendingAction(null);
+      uploadProgressTargetRef.current = 0;
+      uploadProgressValueRef.current = 0;
+      if (uploadProgressTimerRef.current) {
+        window.clearTimeout(uploadProgressTimerRef.current);
+        uploadProgressTimerRef.current = null;
+      }
       setUploadProgress(0);
     }
   };
