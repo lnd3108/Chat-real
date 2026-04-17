@@ -51,7 +51,7 @@ const GroupChatAvatar = ({
         >
           <AvatarImage
             src={avatarUrl}
-            alt={groupName ?? "Group avatar"}
+            alt={groupName ?? "Ảnh đại diện nhóm"}
             className={cn(
               "transition-opacity duration-300",
               imageLoaded ? "opacity-100" : "opacity-0",
@@ -60,7 +60,7 @@ const GroupChatAvatar = ({
             onError={() => setLoadedSrc(avatarUrl)}
           />
           <AvatarFallback className="bg-sky-600 text-white">
-            {(groupName ?? "Group").charAt(0)}
+            {(groupName ?? "Nhóm").charAt(0)}
           </AvatarFallback>
         </Avatar>
 
@@ -96,7 +96,7 @@ const GroupChatAvatar = ({
           >
             <AvatarImage
               src={member.avatarUrl ?? undefined}
-              alt={member.displayName ?? "Group member"}
+              alt={member.displayName ?? "Thành viên nhóm"}
             />
             <AvatarFallback className="bg-slate-500 text-white font-semibold">
               {(member.displayName ?? "U").charAt(0)}

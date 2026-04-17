@@ -97,7 +97,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
                   {activeChat.group?.avatarUrl && (
                     <img
                       src={activeChat.group.avatarUrl}
-                      alt={activeChat.group?.name ?? "Group avatar"}
+                      alt={activeChat.group?.name ?? "Ảnh đại diện nhóm"}
                       className="h-screen w-screen object-contain"
                     />
                   )}

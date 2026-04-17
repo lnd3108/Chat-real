@@ -49,13 +49,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       isRefreshingSocketAuth = false;
-      console.log("Connected socket successfully");
+      console.log("Kết nối socket thành công");
       socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
     });
 
     socket.on("connect_error", async (error: SocketConnectError) => {
       if (error?.message) {
-        console.warn("Socket connection error:", error.message);
+        console.warn("Lỗi kết nối socket:", error.message);
       }
 
       if (error?.data?.code !== "TOKEN_EXPIRED" || isRefreshingSocketAuth) {
@@ -77,7 +77,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         socket.auth = { ...socket.auth, token: newAccessToken };
         socket.connect();
       } catch (refreshError) {
-        console.error("Failed to refresh socket token:", refreshError);
+        console.error("Không thể làm mới token cho socket:", refreshError);
         socket.disconnect();
         set({ socket: null, onlineUsers: [] });
       } finally {
@@ -296,7 +296,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       localStorage.setItem(SHOW_ONLINE_STATUS_KEY, String(value));
       set({ showOnlineStatus: value });
     } catch (error) {
-      console.error("Failed to load showOnlineStatus:", error);
+      console.error("Không thể tải trạng thái hiển thị online:", error);
     }
   },
 

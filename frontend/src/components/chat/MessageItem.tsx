@@ -33,6 +33,11 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import {
   Heart,
   Loader2,
   MessageSquareReply,
@@ -96,6 +101,34 @@ const MessageItem = ({
     ? "Bạn đã xóa một tin nhắn"
     : `${participant?.displayName ?? "Người dùng"} đã xóa một tin nhắn`;
   const isBusy = pendingAction !== null;
+  const isDeletingImage =
+    !!message.imgUrl &&
+    (pendingAction === "delete-me" || pendingAction === "delete-all");
+  const lastMessageStatusLabel =
+    lastMessageStatus === "seen" ? "Đã xem" : "Đã gửi";
+  const replyPreviewLabel = message.replyTo?.isDeletedForEveryone
+    ? "Tin nhắn này đã bị thu hồi"
+    : message.replyTo?.content || (message.replyTo?.imgUrl ? "Hình ảnh" : "Tin nhắn");
+
+  const handleJumpToReplyMessage = () => {
+    const replyMessageId = message.replyTo?.messageId;
+    if (!replyMessageId) return;
+
+    const target = document.getElementById(`message-${replyMessageId}`);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ring-2", "ring-primary/60", "ring-offset-2", "ring-offset-background");
+
+    window.setTimeout(() => {
+      target.classList.remove(
+        "ring-2",
+        "ring-primary/60",
+        "ring-offset-2",
+        "ring-offset-background",
+      );
+    }, 1800);
+  };
 
   const handleToggleReaction = async (emoji: string) => {
     if (isBusy) return;
@@ -161,8 +194,9 @@ const MessageItem = ({
       )}
 
       <div
+        id={`message-${message._id}`}
         className={cn(
-          "message-bounce mt-1 flex gap-2",
+          "message-bounce mt-1 flex gap-2 rounded-xl transition-shadow",
           message.isOwn ? "justify-end" : "justify-start",
         )}
       >
@@ -192,17 +226,20 @@ const MessageItem = ({
           >
             <div className="space-y-2">
               {message.replyTo && (
-                <div className="rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={handleJumpToReplyMessage}
+                  className="w-full rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/55"
+                >
                   <p className="font-medium text-primary">
                     {message.replyTo.senderId === user?._id
                       ? "Bạn"
                       : replySender?.displayName ?? "Người gửi"}
                   </p>
                   <p className="truncate text-muted-foreground">
-                    {message.replyTo.content ||
-                      (message.replyTo.imgUrl ? "Hình ảnh" : "Tin nhắn")}
+                    {replyPreviewLabel}
                   </p>
-                </div>
+                </button>
               )}
 
               {message.isDeletedForEveryone ? (
@@ -216,14 +253,23 @@ const MessageItem = ({
                       <DialogTrigger asChild>
                         <button
                           type="button"
-                          className="overflow-hidden rounded-lg transition-opacity hover:opacity-90"
+                          className="relative overflow-hidden rounded-lg transition-opacity hover:opacity-90 disabled:cursor-wait"
                           aria-label="Phóng to ảnh trong cuộc trò chuyện"
+                          disabled={isDeletingImage}
                         >
                           <img
                             src={message.imgUrl}
-                            alt="Message attachment"
+                            alt="Ảnh đính kèm trong tin nhắn"
                             className="max-h-72 w-auto max-w-full cursor-zoom-in rounded-lg object-cover"
                           />
+                          {isDeletingImage && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/55 text-white backdrop-blur-[1px]">
+                              <Loader2 className="size-5 animate-spin" />
+                              <span className="text-xs font-medium">
+                                Đang xóa ảnh...
+                              </span>
+                            </div>
+                          )}
                         </button>
                       </DialogTrigger>
                       <DialogContent
@@ -238,7 +284,7 @@ const MessageItem = ({
                         </DialogDescription>
                         <img
                           src={message.imgUrl}
-                          alt="Message attachment enlarged"
+                          alt="Ảnh đính kèm được phóng to"
                           className="h-screen w-screen object-contain"
                         />
                       </DialogContent>
@@ -292,20 +338,25 @@ const MessageItem = ({
           <div className="flex items-center gap-1">
             {!message.isDeletedForEveryone && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 rounded-full"
-                    disabled={isBusy}
-                  >
-                    {pendingAction === "reaction" ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <SmilePlus className="size-4" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 rounded-full"
+                        disabled={isBusy}
+                      >
+                        {pendingAction === "reaction" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <SmilePlus className="size-4" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Bày tỏ cảm xúc</TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
                   <div className="flex gap-1 px-1 py-1">
                     {reactionOptions.map((emoji) => (
@@ -324,33 +375,43 @@ const MessageItem = ({
               </DropdownMenu>
             )}
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 rounded-full"
-              disabled={isBusy}
-              onClick={() => setReplyingTo(message)}
-            >
-              <MessageSquareReply className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 rounded-full"
+                  disabled={isBusy}
+                  onClick={() => setReplyingTo(message)}
+                >
+                  <MessageSquareReply className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Trả lời</TooltipContent>
+            </Tooltip>
 
             {!message.isDeletedForEveryone && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 rounded-full"
-                    disabled={isBusy}
-                  >
-                    {pendingAction === "delete-me" || pendingAction === "delete-all" ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <MoreHorizontal className="size-4" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 rounded-full"
+                        disabled={isBusy}
+                      >
+                        {pendingAction === "delete-me" || pendingAction === "delete-all" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <MoreHorizontal className="size-4" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Xem thêm</TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
                   {canEdit && (
                     <DropdownMenuItem
@@ -458,7 +519,7 @@ const MessageItem = ({
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {lastMessageStatus}
+              {lastMessageStatusLabel}
             </Badge>
           )}
         </div>

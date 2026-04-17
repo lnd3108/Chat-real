@@ -50,12 +50,35 @@ const buildReplySnapshot = async (conversationId, replyToMessageId) => {
   return {
     messageId: replyMessage._id,
     senderId: replyMessage.senderId,
+    isDeletedForEveryone: !!replyMessage.isDeletedForEveryone,
     content: replyMessage.isDeletedForEveryone
       ? RECALL_PLACEHOLDER
       : (replyMessage.content ?? null),
     imgUrl: replyMessage.isDeletedForEveryone ? null : (replyMessage.imgUrl ?? null),
     type: replyMessage.type ?? "user",
   };
+};
+
+const syncReplySnapshotsAfterRecall = async (conversation, recalledMessage) => {
+  const impactedMessages = await Message.find({
+    conversationId: conversation._id,
+    "replyTo.messageId": recalledMessage._id,
+  });
+
+  if (impactedMessages.length === 0) return;
+
+  const io = getIo();
+
+  for (const impactedMessage of impactedMessages) {
+    if (!impactedMessage.replyTo) continue;
+
+    impactedMessage.replyTo.content = RECALL_PLACEHOLDER;
+    impactedMessage.replyTo.imgUrl = null;
+    impactedMessage.replyTo.isDeletedForEveryone = true;
+
+    await impactedMessage.save();
+    emitMessageUpdated(io, conversation, impactedMessage);
+  }
 };
 
 const findLatestVisibleMessage = async (conversationId) =>
@@ -383,6 +406,8 @@ export const deleteMessageForEveryone = async (req, res) => {
     message.isDeletedForEveryone = true;
     message.editedAt = null;
     await message.save();
+
+    await syncReplySnapshotsAfterRecall(conversation, message);
 
     if (conversation.lastMessage?._id?.toString() === message._id.toString()) {
       await syncConversationAndEmitUpdate(conversation, message);

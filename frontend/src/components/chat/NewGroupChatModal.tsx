@@ -50,9 +50,8 @@ const NewGroupChatModal = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     try {
       e.preventDefault();
-      // Handle form submission logic here
       if (invitedUsers.length === 0) {
-        toast.warning("Please invite at least one friend to the group chat.");
+        toast.warning("Hãy chọn ít nhất một người bạn vào nhóm.");
         return;
       }
 
@@ -65,8 +64,8 @@ const NewGroupChatModal = () => {
       resetForm();
       setOpen(false);
     } catch (error) {
-      console.error("Error creating group chat:", error);
-      toast.error("Failed to create group chat. Please try again.");
+      console.error("Lỗi khi tạo nhóm chat:", error);
+      toast.error("Không thể tạo nhóm chat. Vui lòng thử lại.");
     }
   };
 
@@ -91,14 +90,14 @@ const NewGroupChatModal = () => {
           className="flex z-10 justify-center items-center size-5 rounded-full hover:bg-sidebar-accent transition cursor-pointer"
         >
           <Users className="size-4" />
-          <span className="sr-only">New Group Chat</span>
+          <span className="sr-only">Tạo nhóm chat mới</span>
         </Button>
       </DialogTrigger>
 
       {/* Dialog Content can be added here later */}
       <DialogContent className="sm:max-w-[425px] border-none">
         <DialogHeader>
-          <DialogTitle>New Group Chat</DialogTitle>
+          <DialogTitle>Tạo nhóm chat mới</DialogTitle>
           <DialogDescription>Chọn bạn bè và đặt tên nhóm</DialogDescription>
         </DialogHeader>
 
@@ -106,11 +105,11 @@ const NewGroupChatModal = () => {
           {/* Group Name Input */}
           <div className="space-y-2">
             <Label htmlFor="group-name" className="text-sm font-semibold">
-              Group Name
+              Tên nhóm
             </Label>
             <Input
               id="group-name"
-              placeholder="Enter group name"
+              placeholder="Nhập tên nhóm"
               className="glass border-border/50 focus:border-primary/50 transition-smooth"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
@@ -121,11 +120,11 @@ const NewGroupChatModal = () => {
           {/* Friends List and Search can be added here later */}
           <div className="space-y-2">
             <Label htmlFor="invite" className="text-sm font-semibold">
-              Add Friends
+              Thêm bạn bè
             </Label>
             <Input
               id="invite"
-              placeholder="Search friends..."
+              placeholder="Tìm bạn bè..."
               className="glass border-border/50 focus:border-primary/50 transition-smooth"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -152,11 +151,11 @@ const NewGroupChatModal = () => {
               className="flex-1 bg-gradient-chat text-white hover:opacity/90 transition-smooth"
             >
               {loading ? (
-                <span>Creating...</span>
+                <span>Đang tạo nhóm...</span>
               ) : (
                 <>
                   <UserPlus className="size-4 mr-2" />
-                  <span>Create Group Chat</span>
+                  <span>Tạo nhóm chat</span>
                 </>
               )}
             </Button>

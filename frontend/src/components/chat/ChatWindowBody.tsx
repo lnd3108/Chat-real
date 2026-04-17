@@ -94,7 +94,7 @@ const ChatWindowBody = () => {
   if (!messages.length) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        Chua co tin nhan nao trong cuoc tro chuyen nay.
+        Chưa có tin nhắn nào trong cuộc trò chuyện này.
       </div>
     );
   }
@@ -113,7 +113,7 @@ const ChatWindowBody = () => {
           next={fetchMoreMessages}
           hasMore={hasMore}
           scrollableTarget="scrollableDiv"
-          loader={<p>Dang tai...</p>}
+          loader={<p>Đang tải thêm tin nhắn...</p>}
           inverse={true}
           style={{
             display: "flex",

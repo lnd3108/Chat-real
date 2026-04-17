@@ -18,6 +18,10 @@ const replyToSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    isDeletedForEveryone: {
+      type: Boolean,
+      default: false,
+    },
     type: {
       type: String,
       enum: ["user", "system"],

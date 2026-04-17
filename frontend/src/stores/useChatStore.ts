@@ -9,6 +9,7 @@ import type { Conversation, Message } from "@/types/chat";
 import type { ChatState } from "@/types/store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { toast } from "sonner";
 import { useAuthStore } from "./useAuthStore";
 import { useSocketStore } from "./useSocketStore";
 
@@ -276,6 +277,8 @@ export const useChatStore = create<ChatState>()(
           }
         } catch (error) {
           console.error("Failed to delete message for me", error);
+          toast.error("Không thể xóa tin nhắn ở phía bạn.");
+          throw error;
         }
       },
 
@@ -285,6 +288,8 @@ export const useChatStore = create<ChatState>()(
           get().updateMessage(message);
         } catch (error) {
           console.error("Failed to delete message for everyone", error);
+          toast.error("Không thể thu hồi tin nhắn lúc này.");
+          throw error;
         }
       },
 

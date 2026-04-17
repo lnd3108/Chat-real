@@ -39,6 +39,7 @@ export interface MessageReply {
   senderId: string;
   content: string | null;
   imgUrl?: string | null;
+  isDeletedForEveryone?: boolean;
   type?: "user" | "system";
 }
 

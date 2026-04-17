@@ -48,7 +48,7 @@ export const requestDesktopNotificationPermission = async () => {
   try {
     await Notification.requestPermission();
   } catch (error) {
-    console.error("Failed to request notification permission:", error);
+    console.error("Không thể xin quyền thông báo:", error);
   }
 };
 
