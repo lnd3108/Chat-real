@@ -4,6 +4,8 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl?: string;
+  authProvider?: "local" | "google";
+  emailVerified?: boolean;
   bio?: string | null;
   phone?: string | null;
   createAt?: string;

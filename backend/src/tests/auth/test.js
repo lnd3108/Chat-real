@@ -33,18 +33,34 @@ jest.unstable_mockModule("bcrypt", () => ({
 jest.unstable_mockModule("jsonwebtoken", () => ({
   default: {
     sign: mockJwtSign,
+    verify: jest.fn(),
   },
 }));
 
 jest.unstable_mockModule("crypto", () => ({
   default: {
     randomBytes: mockRandomBytes,
+    createHash: jest.fn(() => ({
+      update: jest.fn().mockReturnThis(),
+      digest: jest.fn(() => "hashed-code"),
+    })),
   },
+}));
+
+jest.unstable_mockModule("google-auth-library", () => ({
+  OAuth2Client: jest.fn(() => ({
+    verifyIdToken: jest.fn(),
+  })),
 }));
 
 jest.unstable_mockModule("../../libs/validation.js", () => ({
   signUpSchema: { parse: mockSignUpParse },
   signInSchema: { parse: mockSignInParse },
+}));
+
+jest.unstable_mockModule("../../utils/mail.js", () => ({
+  isMailConfigured: jest.fn(() => true),
+  sendVerificationCodeEmail: jest.fn(),
 }));
 
 const { signUp, signIn } = await import("../../controllers/authControllers.js");
@@ -83,18 +99,24 @@ describe("authControllers", () => {
 
       await signUp(req, res);
 
-      expect(mockUserFindOne).toHaveBeenNthCalledWith(1, { userName: "testuser123" });
-      expect(mockUserFindOne).toHaveBeenNthCalledWith(2, { email: "test@example.com" });
+      expect(mockUserFindOne).toHaveBeenNthCalledWith(1, {
+        userName: "testuser123",
+      });
+      expect(mockUserFindOne).toHaveBeenNthCalledWith(2, {
+        email: "test@example.com",
+      });
       expect(mockBcryptHash).toHaveBeenCalledWith("SecurePass123", 10);
       expect(mockUserCreate).toHaveBeenCalledWith({
         userName: "testuser123",
         hashedPassword: "hashed-password",
         email: "test@example.com",
         displayName: "Doe John",
+        authProvider: "local",
+        emailVerified: true,
       });
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({
-        message: "User đã được tạo thành công",
+        message: "Người dùng đã được tạo thành công",
       });
     });
 
@@ -131,6 +153,8 @@ describe("authControllers", () => {
         displayName: "Doe John",
         email: "test@example.com",
         avatarUrl: null,
+        authProvider: "local",
+        emailVerified: true,
         hashedPassword: "hashed-password",
       });
       mockBcryptCompare.mockResolvedValue(true);
@@ -146,7 +170,10 @@ describe("authControllers", () => {
       await signIn(req, res);
 
       expect(mockUserFindOne).toHaveBeenCalledWith({ userName: "testuser123" });
-      expect(mockBcryptCompare).toHaveBeenCalledWith("SecurePass123", "hashed-password");
+      expect(mockBcryptCompare).toHaveBeenCalledWith(
+        "SecurePass123",
+        "hashed-password",
+      );
       expect(mockJwtSign).toHaveBeenCalledWith(
         { userId: "user-1" },
         "test-secret",

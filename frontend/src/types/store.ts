@@ -18,9 +18,15 @@ export interface AuthState {
   accessToken: string | null;
   user: User | null;
   loading: boolean;
+  pendingGoogleVerificationToken: string | null;
+  pendingGoogleVerificationEmail: string | null;
 
   setAccessToken: (accessToken: string) => void;
   setUser: (user: User) => void;
+  setPendingGoogleVerification: (
+    verificationToken: string | null,
+    email: string | null,
+  ) => void;
   clearState: () => void;
 
   signUp: (
@@ -29,9 +35,11 @@ export interface AuthState {
     email: string,
     firstName: string,
     lastName: string,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 
   signIn: (userName: string, password: string) => Promise<boolean>;
+  completeGoogleSignIn: (code: string) => Promise<boolean>;
+  verifyGoogleEmailCode: (code: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;

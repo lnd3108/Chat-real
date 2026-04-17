@@ -2,6 +2,8 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPasge";
 import ChatAppPage from "./pages/ChatAppPage";
+import { GoogleAuthCallbackPage } from "./pages/GoogleAuthCallbackPage";
+import { VerifyGoogleEmailPage } from "./pages/VerifyGoogleEmailPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useThemeStore } from "./stores/useThemeStore";
@@ -54,6 +56,14 @@ function App() {
           {/* Public routes */}
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/signin/oauth2/google"
+            element={<GoogleAuthCallbackPage />}
+          />
+          <Route
+            path="/verify-google-email"
+            element={<VerifyGoogleEmailPage />}
+          />
 
           {/* protected routes */}
           <Route element={<ProtectedRoute />}>

@@ -13,12 +13,32 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       lowercase: true,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
+    emailVerificationCodeHash: {
+      type: String,
+    },
+    emailVerificationExpiresAt: {
+      type: Date,
     },
     displayName: {
       type: String,

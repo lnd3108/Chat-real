@@ -1,6 +1,8 @@
 import api from "@/lib/axios";
 
 export const authService = {
+  getGoogleStartUrl: () => `${api.defaults.baseURL}/auth/oauth2/google`,
+
   signUp: async (
     userName: string,
     password: string,
@@ -32,6 +34,57 @@ export const authService = {
         displayName: string;
         email: string;
         avatarUrl: string | null;
+      };
+    };
+  },
+
+  googleCallback: async (code: string) => {
+    const res = await api.post(
+      "/auth/google/callback",
+      { code },
+      { withCredentials: true },
+    );
+
+    return res.data as
+      | {
+          message: string;
+          accessToken: string;
+          user: {
+            id: string;
+            userName: string;
+            displayName: string;
+            email: string;
+            avatarUrl: string | null;
+            authProvider: "local" | "google";
+            emailVerified: boolean;
+          };
+        }
+      | {
+          requiresEmailVerification: true;
+          verificationToken: string;
+          email: string;
+          message: string;
+        };
+  },
+
+  verifyGoogleEmailCode: async (verificationToken: string, code: string) => {
+    const res = await api.post(
+      "/auth/google/verify-email",
+      { verificationToken, code },
+      { withCredentials: true },
+    );
+
+    return res.data as {
+      message: string;
+      accessToken: string;
+      user: {
+        id: string;
+        userName: string;
+        displayName: string;
+        email: string;
+        avatarUrl: string | null;
+        authProvider: "local" | "google";
+        emailVerified: boolean;
       };
     };
   },
