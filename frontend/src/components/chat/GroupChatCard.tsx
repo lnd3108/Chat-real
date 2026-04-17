@@ -143,28 +143,53 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
 
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Xóa cuộc trò chuyện nhóm?</AlertDialogTitle>
+                      <AlertDialogTitle>Xác nhận xóa nhóm?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Bạn là người tạo nhóm. Nếu xóa, toàn bộ nhóm và tin nhắn sẽ bị
-                        xóa cho tất cả thành viên.
+                        Bạn là người tạo nhóm. Nếu xác nhận, toàn bộ nhóm và tin nhắn
+                        sẽ bị xóa cho tất cả thành viên. Hành động này không thể hoàn tác.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
 
                     <AlertDialogFooter>
                       <AlertDialogCancel>Hủy</AlertDialogCancel>
                       <AlertDialogAction
+                        variant="destructive"
                         onClick={() => deleteOrLeaveGroupConversation(convo._id)}
                       >
-                        Xóa
+                        Xác nhận xóa
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               ) : (
-                <DropdownMenuItem onClick={() => deleteOrLeaveGroupConversation(convo._id)}>
-                  <LogOut className="mr-2 size-4" />
-                  Rời nhóm
-                </DropdownMenuItem>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                      <LogOut className="mr-2 size-4" />
+                      Rời nhóm
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xác nhận rời nhóm?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sau khi rời nhóm, cuộc trò chuyện này sẽ bị xóa khỏi danh sách
+                        chat của bạn. Bạn sẽ cần được thêm lại nếu muốn quay lại nhóm.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => deleteOrLeaveGroupConversation(convo._id)}
+                      >
+                        Xác nhận rời nhóm
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
