@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 const baseURL = import.meta.env.VITE_SOCKET_URL;
 const SHOW_ONLINE_STATUS_KEY = "pref:showOnlineStatus";
+type SocketConnectError = Error & { data?: { code?: string } };
 
 const getStoredShowOnlineStatus = () => {
   const raw = localStorage.getItem(SHOW_ONLINE_STATUS_KEY);
@@ -24,18 +25,64 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     const accessToken = useAuthStore.getState().accessToken;
     const existingSocket = get().socket;
 
-    if (existingSocket) return;
+    if (!accessToken) return;
+
+    if (existingSocket) {
+      existingSocket.auth = { ...existingSocket.auth, token: accessToken };
+
+      if (!existingSocket.connected) {
+        existingSocket.connect();
+      }
+
+      return;
+    }
 
     const socket: Socket = io(baseURL, {
       auth: { token: accessToken },
       transports: ["websocket"],
+      autoConnect: true,
     });
 
     set({ socket });
 
+    let isRefreshingSocketAuth = false;
+
     socket.on("connect", () => {
+      isRefreshingSocketAuth = false;
       console.log("Connected socket successfully");
       socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
+    });
+
+    socket.on("connect_error", async (error: SocketConnectError) => {
+      if (error?.message) {
+        console.warn("Socket connection error:", error.message);
+      }
+
+      if (error?.data?.code !== "TOKEN_EXPIRED" || isRefreshingSocketAuth) {
+        return;
+      }
+
+      isRefreshingSocketAuth = true;
+
+      try {
+        await useAuthStore.getState().refresh();
+        const newAccessToken = useAuthStore.getState().accessToken;
+
+        if (!newAccessToken) {
+          socket.disconnect();
+          set({ socket: null, onlineUsers: [] });
+          return;
+        }
+
+        socket.auth = { ...socket.auth, token: newAccessToken };
+        socket.connect();
+      } catch (refreshError) {
+        console.error("Failed to refresh socket token:", refreshError);
+        socket.disconnect();
+        set({ socket: null, onlineUsers: [] });
+      } finally {
+        isRefreshingSocketAuth = false;
+      }
     });
 
     socket.on("online-users", (userIds) => {
