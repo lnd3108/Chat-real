@@ -44,6 +44,8 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const { deleteOrLeaveGroupConversation, fetchMessages, messages } = useChatStore();
   const { friends, getFriends, loading } = useFriendStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const dangerActionRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -99,6 +101,27 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
 
     void loadConversationHistory();
   }, [chat._id, fetchMessages, open]);
+
+  useEffect(() => {
+    if (!open || !actionType) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      dangerActionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [actionType, open]);
 
   const members = useMemo(() => {
     const mapped = chat.participants.map((participant: Participant) => {
@@ -246,7 +269,10 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+        <div
+          ref={scrollContainerRef}
+          className="max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent"
+        >
           <section className="flex items-center gap-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
             <GroupChatAvatar
               participants={chat.participants}
@@ -572,7 +598,10 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
             </div>
 
             {actionType && (
-              <div className="rounded-xl border border-destructive/30 bg-background/80 p-4">
+              <div
+                ref={dangerActionRef}
+                className="rounded-xl border border-destructive/30 bg-background/80 p-4"
+              >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
                     <TriangleAlert className="size-4" />
