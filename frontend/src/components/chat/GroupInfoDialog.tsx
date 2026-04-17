@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Camera, Loader2, LogOut, Trash2, TriangleAlert, UserMinus, UserPlus } from "lucide-react";
+import {
+  Camera,
+  ChevronDown,
+  FileText,
+  ImageIcon,
+  Loader2,
+  LogOut,
+  Trash2,
+  TriangleAlert,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { chatServices } from "@/services/chatServices";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useFriendStore } from "@/stores/useFriendStore";
-import type { Conversation, Participant } from "@/types/chat";
+import type { Conversation, Message, Participant } from "@/types/chat";
 import type { Friend } from "@/types/user";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
+import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -29,7 +41,7 @@ interface GroupInfoDialogProps {
 
 const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const { user } = useAuthStore();
-  const { deleteOrLeaveGroupConversation } = useChatStore();
+  const { deleteOrLeaveGroupConversation, fetchMessages, messages } = useChatStore();
   const { friends, getFriends, loading } = useFriendStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -39,6 +51,10 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"leave" | "delete" | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [mediaExpanded, setMediaExpanded] = useState(true);
+  const [filesExpanded, setFilesExpanded] = useState(true);
+  const [sharedAssetsLoading, setSharedAssetsLoading] = useState(false);
+  const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
 
   const isOwner = chat.group?.createdBy === user?._id;
 
@@ -51,7 +67,38 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
     if (open) return;
     setActionType(null);
     setSubmittingAction(false);
+    setMediaViewerOpen(false);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const loadConversationHistory = async () => {
+      try {
+        setSharedAssetsLoading(true);
+
+        while (true) {
+          const current = useChatStore.getState().messages[chat._id];
+          const hasLoadedOnce = !!current;
+          const hasMore = current?.nextCursor !== null;
+
+          if (hasLoadedOnce && !hasMore) break;
+
+          await fetchMessages(chat._id);
+
+          const nextState = useChatStore.getState().messages[chat._id];
+          if (nextState?.nextCursor === null) break;
+          if (!nextState && hasLoadedOnce) break;
+        }
+      } catch (error) {
+        console.error("loadConversationHistory failed", error);
+      } finally {
+        setSharedAssetsLoading(false);
+      }
+    };
+
+    void loadConversationHistory();
+  }, [chat._id, fetchMessages, open]);
 
   const members = useMemo(() => {
     const mapped = chat.participants.map((participant: Participant) => {
@@ -85,6 +132,23 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
       ),
     [friends, memberIds, search],
   );
+
+  const conversationMessages = messages[chat._id]?.items ?? [];
+
+  const sharedMedia = useMemo(
+    () =>
+      conversationMessages
+        .filter(
+          (message): message is Message & { imgUrl: string } =>
+            !!message.imgUrl && !message.isDeletedForEveryone && !message.isHiddenForMe,
+        )
+        .sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+    [conversationMessages],
+  );
+
+  const previewMedia = sharedMedia.slice(0, 8);
 
   const handleOpenFilePicker = () => {
     if (avatarUploading) return;
@@ -235,6 +299,139 @@ const GroupInfoDialog = ({ chat, trigger }: GroupInfoDialogProps) => {
               hidden
               onChange={handleGroupAvatarChange}
             />
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-muted/10">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-3 text-left"
+              onClick={() => setMediaExpanded((state) => !state)}
+            >
+              <div>
+                <p className="text-sm font-semibold">Ảnh/Video</p>
+                <p className="text-xs text-muted-foreground">
+                  {sharedMedia.length > 0
+                    ? `${sharedMedia.length} mục đã được chia sẻ trong hội thoại này.`
+                    : "Xem ảnh và video đã được chia sẻ trong hội thoại này."}
+                </p>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform duration-200",
+                  mediaExpanded && "rotate-180",
+                )}
+              />
+            </button>
+
+            {mediaExpanded && (
+              <div className="border-t border-border/60 px-4 py-4">
+                {sharedAssetsLoading ? (
+                  <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Đang tải ảnh/video...
+                  </div>
+                ) : previewMedia.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {previewMedia.map((media) => (
+                        <button
+                          key={media._id}
+                          type="button"
+                          className="group relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted"
+                          onClick={() => setMediaViewerOpen(true)}
+                        >
+                          <img
+                            src={media.imgUrl}
+                            alt="Ảnh đã được chia sẻ trong nhóm"
+                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => setMediaViewerOpen(true)}
+                    >
+                      Xem tất cả
+                    </Button>
+
+                    <Dialog open={mediaViewerOpen} onOpenChange={setMediaViewerOpen}>
+                      <DialogContent className="max-h-[88vh] sm:max-w-4xl">
+                        <DialogHeader>
+                          <DialogTitle>Ảnh/Video đã chia sẻ</DialogTitle>
+                          <DialogDescription>
+                            Tất cả ảnh hiện đang lấy được từ lịch sử hội thoại của nhóm này.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="max-h-[65vh] overflow-y-auto pr-2">
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            {sharedMedia.map((media) => (
+                              <a
+                                key={`viewer-${media._id}`}
+                                href={media.imgUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group block overflow-hidden rounded-xl border border-border/60 bg-muted"
+                              >
+                                <img
+                                  src={media.imgUrl}
+                                  alt="Ảnh đã được chia sẻ trong nhóm"
+                                  className="aspect-square h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ) : (
+                  <div className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-xl bg-background/40 px-4 py-6 text-center">
+                    <ImageIcon className="size-6 text-muted-foreground" />
+                    <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+                      Chưa có Ảnh/Video được chia sẻ trong hội thoại này
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-muted/10">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-3 text-left"
+              onClick={() => setFilesExpanded((state) => !state)}
+            >
+              <div>
+                <p className="text-sm font-semibold">File</p>
+                <p className="text-xs text-muted-foreground">
+                  Các tệp đính kèm sẽ xuất hiện tại đây khi cuộc trò chuyện hỗ trợ file.
+                </p>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform duration-200",
+                  filesExpanded && "rotate-180",
+                )}
+              />
+            </button>
+
+            {filesExpanded && (
+              <div className="border-t border-border/60 px-4 py-4">
+                <div className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-xl bg-background/40 px-4 py-6 text-center">
+                  <FileText className="size-6 text-muted-foreground" />
+                  <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+                    Chưa có File được chia sẻ trong hội thoại này
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
 
           {isOwner && (
