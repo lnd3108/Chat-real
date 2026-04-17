@@ -43,6 +43,15 @@ const userSchema = new mongoose.Schema(
     emailVerificationLastSentAt: {
       type: Date,
     },
+    accountDeletionCodeHash: {
+      type: String,
+    },
+    accountDeletionExpiresAt: {
+      type: Date,
+    },
+    accountDeletionLastSentAt: {
+      type: Date,
+    },
     displayName: {
       type: String,
       required: true,

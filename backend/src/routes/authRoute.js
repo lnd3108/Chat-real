@@ -5,7 +5,8 @@ import {
   signOut,
   refreshToken,
   changePassword,
-  deleteAccount,
+  requestAccountDeletion,
+  confirmAccountDeletion,
   startGoogleAuth,
   googleCallback,
   verifyEmailCode,
@@ -33,6 +34,16 @@ router.post("/refresh", refreshToken);
 
 router.patch("/change-password", protectedRoute, changePassword);
 
-router.delete("/delete-account", protectedRoute, deleteAccount);
+router.post(
+  "/delete-account/request",
+  protectedRoute,
+  requestAccountDeletion,
+);
+
+router.post(
+  "/delete-account/confirm",
+  protectedRoute,
+  confirmAccountDeletion,
+);
 
 export default router;

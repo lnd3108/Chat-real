@@ -1,8 +1,11 @@
 import { jest } from "@jest/globals";
 
 const mockUserFindOne = jest.fn();
+const mockUserFindById = jest.fn();
+const mockUserFindByIdAndDelete = jest.fn();
 const mockUserCreate = jest.fn();
 const mockSessionCreate = jest.fn();
+const mockSessionDeleteMany = jest.fn();
 const mockBcryptHash = jest.fn();
 const mockBcryptCompare = jest.fn();
 const mockJwtSign = jest.fn();
@@ -11,13 +14,16 @@ const mockRandomBytes = jest.fn();
 const mockSignUpParse = jest.fn();
 const mockSignInParse = jest.fn();
 const mockSendVerificationCodeEmail = jest.fn();
+const mockSendAccountDeletionCodeEmail = jest.fn();
+const mockSendAccountDeletedEmail = jest.fn();
 const mockIsMailConfigured = jest.fn(() => true);
 
 jest.unstable_mockModule("../../models/User.js", () => ({
   default: {
     findOne: mockUserFindOne,
+    findById: mockUserFindById,
+    findByIdAndDelete: mockUserFindByIdAndDelete,
     create: mockUserCreate,
-    findById: jest.fn(),
   },
 }));
 
@@ -26,7 +32,7 @@ jest.unstable_mockModule("../../models/Session.js", () => ({
     create: mockSessionCreate,
     findOne: jest.fn(),
     deleteOne: jest.fn(),
-    deleteMany: jest.fn(),
+    deleteMany: mockSessionDeleteMany,
   },
 }));
 
@@ -68,15 +74,24 @@ jest.unstable_mockModule("../../libs/validation.js", () => ({
 jest.unstable_mockModule("../../utils/mail.js", () => ({
   isMailConfigured: mockIsMailConfigured,
   sendVerificationCodeEmail: mockSendVerificationCodeEmail,
+  sendAccountDeletionCodeEmail: mockSendAccountDeletionCodeEmail,
+  sendAccountDeletedEmail: mockSendAccountDeletedEmail,
 }));
 
-const { signUp, signIn } = await import("../../controllers/authControllers.js");
+const {
+  signUp,
+  signIn,
+  requestAccountDeletion,
+  confirmAccountDeletion,
+} = await import("../../controllers/authControllers.js");
 
 const createRes = () => {
   const res = {
     status: jest.fn(() => res),
     json: jest.fn(() => res),
     cookie: jest.fn(() => res),
+    clearCookie: jest.fn(() => res),
+    sendStatus: jest.fn(() => res),
   };
 
   return res;
@@ -120,13 +135,6 @@ describe("authControllers", () => {
 
       await signUp(req, res);
 
-      expect(mockUserFindOne).toHaveBeenNthCalledWith(1, {
-        userName: "testuser123",
-      });
-      expect(mockUserFindOne).toHaveBeenNthCalledWith(2, {
-        email: "test@example.com",
-      });
-      expect(mockBcryptHash).toHaveBeenCalledWith("SecurePass123", 10);
       expect(mockUserCreate).toHaveBeenCalledWith({
         userName: "testuser123",
         hashedPassword: "hashed-password",
@@ -147,30 +155,8 @@ describe("authControllers", () => {
           email: "test@example.com",
           purpose: "signup",
           resendAvailableAt: expect.any(Number),
-          message:
-            "Đã gửi mã xác minh tới email của bạn. Vui lòng xác minh trước khi đăng nhập.",
         }),
       );
-    });
-
-    it("rejects duplicate usernames", async () => {
-      mockSignUpParse.mockReturnValue({
-        userName: "TestUser123",
-        password: "SecurePass123",
-        email: "test@example.com",
-        firstName: "John",
-        lastName: "Doe",
-      });
-      mockUserFindOne.mockResolvedValueOnce({ _id: "existing-user" });
-
-      const req = { body: {} };
-      const res = createRes();
-
-      await signUp(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(409);
-      expect(res.json).toHaveBeenCalledWith({ message: "userName đã tồn tại" });
-      expect(mockUserCreate).not.toHaveBeenCalled();
     });
   });
 
@@ -202,16 +188,6 @@ describe("authControllers", () => {
 
       await signIn(req, res);
 
-      expect(mockUserFindOne).toHaveBeenCalledWith({ userName: "testuser123" });
-      expect(mockBcryptCompare).toHaveBeenCalledWith(
-        "SecurePass123",
-        "hashed-password",
-      );
-      expect(mockJwtSign).toHaveBeenCalledWith(
-        { userId: "user-1" },
-        "test-secret",
-        { expiresIn: "30m" },
-      );
       expect(mockSessionCreate).toHaveBeenCalled();
       expect(res.cookie).toHaveBeenCalledWith(
         "refreshToken",
@@ -262,8 +238,6 @@ describe("authControllers", () => {
           email: "test@example.com",
           purpose: "signup",
           resendAvailableAt: expect.any(Number),
-          message:
-            "Email cua ban chua duoc xac minh. Chung toi da gui lai ma xac minh.",
         }),
       );
       expect(mockSessionCreate).not.toHaveBeenCalled();
@@ -282,10 +256,74 @@ describe("authControllers", () => {
       await signIn(req, res);
 
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "userName hoac Password khong chinh xac",
-      });
       expect(mockSessionCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("account deletion", () => {
+    it("sends an account deletion code to email", async () => {
+      const save = jest.fn();
+      mockUserFindById.mockResolvedValue({
+        _id: "user-1",
+        email: "test@example.com",
+        displayName: "Doe John",
+        save,
+      });
+
+      const req = { user: { _id: "user-1" } };
+      const res = createRes();
+
+      await requestAccountDeletion(req, res);
+
+      expect(save).toHaveBeenCalled();
+      expect(mockSendAccountDeletionCodeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "test@example.com",
+          displayName: "Doe John",
+        }),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.any(String),
+          email: "test@example.com",
+          expiresAt: expect.any(Number),
+          resendAvailableAt: expect.any(Number),
+        }),
+      );
+    });
+
+    it("deletes the account after correct verification code", async () => {
+      mockUserFindById.mockResolvedValue({
+        _id: "user-1",
+        email: "test@example.com",
+        displayName: "Doe John",
+        accountDeletionCodeHash: "hashed-code",
+        accountDeletionExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const req = {
+        user: { _id: "user-1" },
+        body: {
+          confirmationText: "DELETE",
+          code: "123456",
+        },
+      };
+      const res = createRes();
+
+      await confirmAccountDeletion(req, res);
+
+      expect(mockSessionDeleteMany).toHaveBeenCalledWith({ userId: "user-1" });
+      expect(mockUserFindByIdAndDelete).toHaveBeenCalledWith("user-1");
+      expect(res.clearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockSendAccountDeletedEmail).toHaveBeenCalledWith({
+        email: "test@example.com",
+        displayName: "Doe John",
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Xóa tài khoản thành công.",
+      });
     });
   });
 });

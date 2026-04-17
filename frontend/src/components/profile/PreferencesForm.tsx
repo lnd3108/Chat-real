@@ -37,19 +37,21 @@ const PreferencesForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sun className="h-5 w-5 text-primary" />
-          Tuy chinh ung dung
+          Tùy chỉnh ứng dụng
         </CardTitle>
-        <CardDescription>Ca nhan hoa trai nghiem tro chuyen cua ban</CardDescription>
+        <CardDescription>
+          Cá nhân hóa trải nghiệm trò chuyện của bạn
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="theme-toggle" className="text-base font-medium">
-              Che do toi
+              Chế độ tối
             </Label>
             <p className="text-sm text-muted-foreground">
-              Chuyen doi giua giao dien sang va toi
+              Chuyển đổi giữa giao diện sáng và tối
             </p>
           </div>
 
@@ -68,10 +70,10 @@ const PreferencesForm = () => {
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="online-status" className="text-base font-medium">
-              Hien thi trang thai online
+              Hiển thị trạng thái hoạt động
             </Label>
             <p className="text-sm text-muted-foreground">
-              Cho phep nguoi khac thay khi ban dang online
+              Cho phép người khác thấy khi bạn đang trực tuyến
             </p>
           </div>
 

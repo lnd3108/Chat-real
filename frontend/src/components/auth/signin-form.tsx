@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Label } from "../ui/label";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/authService";
@@ -90,11 +91,7 @@ export function SignInForm({
                 <Label htmlFor="password" className="block text-sm">
                   Mật khẩu
                 </Label>
-                <Input
-                  type="password"
-                  id="password"
-                  {...register("password")}
-                />
+                <Input type="password" id="password" {...register("password")} />
                 {errors.password && (
                   <p className="text-sm text-destructive">
                     {errors.password.message}
@@ -107,7 +104,14 @@ export function SignInForm({
                 className="w-full"
                 disabled={isSubmitting || loading}
               >
-                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                {loading ? (
+                  <>
+                    <LoadingSpinner className="mr-2 size-4" />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  "Đăng nhập"
+                )}
               </Button>
 
               <div className="relative">
@@ -128,7 +132,14 @@ export function SignInForm({
                 onClick={onGoogleSignIn}
                 disabled={loading}
               >
-                {loading ? "Đang chuyển hướng..." : "Đăng nhập bằng Gmail"}
+                {loading ? (
+                  <>
+                    <LoadingSpinner className="mr-2 size-4" />
+                    Đang chuyển hướng...
+                  </>
+                ) : (
+                  "Đăng nhập bằng Gmail"
+                )}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">

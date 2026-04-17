@@ -8,6 +8,8 @@ import { signInSchema, signUpSchema } from "../libs/validation.js";
 import {
   isMailConfigured,
   sendVerificationCodeEmail,
+  sendAccountDeletionCodeEmail,
+  sendAccountDeletedEmail,
 } from "../utils/mail.js";
 
 const ACCESS_TOKEN_TTL = "30m";
@@ -15,6 +17,8 @@ const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_TOKEN_TTL = "10m";
 const EMAIL_RESEND_COOLDOWN_MS = 60 * 1000;
+const ACCOUNT_DELETION_CODE_TTL_MS = 5 * 60 * 1000;
+const ACCOUNT_DELETION_RESEND_COOLDOWN_MS = 60 * 1000;
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -128,6 +132,56 @@ const persistVerificationCode = async (user) => {
   return code;
 };
 
+const canResendAccountDeletionCode = (user) => {
+  const lastSentAt = user.accountDeletionLastSentAt?.getTime?.();
+  if (!lastSentAt) {
+    return { ok: true, resendAvailableAt: Date.now() };
+  }
+
+  const resendAvailableAt = lastSentAt + ACCOUNT_DELETION_RESEND_COOLDOWN_MS;
+  if (Date.now() < resendAvailableAt) {
+    return { ok: false, resendAvailableAt };
+  }
+
+  return { ok: true, resendAvailableAt };
+};
+
+const persistAccountDeletionCode = async (user) => {
+  const code = generateEmailCode();
+  user.accountDeletionCodeHash = hashEmailCode(code);
+  user.accountDeletionExpiresAt = new Date(
+    Date.now() + ACCOUNT_DELETION_CODE_TTL_MS,
+  );
+  user.accountDeletionLastSentAt = new Date();
+  await user.save();
+  return code;
+};
+
+const clearAccountDeletionState = async (user) => {
+  user.accountDeletionCodeHash = undefined;
+  user.accountDeletionExpiresAt = undefined;
+  user.accountDeletionLastSentAt = undefined;
+  await user.save();
+};
+
+const hasActiveAccountDeletionRequest = (user) =>
+  Boolean(
+    user.accountDeletionCodeHash &&
+      user.accountDeletionExpiresAt &&
+      user.accountDeletionExpiresAt > new Date(),
+  );
+
+const buildAccountDeletionResponse = (user, message) => ({
+  message,
+  email: user.email,
+  expiresAt:
+    user.accountDeletionExpiresAt?.getTime?.() ||
+    Date.now() + ACCOUNT_DELETION_CODE_TTL_MS,
+  resendAvailableAt:
+    (user.accountDeletionLastSentAt?.getTime?.() || Date.now()) +
+    ACCOUNT_DELETION_RESEND_COOLDOWN_MS,
+});
+
 const getVerificationMessage = (purpose) =>
   purpose === "signup"
     ? "Đã gửi mã xác minh tới email của bạn. Vui lòng xác minh trước khi đăng nhập."
@@ -171,6 +225,67 @@ const sendEmailVerificationForUser = async (
       user,
       purpose,
       getVerificationMessage(purpose),
+    ),
+  };
+};
+
+const sendAccountDeletionCodeForUser = async (
+  user,
+  options = { ignoreCooldown: false },
+) => {
+  if (!isMailConfigured()) {
+    return {
+      ok: false,
+      status: 500,
+      message: "Hệ thống chưa cấu hình SMTP để gửi mã xác minh xóa tài khoản.",
+    };
+  }
+
+  if (
+    user.accountDeletionExpiresAt &&
+    user.accountDeletionExpiresAt <= new Date() &&
+    (user.accountDeletionCodeHash || user.accountDeletionLastSentAt)
+  ) {
+    await clearAccountDeletionState(user);
+  }
+
+  if (hasActiveAccountDeletionRequest(user) && !options.ignoreCooldown) {
+    const cooldown = canResendAccountDeletionCode(user);
+    if (!cooldown.ok) {
+      return {
+        ok: true,
+        payload: buildAccountDeletionResponse(
+          user,
+          "Bạn đang có một yêu cầu xóa tài khoản chưa hoàn tất. Vui lòng nhập mã xác minh hoặc chờ trước khi gửi lại mã.",
+        ),
+      };
+    }
+  }
+
+  if (!options.ignoreCooldown) {
+    const cooldown = canResendAccountDeletionCode(user);
+    if (!cooldown.ok) {
+      return {
+        ok: false,
+        status: 429,
+        message: "Bạn chỉ có thể gửi lại mã sau 60 giây.",
+        resendAvailableAt: cooldown.resendAvailableAt,
+      };
+    }
+  }
+
+  const code = await persistAccountDeletionCode(user);
+  await sendAccountDeletionCodeEmail({
+    email: user.email,
+    code,
+    displayName: user.displayName,
+  });
+
+  return {
+    ok: true,
+    payload: buildAccountDeletionResponse(
+      user,
+      "Đã gửi mã xác minh xóa tài khoản tới email của bạn. Mã có hiệu lực trong 5 phút.",
     ),
   };
 };
@@ -704,15 +819,98 @@ export const changePassword = async (req, res) => {
   }
 };
 
-export const deleteAccount = async (req, res) => {
-  const userId = req.user._id;
+export const requestAccountDeletion = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const user = await User.findById(userId);
 
-  await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
 
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+    const deletion = await sendAccountDeletionCodeForUser(user, {
+      ignoreCooldown: false,
+    });
 
-  return res.status(200).json({
-    message: "Xóa tài khoản thành công!",
-  });
+    if (!deletion.ok) {
+      return res.status(deletion.status).json({
+        message: deletion.message,
+        resendAvailableAt: deletion.resendAvailableAt,
+      });
+    }
+
+    return res.status(200).json(deletion.payload);
+  } catch (error) {
+    console.error("Lỗi requestAccountDeletion", error);
+    return res.status(500).json({
+      message: "Không thể bắt đầu yêu cầu xóa tài khoản.",
+    });
+  }
+};
+
+export const confirmAccountDeletion = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { code, confirmationText } = req.body || {};
+
+    if (String(confirmationText || "").trim().toUpperCase() !== "DELETE") {
+      return res.status(400).json({
+        message: 'Vui lòng nhập đúng "DELETE" để xác nhận xóa tài khoản.',
+      });
+    }
+
+    if (!code) {
+      return res.status(400).json({ message: "Vui lòng nhập mã xác minh." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    if (!user.accountDeletionCodeHash || !user.accountDeletionExpiresAt) {
+      return res.status(400).json({
+        message: "Không tìm thấy yêu cầu xóa tài khoản đang hoạt động.",
+      });
+    }
+
+    if (user.accountDeletionExpiresAt < new Date()) {
+      await clearAccountDeletionState(user);
+      return res.status(400).json({
+        message:
+          "Yêu cầu xóa tài khoản đã hết hạn sau 5 phút. Vui lòng tạo lại yêu cầu mới.",
+      });
+    }
+
+    const providedCodeHash = hashEmailCode(String(code).trim());
+    if (providedCodeHash !== user.accountDeletionCodeHash) {
+      return res.status(400).json({ message: "Mã xác minh không đúng." });
+    }
+
+    const accountEmail = user.email;
+    const displayName = user.displayName;
+
+    await Session.deleteMany({ userId: user._id });
+    await User.findByIdAndDelete(user._id);
+
+    res.clearCookie("refreshToken");
+
+    try {
+      await sendAccountDeletedEmail({
+        email: accountEmail,
+        displayName,
+      });
+    } catch (mailError) {
+      console.error("Lỗi sendAccountDeletedEmail", mailError);
+    }
+
+    return res.status(200).json({
+      message: "Xóa tài khoản thành công.",
+    });
+  } catch (error) {
+    console.error("Lỗi confirmAccountDeletion", error);
+    return res.status(500).json({
+      message: "Không thể xóa tài khoản. Vui lòng thử lại.",
+    });
+  }
 };

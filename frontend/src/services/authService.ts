@@ -121,6 +121,33 @@ export const authService = {
     };
   },
 
+  requestAccountDeletionCode: async () => {
+    const res = await api.post(
+      "/auth/delete-account/request",
+      {},
+      { withCredentials: true },
+    );
+
+    return res.data as {
+      message: string;
+      email: string;
+      expiresAt: number;
+      resendAvailableAt: number;
+    };
+  },
+
+  confirmAccountDeletion: async (confirmationText: string, code: string) => {
+    const res = await api.post(
+      "/auth/delete-account/confirm",
+      { confirmationText, code },
+      { withCredentials: true },
+    );
+
+    return res.data as {
+      message: string;
+    };
+  },
+
   signOut: async () => {
     return api.post("/auth/signout", {}, { withCredentials: true });
   },

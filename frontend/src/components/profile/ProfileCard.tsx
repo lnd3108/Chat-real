@@ -15,18 +15,18 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
 
   if (!user) return null;
 
-  const bio = user.bio?.trim() || "This user has no bio.";
+  const bio = user.bio?.trim() || "Người dùng này chưa cập nhật giới thiệu.";
   const isOnline = onlineUsers.includes(user._id);
 
   return (
-    <Card className="overflow-hidden p-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+    <Card className="overflow-hidden bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-0">
       <CardContent className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:p-6">
         <div className="relative shrink-0">
           <UserAvatar
             type="profile"
             name={user.displayName}
             avatarUrl={user.avatarUrl ?? undefined}
-            className="ring-4 ring-white shadow-lg"
+            className="shadow-lg ring-4 ring-white"
           />
           <AvatarUploader />
         </div>
@@ -50,10 +50,10 @@ const ProfileCard = ({ user }: ProfileCardProps) => {
           <div
             className={cn(
               "size-2 rounded-full",
-              isOnline ? "bg-green-500 animate-pulse" : "bg-slate-500",
+              isOnline ? "animate-pulse bg-green-500" : "bg-slate-500",
             )}
           />
-          {isOnline ? "Online" : "Offline"}
+          {isOnline ? "Đang hoạt động" : "Ngoại tuyến"}
         </Badge>
       </CardContent>
     </Card>

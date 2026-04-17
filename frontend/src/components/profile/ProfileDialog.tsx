@@ -17,51 +17,50 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-y-auto p-0 bg-transparent border-0 shadow-2xl">
+      <DialogContent className="overflow-y-auto border-0 bg-transparent p-0 shadow-2xl">
         <div className="bg-gradient-glass">
-          <DialogTitle className="sr-only">Profile & Settings</DialogTitle>
+          <DialogTitle className="sr-only">Hồ sơ và cài đặt</DialogTitle>
 
-          <div className="max-w-4xl mx-auto p-4 ">
-            {/* heading */}
+          <div className="mx-auto max-w-4xl p-4">
             <div className="mb-6">
-              <h1 className="text-2xl items-center font-bold text-foreground">
-                Profile & Settings
+              <h1 className="items-center text-2xl font-bold text-foreground">
+                Hồ sơ và cài đặt
               </h1>
             </div>
+
             <ProfileCard user={user} />
 
-            {/* tabs */}
             <Tabs className="my-4" defaultValue="personal">
-              <TabsList className="grid w-full grid-cols-3 glass-light ">
+              <TabsList className="glass-light grid w-full grid-cols-3">
                 <TabsTrigger
                   value="personal"
                   className="data-[state=active]:glass-strong"
                 >
-                  Tài Khoản
+                  Tài khoản
                 </TabsTrigger>
                 <TabsTrigger
                   value="preferences"
                   className="data-[state=active]:glass-strong"
                 >
-                  Cấu Hình
+                  Tùy chỉnh
                 </TabsTrigger>
                 <TabsTrigger
                   value="privacy"
                   className="data-[state=active]:glass-strong"
                 >
-                  Bảo Mật
+                  Bảo mật
                 </TabsTrigger>
               </TabsList>
+
               <TabsContent value="personal">
-                {/* <PersonalInForm /> */}
                 <PersonalInForm userInfo={user} />
               </TabsContent>
+
               <TabsContent value="preferences">
-                {/* <PreferencesForm /> */}
                 <PreferencesForm />
               </TabsContent>
+
               <TabsContent value="privacy">
-                {/* <PrivacySetting /> */}
                 <PrivacySetting />
               </TabsContent>
             </Tabs>

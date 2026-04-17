@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const verifySchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .regex(/^\d{6}$/, "Nhập mã gồm 6 chữ số"),
+  code: z.string().trim().regex(/^\d{6}$/, "Nhập mã gồm 6 chữ số"),
 });
 
 type VerifyFormValues = z.infer<typeof verifySchema>;
@@ -116,11 +114,16 @@ export const VerifyEmailPage = () => {
               className="w-full"
               disabled={isSubmitting || loading}
             >
-              {loading
-                ? "Đang xác thực..."
-                : isSignupVerification
-                  ? "Xác minh tài khoản"
-                  : "Xác minh và đăng nhập"}
+              {loading ? (
+                <>
+                  <LoadingSpinner className="mr-2 size-4" />
+                  Đang xác thực...
+                </>
+              ) : isSignupVerification ? (
+                "Xác minh tài khoản"
+              ) : (
+                "Xác minh và đăng nhập"
+              )}
             </Button>
 
             <Button
@@ -130,11 +133,16 @@ export const VerifyEmailPage = () => {
               disabled={!canResend}
               onClick={() => void resendPendingEmailCode()}
             >
-              {loading
-                ? "Đang gửi..."
-                : canResend
-                  ? "Gửi lại mã"
-                  : `Gửi lại mã sau ${secondsLeft}s`}
+              {loading ? (
+                <>
+                  <LoadingSpinner className="mr-2 size-4" />
+                  Đang gửi...
+                </>
+              ) : canResend ? (
+                "Gửi lại mã"
+              ) : (
+                `Gửi lại mã sau ${secondsLeft}s`
+              )}
             </Button>
 
             <Button
