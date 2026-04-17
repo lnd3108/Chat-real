@@ -107,6 +107,10 @@ export const useNotificationStore = create<NotificationState>()(
         }));
       },
 
+      clearAllNotifications: () => {
+        set({ items: [] });
+      },
+
       markAllAsRead: () => {
         set((state) => ({
           items: state.items.map((item) => ({ ...item, isRead: true })),

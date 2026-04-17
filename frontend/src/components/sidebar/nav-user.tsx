@@ -61,8 +61,13 @@ export function NavUser({ user }: { user: User }) {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="relative data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
+                {notiCount > 0 && (
+                  <span className="absolute top-1.5 right-8 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white shadow-sm">
+                    {notiCount > 99 ? "99+" : notiCount}
+                  </span>
+                )}
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatarUrl} alt={user.displayName} />
                   <AvatarFallback className="rounded-lg">
