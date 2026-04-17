@@ -196,7 +196,7 @@ const MessageItem = ({
       <div
         id={`message-${message._id}`}
         className={cn(
-          "message-bounce mt-1 flex gap-2 rounded-xl transition-shadow",
+          "group/message message-bounce mt-1 flex gap-2 rounded-xl transition-shadow",
           message.isOwn ? "justify-end" : "justify-start",
         )}
       >
@@ -218,92 +218,280 @@ const MessageItem = ({
             message.isOwn ? "items-end" : "items-start",
           )}
         >
-          <Card
+          <div
             className={cn(
-              "p-3",
-              message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
+              "flex items-end gap-1.5",
+              message.isOwn ? "flex-row-reverse" : "flex-row",
             )}
           >
-            <div className="space-y-2">
-              {message.replyTo && (
-                <button
-                  type="button"
-                  onClick={handleJumpToReplyMessage}
-                  className="w-full rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/55"
-                >
-                  <p className="font-medium text-primary">
-                    {message.replyTo.senderId === user?._id
-                      ? "Bạn"
-                      : replySender?.displayName ?? "Người gửi"}
-                  </p>
-                  <p className="truncate text-muted-foreground">
-                    {replyPreviewLabel}
-                  </p>
-                </button>
+            <Card
+              className={cn(
+                "p-3",
+                message.isOwn ? "chat-bubble-sent border-0" : "chat-bubble-received",
               )}
+            >
+              <div className="space-y-2">
+                {message.replyTo && (
+                  <button
+                    type="button"
+                    onClick={handleJumpToReplyMessage}
+                    className="w-full rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/55"
+                  >
+                    <p className="font-medium text-primary">
+                      {message.replyTo.senderId === user?._id
+                        ? "Bạn"
+                        : replySender?.displayName ?? "Người gửi"}
+                    </p>
+                    <p className="truncate text-muted-foreground">
+                      {replyPreviewLabel}
+                    </p>
+                  </button>
+                )}
 
-              {message.isDeletedForEveryone ? (
-                <p className="text-sm italic text-muted-foreground">
-                  {deletedMessageLabel}
-                </p>
-              ) : (
-                <>
-                  {message.imgUrl && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button
-                          type="button"
-                          className="relative overflow-hidden rounded-lg transition-opacity hover:opacity-90 disabled:cursor-wait"
-                          aria-label="Phóng to ảnh trong cuộc trò chuyện"
-                          disabled={isDeletingImage}
+                {message.isDeletedForEveryone ? (
+                  <p className="text-sm italic text-muted-foreground">
+                    {deletedMessageLabel}
+                  </p>
+                ) : (
+                  <>
+                    {message.imgUrl && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            type="button"
+                            className="relative overflow-hidden rounded-lg transition-opacity hover:opacity-90 disabled:cursor-wait"
+                            aria-label="Phóng to ảnh trong cuộc trò chuyện"
+                            disabled={isDeletingImage}
+                          >
+                            <img
+                              src={message.imgUrl}
+                              alt="Ảnh đính kèm trong tin nhắn"
+                              className="max-h-72 w-auto max-w-full cursor-zoom-in rounded-lg object-cover"
+                            />
+                            {isDeletingImage && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/55 text-white backdrop-blur-[1px]">
+                                <Loader2 className="size-5 animate-spin" />
+                                <span className="text-xs font-medium">
+                                  Đang xóa ảnh...
+                                </span>
+                              </div>
+                            )}
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent
+                          className="max-h-[100vh] w-screen max-w-screen border-0 bg-black/95 p-0 shadow-none"
+                          showCloseButton={false}
                         >
+                          <DialogTitle className="sr-only">
+                            Ảnh trong cuộc trò chuyện
+                          </DialogTitle>
+                          <DialogDescription className="sr-only">
+                            Xem phóng to ảnh được gửi trong tin nhắn.
+                          </DialogDescription>
                           <img
                             src={message.imgUrl}
-                            alt="Ảnh đính kèm trong tin nhắn"
-                            className="max-h-72 w-auto max-w-full cursor-zoom-in rounded-lg object-cover"
+                            alt="Ảnh đính kèm được phóng to"
+                            className="h-screen w-screen object-contain"
                           />
-                          {isDeletingImage && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/55 text-white backdrop-blur-[1px]">
-                              <Loader2 className="size-5 animate-spin" />
-                              <span className="text-xs font-medium">
-                                Đang xóa ảnh...
-                              </span>
-                            </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                    {message.content && (
+                      <p className="break-words text-sm leading-relaxed">
+                        {message.content}
+                      </p>
+                    )}
+                    {message.editedAt && (
+                      <p className="text-[11px] italic text-muted-foreground">
+                        Đã chỉnh sửa
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </Card>
+
+            <div
+              className={cn(
+                "flex items-center gap-0.5 rounded-full bg-background/80 px-1 py-0.5 shadow-sm backdrop-blur-sm transition-all duration-150",
+                isBusy
+                  ? "opacity-100"
+                  : "pointer-events-none translate-x-1 opacity-0 group-hover/message:pointer-events-auto group-hover/message:translate-x-0 group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:translate-x-0 group-focus-within/message:opacity-100",
+              )}
+            >
+              {!message.isDeletedForEveryone && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 rounded-full"
+                          disabled={isBusy}
+                        >
+                          {pendingAction === "reaction" ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <SmilePlus className="size-4" />
                           )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Bày tỏ cảm xúc</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
+                    <div className="flex gap-1 px-1 py-1">
+                      {reactionOptions.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="rounded-md px-2 py-1 text-lg hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => void handleToggleReaction(emoji)}
+                          disabled={isBusy}
+                        >
+                          {emoji}
                         </button>
-                      </DialogTrigger>
-                      <DialogContent
-                        className="max-h-[100vh] w-screen max-w-screen border-0 bg-black/95 p-0 shadow-none"
-                        showCloseButton={false}
+                      ))}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 rounded-full"
+                    disabled={isBusy}
+                    onClick={() => setReplyingTo(message)}
+                  >
+                    <MessageSquareReply className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Trả lời</TooltipContent>
+              </Tooltip>
+
+              {!message.isDeletedForEveryone && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 rounded-full"
+                          disabled={isBusy}
+                        >
+                          {pendingAction === "delete-me" || pendingAction === "delete-all" ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="size-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Xem thêm</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
+                    {canEdit && (
+                      <DropdownMenuItem
+                        onClick={() => setEditingMessage(message)}
+                        disabled={isBusy}
                       >
-                        <DialogTitle className="sr-only">
-                          Ảnh trong cuộc trò chuyện
-                        </DialogTitle>
-                        <DialogDescription className="sr-only">
-                          Xem phóng to ảnh được gửi trong tin nhắn.
-                        </DialogDescription>
-                        <img
-                          src={message.imgUrl}
-                          alt="Ảnh đính kèm được phóng to"
-                          className="h-screen w-screen object-contain"
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                  {message.content && (
-                    <p className="break-words text-sm leading-relaxed">
-                      {message.content}
-                    </p>
-                  )}
-                  {message.editedAt && (
-                    <p className="text-[11px] italic text-muted-foreground">
-                      Đã chỉnh sửa
-                    </p>
-                  )}
-                </>
+                        <Pencil className="size-4" />
+                        Sửa tin nhắn
+                      </DropdownMenuItem>
+                    )}
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem
+                          onSelect={(e) => e.preventDefault()}
+                          disabled={isBusy}
+                        >
+                          <Trash2 className="size-4" />
+                          Thu hồi phía mình
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent size="sm">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Thu hồi tin nhắn?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tin nhắn sẽ chỉ biến mất ở phía bạn.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Hủy</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => void handleDeleteForMe()}
+                            disabled={isBusy}
+                          >
+                            {pendingAction === "delete-me" ? (
+                              <>
+                                <Loader2 className="size-4 animate-spin" />
+                                Đang xóa...
+                              </>
+                            ) : (
+                              "Xác nhận xóa"
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    {canRecallForEveryone && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={(e) => e.preventDefault()}
+                              disabled={isBusy}
+                            >
+                              <Heart className="size-4" />
+                              Thu hồi cho cả hai bên
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent size="sm">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Thu hồi cho cả hai bên?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Người còn lại sẽ thấy trạng thái tin nhắn đã bị thu hồi.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Hủy</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => void handleDeleteForEveryone()}
+                                disabled={isBusy}
+                              >
+                                {pendingAction === "delete-all" ? (
+                                  <>
+                                    <Loader2 className="size-4 animate-spin" />
+                                    Đang thu hồi...
+                                  </>
+                                ) : (
+                                  "Xác nhận xóa"
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
-          </Card>
+          </div>
 
           {!message.isDeletedForEveryone && reactionBadges.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -334,180 +522,6 @@ const MessageItem = ({
               })}
             </div>
           )}
-
-          <div className="flex items-center gap-1">
-            {!message.isDeletedForEveryone && (
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 rounded-full"
-                        disabled={isBusy}
-                      >
-                        {pendingAction === "reaction" ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <SmilePlus className="size-4" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Bày tỏ cảm xúc</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
-                  <div className="flex gap-1 px-1 py-1">
-                    {reactionOptions.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className="rounded-md px-2 py-1 text-lg hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                        onClick={() => void handleToggleReaction(emoji)}
-                        disabled={isBusy}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 rounded-full"
-                  disabled={isBusy}
-                  onClick={() => setReplyingTo(message)}
-                >
-                  <MessageSquareReply className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Trả lời</TooltipContent>
-            </Tooltip>
-
-            {!message.isDeletedForEveryone && (
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 rounded-full"
-                        disabled={isBusy}
-                      >
-                        {pendingAction === "delete-me" || pendingAction === "delete-all" ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <MoreHorizontal className="size-4" />
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Xem thêm</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align={message.isOwn ? "end" : "start"}>
-                  {canEdit && (
-                    <DropdownMenuItem
-                      onClick={() => setEditingMessage(message)}
-                      disabled={isBusy}
-                    >
-                      <Pencil className="size-4" />
-                      Sửa tin nhắn
-                    </DropdownMenuItem>
-                  )}
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        disabled={isBusy}
-                      >
-                        <Trash2 className="size-4" />
-                        Thu hồi phía mình
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent size="sm">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Thu hồi tin nhắn?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tin nhắn sẽ chỉ biến mất ở phía bạn.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Hủy</AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={() => void handleDeleteForMe()}
-                          disabled={isBusy}
-                        >
-                          {pendingAction === "delete-me" ? (
-                            <>
-                              <Loader2 className="size-4 animate-spin" />
-                              Đang xóa...
-                            </>
-                          ) : (
-                            "Xác nhận xóa"
-                          )}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  {canRecallForEveryone && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={(e) => e.preventDefault()}
-                            disabled={isBusy}
-                          >
-                            <Heart className="size-4" />
-                            Thu hồi cho cả hai bên
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent size="sm">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Thu hồi cho cả hai bên?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Người còn lại sẽ thấy trạng thái tin nhắn đã bị thu hồi.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Hủy</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => void handleDeleteForEveryone()}
-                              disabled={isBusy}
-                            >
-                              {pendingAction === "delete-all" ? (
-                                <>
-                                  <Loader2 className="size-4 animate-spin" />
-                                  Đang thu hồi...
-                                </>
-                              ) : (
-                                "Xác nhận xóa"
-                              )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
 
           {message.isOwn && message._id === selectedConvo.lastMessage?._id && (
             <Badge
