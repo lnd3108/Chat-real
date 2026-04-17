@@ -17,7 +17,7 @@ export const GoogleAuthCallbackPage = () => {
 
     const run = async () => {
       const ok = await completeGoogleSignIn(code);
-      navigate(ok ? "/" : "/verify-google-email", { replace: true });
+      navigate(ok ? "/" : "/verify-email", { replace: true });
     };
 
     run();

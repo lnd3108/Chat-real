@@ -14,6 +14,7 @@ const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_TOKEN_TTL = "10m";
+const EMAIL_RESEND_COOLDOWN_MS = 60 * 1000;
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -56,19 +57,30 @@ const buildAuthResponse = (user, accessToken) => ({
   },
 });
 
-const createPendingVerificationToken = (user) =>
+const createPendingVerificationToken = (user, purpose) =>
   jwt.sign(
     {
       userId: user._id,
       email: user.email,
-      type: "google-email-verification",
+      type: "email-verification",
+      purpose,
     },
     process.env.ACCESS_TOKEN_SECRET,
     { expiresIn: EMAIL_TOKEN_TTL },
   );
 
-const generateEmailCode = () =>
-  String(Math.floor(100000 + Math.random() * 900000));
+const buildPendingVerificationResponse = (user, purpose, message) => ({
+  requiresEmailVerification: true,
+  verificationToken: createPendingVerificationToken(user, purpose),
+  email: user.email,
+  purpose,
+  resendAvailableAt:
+    (user.emailVerificationLastSentAt?.getTime?.() || Date.now()) +
+    EMAIL_RESEND_COOLDOWN_MS,
+  message,
+});
+
+const generateEmailCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const hashEmailCode = (code) =>
   crypto.createHash("sha256").update(code).digest("hex");
@@ -93,14 +105,87 @@ const createUniqueUserName = async (email) => {
   return candidate;
 };
 
+const canResendVerification = (user) => {
+  const lastSentAt = user.emailVerificationLastSentAt?.getTime?.();
+  if (!lastSentAt) {
+    return { ok: true, resendAvailableAt: Date.now() };
+  }
+
+  const resendAvailableAt = lastSentAt + EMAIL_RESEND_COOLDOWN_MS;
+  if (Date.now() < resendAvailableAt) {
+    return { ok: false, resendAvailableAt };
+  }
+
+  return { ok: true, resendAvailableAt };
+};
+
 const persistVerificationCode = async (user) => {
   const code = generateEmailCode();
-
   user.emailVerificationCodeHash = hashEmailCode(code);
   user.emailVerificationExpiresAt = new Date(Date.now() + EMAIL_CODE_TTL_MS);
+  user.emailVerificationLastSentAt = new Date();
   await user.save();
-
   return code;
+};
+
+const getVerificationMessage = (purpose) =>
+  purpose === "signup"
+    ? "Đã gửi mã xác minh tới email của bạn. Vui lòng xác minh trước khi đăng nhập."
+    : "Đã gửi mã xác minh tới Gmail của bạn.";
+
+const sendEmailVerificationForUser = async (
+  user,
+  purpose,
+  options = { ignoreCooldown: false },
+) => {
+  if (!isMailConfigured()) {
+    return {
+      ok: false,
+      status: 500,
+      message: "Hệ thống chưa cấu hình SMTP để gửi mã xác minh email.",
+    };
+  }
+
+  if (!options.ignoreCooldown) {
+    const cooldown = canResendVerification(user);
+    if (!cooldown.ok) {
+      return {
+        ok: false,
+        status: 429,
+        message: "Bạn chỉ có thể gửi lại mã sau 60 giây.",
+        resendAvailableAt: cooldown.resendAvailableAt,
+      };
+    }
+  }
+
+  const code = await persistVerificationCode(user);
+  await sendVerificationCodeEmail({
+    email: user.email,
+    code,
+    displayName: user.displayName,
+  });
+
+  return {
+    ok: true,
+    payload: buildPendingVerificationResponse(
+      user,
+      purpose,
+      getVerificationMessage(purpose),
+    ),
+  };
+};
+
+const verifyPendingToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    if (decoded.type !== "email-verification") {
+      return { ok: false, status: 401, message: "Sai loại verification token." };
+    }
+
+    return { ok: true, decoded };
+  } catch {
+    return { ok: false, status: 401, message: "Verification token không hợp lệ." };
+  }
 };
 
 const getGoogleAuthUrl = () => {
@@ -119,9 +204,7 @@ const getGoogleAuthUrl = () => {
 const exchangeGoogleCodeForTokens = async (code) => {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -168,9 +251,7 @@ const findOrCreateGoogleUser = async (payload) => {
   const googleId = payload.sub;
   const email = payload.email.toLowerCase();
 
-  let user = await User.findOne({
-    $or: [{ googleId }, { email }],
-  });
+  let user = await User.findOne({ $or: [{ googleId }, { email }] });
 
   if (user) {
     if (user.googleId && user.googleId !== googleId) {
@@ -192,7 +273,7 @@ const findOrCreateGoogleUser = async (payload) => {
   const randomPassword = crypto.randomBytes(24).toString("hex");
   const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
-  user = await User.create({
+  return User.create({
     userName,
     hashedPassword,
     email,
@@ -202,8 +283,6 @@ const findOrCreateGoogleUser = async (payload) => {
     googleId,
     emailVerified: false,
   });
-
-  return user;
 };
 
 export const signUp = async (req, res) => {
@@ -211,35 +290,81 @@ export const signUp = async (req, res) => {
     const validatedData = signUpSchema.parse(req.body);
     const { userName, password, email, firstName, lastName } = validatedData;
 
-    const duplicate = await User.findOne({ userName: userName.toLowerCase() });
+    const normalizedUserName = userName.toLowerCase();
+    const normalizedEmail = email.toLowerCase();
+
+    const duplicate = await User.findOne({ userName: normalizedUserName });
+    const duplicateEmail = await User.findOne({ email: normalizedEmail });
+
+    const pendingUser =
+      duplicate &&
+      !duplicate.emailVerified &&
+      duplicate.authProvider === "local" &&
+      duplicate.email === normalizedEmail
+        ? duplicate
+        : duplicateEmail &&
+            !duplicateEmail.emailVerified &&
+            duplicateEmail.authProvider === "local"
+          ? duplicateEmail
+          : null;
+
+    if (pendingUser) {
+      const verification = await sendEmailVerificationForUser(pendingUser, "signup", {
+        ignoreCooldown: false,
+      });
+
+      if (!verification.ok) {
+        return res.status(verification.status).json({
+          message: verification.message,
+          resendAvailableAt: verification.resendAvailableAt,
+        });
+      }
+
+      return res.status(200).json({
+        ...verification.payload,
+        message:
+          "Tài khoản của bạn đang chờ xác minh email. Chúng tôi đã gửi lại mã xác minh.",
+      });
+    }
+
     if (duplicate) {
       return res.status(409).json({ message: "userName đã tồn tại" });
     }
 
-    const duplicateEmail = await User.findOne({ email: email.toLowerCase() });
     if (duplicateEmail) {
       return res.status(409).json({ message: "Email đã tồn tại" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await User.create({
-      userName: userName.toLowerCase(),
+    const user = await User.create({
+      userName: normalizedUserName,
       hashedPassword,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       displayName: `${lastName} ${firstName}`,
       authProvider: "local",
-      emailVerified: true,
+      emailVerified: false,
     });
 
-    return res.status(201).json({ message: "Người dùng đã được tạo thành công" });
+    const verification = await sendEmailVerificationForUser(user, "signup", {
+      ignoreCooldown: true,
+    });
+    if (!verification.ok) {
+      return res.status(verification.status).json({
+        message: verification.message,
+        resendAvailableAt: verification.resendAvailableAt,
+      });
+    }
+
+    return res.status(201).json(verification.payload);
   } catch (error) {
     if (error.name === "ZodError") {
       return res.status(400).json({
         message: "Lỗi xác thực dữ liệu",
-        errors: error.errors,
+        errors: error.issues || error.errors,
       });
     }
+
     console.error("Lỗi khi gọi signUp", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
@@ -254,29 +379,58 @@ export const signIn = async (req, res) => {
     if (!user) {
       return res
         .status(401)
-        .json({ message: "userName hoặc Password không chính xác" });
+        .json({ message: "userName hoac Password khong chinh xac" });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.hashedPassword);
     if (!passwordCorrect) {
       return res
         .status(401)
-        .json({ message: "userName hoặc Password không chính xác" });
+        .json({ message: "userName hoac Password khong chinh xac" });
+    }
+
+    if (user.authProvider === "local" && !user.emailVerified) {
+      const verification = await sendEmailVerificationForUser(user, "signup", {
+        ignoreCooldown: false,
+      });
+
+      if (verification.ok) {
+        return res.status(403).json({
+          ...verification.payload,
+          message:
+            "Email cua ban chua duoc xac minh. Chung toi da gui lai ma xac minh.",
+        });
+      }
+
+      if (verification.status === 429) {
+        return res.status(403).json({
+          ...buildPendingVerificationResponse(
+            user,
+            "signup",
+            "Email cua ban chua duoc xac minh. Vui long tiep tuc xac minh truoc khi dang nhap.",
+          ),
+          resendAvailableAt: verification.resendAvailableAt,
+        });
+      }
+
+      return res.status(verification.status).json({
+        message: verification.message,
+        resendAvailableAt: verification.resendAvailableAt,
+      });
     }
 
     const accessToken = await createSession(user._id, res);
-
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
     if (error.name === "ZodError") {
       return res.status(400).json({
-        message: "Lỗi xác thực dữ liệu",
-        errors: error.issues,
+        message: "Loi xac thuc du lieu",
+        errors: error.issues || error.errors,
       });
     }
 
-    console.error("Lỗi signIn", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi signIn", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
@@ -318,26 +472,19 @@ export const googleCallback = async (req, res) => {
     const user = await findOrCreateGoogleUser(payload);
 
     if (!user.emailVerified) {
-      if (!isMailConfigured()) {
-        return res.status(500).json({
-          message:
-            "Đăng nhập Google đã xác thực thành công, nhưng hệ thống chưa cấu hình SMTP để gửi mã xác minh.",
+      const verification = await sendEmailVerificationForUser(
+        user,
+        "google-signin",
+        { ignoreCooldown: true },
+      );
+      if (!verification.ok) {
+        return res.status(verification.status).json({
+          message: verification.message,
+          resendAvailableAt: verification.resendAvailableAt,
         });
       }
 
-      const codeValue = await persistVerificationCode(user);
-      await sendVerificationCodeEmail({
-        email: user.email,
-        code: codeValue,
-        displayName: user.displayName,
-      });
-
-      return res.status(200).json({
-        requiresEmailVerification: true,
-        verificationToken: createPendingVerificationToken(user),
-        email: user.email,
-        message: "Đã gửi mã xác minh tới Gmail của bạn.",
-      });
+      return res.status(200).json(verification.payload);
     }
 
     const accessToken = await createSession(user._id, res);
@@ -348,7 +495,7 @@ export const googleCallback = async (req, res) => {
   }
 };
 
-export const verifyGoogleEmailCode = async (req, res) => {
+export const verifyEmailCode = async (req, res) => {
   try {
     const { verificationToken, code } = req.body || {};
 
@@ -358,17 +505,14 @@ export const verifyGoogleEmailCode = async (req, res) => {
         .json({ message: "Thiếu verificationToken hoặc mã xác minh." });
     }
 
-    let decoded;
-    try {
-      decoded = jwt.verify(verificationToken, process.env.ACCESS_TOKEN_SECRET);
-    } catch (error) {
-      return res.status(401).json({ message: "Verification token không hợp lệ." });
+    const tokenStatus = verifyPendingToken(verificationToken);
+    if (!tokenStatus.ok) {
+      return res
+        .status(tokenStatus.status)
+        .json({ message: tokenStatus.message });
     }
 
-    if (decoded.type !== "google-email-verification") {
-      return res.status(401).json({ message: "Sai loại verification token." });
-    }
-
+    const { decoded } = tokenStatus;
     const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng." });
@@ -390,13 +534,66 @@ export const verifyGoogleEmailCode = async (req, res) => {
     user.emailVerified = true;
     user.emailVerificationCodeHash = undefined;
     user.emailVerificationExpiresAt = undefined;
+    user.emailVerificationLastSentAt = undefined;
     await user.save();
+
+    if (decoded.purpose === "signup") {
+      return res.status(200).json({
+        message: "Xác minh email thành công. Bây giờ bạn có thể đăng nhập.",
+      });
+    }
 
     const accessToken = await createSession(user._id, res);
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
-    console.error("Lỗi verifyGoogleEmailCode", error);
+    console.error("Lỗi verifyEmailCode", error);
     return res.status(500).json({ message: "Xác minh email thất bại" });
+  }
+};
+
+export const resendVerificationCode = async (req, res) => {
+  try {
+    const { verificationToken } = req.body || {};
+
+    if (!verificationToken) {
+      return res.status(400).json({ message: "Thiếu verificationToken." });
+    }
+
+    const tokenStatus = verifyPendingToken(verificationToken);
+    if (!tokenStatus.ok) {
+      return res
+        .status(tokenStatus.status)
+        .json({ message: tokenStatus.message });
+    }
+
+    const { decoded } = tokenStatus;
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: "Email này đã được xác minh." });
+    }
+
+    const verification = await sendEmailVerificationForUser(user, decoded.purpose, {
+      ignoreCooldown: false,
+    });
+
+    if (!verification.ok) {
+      return res.status(verification.status).json({
+        message: verification.message,
+        resendAvailableAt: verification.resendAvailableAt,
+      });
+    }
+
+    return res.status(200).json({
+      ...verification.payload,
+      message: "Đã gửi lại mã xác minh tới email của bạn.",
+    });
+  } catch (error) {
+    console.error("Lỗi resendVerificationCode", error);
+    return res.status(500).json({ message: "Không thể gửi lại mã xác minh" });
   }
 };
 
@@ -449,7 +646,6 @@ export const refreshToken = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user?._id;
-
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!currentPassword || !newPassword || !confirmPassword) {

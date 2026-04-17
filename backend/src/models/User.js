@@ -40,6 +40,9 @@ const userSchema = new mongoose.Schema(
     emailVerificationExpiresAt: {
       type: Date,
     },
+    emailVerificationLastSentAt: {
+      type: Date,
+    },
     displayName: {
       type: String,
       required: true,

@@ -25,6 +25,8 @@ export const useAuthStore = create<AuthState>()(
       loading: false,
       pendingGoogleVerificationToken: null,
       pendingGoogleVerificationEmail: null,
+      pendingEmailVerificationPurpose: null,
+      pendingEmailResendAvailableAt: null,
 
       setAccessToken: (accessToken) => {
         set({ accessToken });
@@ -34,10 +36,26 @@ export const useAuthStore = create<AuthState>()(
         set({ user });
       },
 
-      setPendingGoogleVerification: (verificationToken, email) => {
+      setPendingGoogleVerification: (
+        verificationToken,
+        email,
+        purpose = null,
+        resendAvailableAt = null,
+      ) => {
         set({
           pendingGoogleVerificationToken: verificationToken,
           pendingGoogleVerificationEmail: email,
+          pendingEmailVerificationPurpose: purpose,
+          pendingEmailResendAvailableAt: resendAvailableAt,
+        });
+      },
+
+      clearPendingEmailVerification: () => {
+        set({
+          pendingGoogleVerificationToken: null,
+          pendingGoogleVerificationEmail: null,
+          pendingEmailVerificationPurpose: null,
+          pendingEmailResendAvailableAt: null,
         });
       },
 
@@ -48,6 +66,8 @@ export const useAuthStore = create<AuthState>()(
           loading: false,
           pendingGoogleVerificationToken: null,
           pendingGoogleVerificationEmail: null,
+          pendingEmailVerificationPurpose: null,
+          pendingEmailResendAvailableAt: null,
         });
         useChatStore.getState().reset();
         localStorage.removeItem("auth-storage");
@@ -64,7 +84,7 @@ export const useAuthStore = create<AuthState>()(
       signUp: async (userName, password, email, firstName, lastName) => {
         try {
           set({ loading: true });
-          await authService.signUp(
+          const result = await authService.signUp(
             userName,
             password,
             email,
@@ -72,7 +92,18 @@ export const useAuthStore = create<AuthState>()(
             lastName,
           );
 
-          toast.success("Đăng ký thành công. Bạn sẽ được chuyển sang trang đăng nhập.");
+          if ("requiresEmailVerification" in result) {
+            get().setPendingGoogleVerification(
+              result.verificationToken,
+              result.email,
+              result.purpose,
+              result.resendAvailableAt,
+            );
+            toast.success(result.message);
+            return true;
+          }
+
+          toast.success("Đăng ký thành công.");
           return true;
         } catch (error) {
           console.error(error);
@@ -85,18 +116,43 @@ export const useAuthStore = create<AuthState>()(
 
       signIn: async (userName, password) => {
         try {
-          get().clearState();
           set({ loading: true });
 
-          const { accessToken } = await authService.signIn(userName, password);
+          const result = await authService.signIn(userName, password);
 
-          get().setAccessToken(accessToken);
+          if ("requiresEmailVerification" in result) {
+            get().setPendingGoogleVerification(
+              result.verificationToken,
+              result.email,
+              result.purpose,
+              result.resendAvailableAt,
+            );
+            toast.success(result.message);
+            return "verify_email";
+          }
+
+          get().setAccessToken(result.accessToken);
+          get().clearPendingEmailVerification();
           await get().fetchMe();
           useChatStore.getState().fetchConversations();
 
           toast.success("Chào mừng bạn quay lại.");
-          return true;
+          return "signed_in";
         } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 403) {
+            const result = error.response.data;
+            if (result?.requiresEmailVerification) {
+              get().setPendingGoogleVerification(
+                result.verificationToken,
+                result.email,
+                result.purpose,
+                result.resendAvailableAt,
+              );
+              toast.success(result.message);
+              return "verify_email";
+            }
+          }
+
           if (axios.isAxiosError(error) && error.response?.status === 401) {
             toast.error("Sai tên tài khoản hoặc mật khẩu. Vui lòng nhập lại.");
             return false;
@@ -122,13 +178,15 @@ export const useAuthStore = create<AuthState>()(
             get().setPendingGoogleVerification(
               result.verificationToken,
               result.email,
+              result.purpose,
+              result.resendAvailableAt,
             );
-            toast.success("Mã xác minh đã được gửi tới Gmail của bạn.");
+            toast.success(result.message);
             return false;
           }
 
           get().setAccessToken(result.accessToken);
-          get().setPendingGoogleVerification(null, null);
+          get().setPendingGoogleVerification(null, null, null, null);
           await get().fetchMe();
           useChatStore.getState().fetchConversations();
 
@@ -136,8 +194,42 @@ export const useAuthStore = create<AuthState>()(
           return true;
         } catch (error) {
           console.error(error);
+          toast.error(getAxiosMessage(error, "Đăng nhập Google không thành công."));
+          return false;
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      verifyPendingEmailCode: async (code) => {
+        try {
+          const verificationToken = get().pendingGoogleVerificationToken;
+          const purpose = get().pendingEmailVerificationPurpose;
+
+          if (!verificationToken || !purpose) {
+            toast.error("Không tìm thấy phiên xác minh email.");
+            return false;
+          }
+
+          set({ loading: true });
+          const result = await authService.verifyEmailCode(verificationToken, code);
+
+          if ("accessToken" in result) {
+            get().setAccessToken(result.accessToken);
+            get().setPendingGoogleVerification(null, null, null, null);
+            await get().fetchMe();
+            useChatStore.getState().fetchConversations();
+            toast.success("Xác minh email thành công.");
+            return "signed_in";
+          }
+
+          get().setPendingGoogleVerification(null, null, null, null);
+          toast.success(result.message);
+          return "verified_only";
+        } catch (error) {
+          console.error(error);
           toast.error(
-            getAxiosMessage(error, "Đăng nhập Google không thành công."),
+            getAxiosMessage(error, "Mã xác minh không đúng hoặc đã hết hạn."),
           );
           return false;
         } finally {
@@ -145,32 +237,35 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      verifyGoogleEmailCode: async (code) => {
+      resendPendingEmailCode: async () => {
         try {
           const verificationToken = get().pendingGoogleVerificationToken;
           if (!verificationToken) {
-            toast.error("Không tìm thấy phiên xác minh Google.");
+            toast.error("Không tìm thấy phiên xác minh email.");
             return false;
           }
 
           set({ loading: true });
-          const result = await authService.verifyGoogleEmailCode(
-            verificationToken,
-            code,
+          const result = await authService.resendVerificationCode(verificationToken);
+          get().setPendingGoogleVerification(
+            result.verificationToken,
+            result.email,
+            result.purpose,
+            result.resendAvailableAt,
           );
-
-          get().setAccessToken(result.accessToken);
-          get().setPendingGoogleVerification(null, null);
-          await get().fetchMe();
-          useChatStore.getState().fetchConversations();
-
-          toast.success("Xác minh email thành công.");
+          toast.success(result.message);
           return true;
         } catch (error) {
           console.error(error);
-          toast.error(
-            getAxiosMessage(error, "Mã xác minh không đúng hoặc đã hết hạn."),
-          );
+
+          if (axios.isAxiosError(error)) {
+            const resendAvailableAt = error.response?.data?.resendAvailableAt;
+            if (typeof resendAvailableAt === "number") {
+              set({ pendingEmailResendAvailableAt: resendAvailableAt });
+            }
+          }
+
+          toast.error(getAxiosMessage(error, "Không thể gửi lại mã xác minh."));
           return false;
         } finally {
           set({ loading: false });
@@ -236,6 +331,8 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         pendingGoogleVerificationToken: state.pendingGoogleVerificationToken,
         pendingGoogleVerificationEmail: state.pendingGoogleVerificationEmail,
+        pendingEmailVerificationPurpose: state.pendingEmailVerificationPurpose,
+        pendingEmailResendAvailableAt: state.pendingEmailResendAvailableAt,
       }),
     },
   ),

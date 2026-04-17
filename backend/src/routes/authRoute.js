@@ -8,7 +8,8 @@ import {
   deleteAccount,
   startGoogleAuth,
   googleCallback,
-  verifyGoogleEmailCode,
+  verifyEmailCode,
+  resendVerificationCode,
 } from "../controllers/authControllers.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 
@@ -22,7 +23,9 @@ router.get("/oauth2/google", startGoogleAuth);
 
 router.post("/google/callback", googleCallback);
 
-router.post("/google/verify-email", verifyGoogleEmailCode);
+router.post("/verify-email", verifyEmailCode);
+
+router.post("/resend-verification", resendVerificationCode);
 
 router.post("/signout", signOut);
 

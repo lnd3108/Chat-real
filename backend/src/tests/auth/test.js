@@ -6,20 +6,27 @@ const mockSessionCreate = jest.fn();
 const mockBcryptHash = jest.fn();
 const mockBcryptCompare = jest.fn();
 const mockJwtSign = jest.fn();
+const mockJwtVerify = jest.fn();
 const mockRandomBytes = jest.fn();
 const mockSignUpParse = jest.fn();
 const mockSignInParse = jest.fn();
+const mockSendVerificationCodeEmail = jest.fn();
+const mockIsMailConfigured = jest.fn(() => true);
 
 jest.unstable_mockModule("../../models/User.js", () => ({
   default: {
     findOne: mockUserFindOne,
     create: mockUserCreate,
+    findById: jest.fn(),
   },
 }));
 
 jest.unstable_mockModule("../../models/Session.js", () => ({
   default: {
     create: mockSessionCreate,
+    findOne: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn(),
   },
 }));
 
@@ -33,7 +40,7 @@ jest.unstable_mockModule("bcrypt", () => ({
 jest.unstable_mockModule("jsonwebtoken", () => ({
   default: {
     sign: mockJwtSign,
-    verify: jest.fn(),
+    verify: mockJwtVerify,
   },
 }));
 
@@ -59,8 +66,8 @@ jest.unstable_mockModule("../../libs/validation.js", () => ({
 }));
 
 jest.unstable_mockModule("../../utils/mail.js", () => ({
-  isMailConfigured: jest.fn(() => true),
-  sendVerificationCodeEmail: jest.fn(),
+  isMailConfigured: mockIsMailConfigured,
+  sendVerificationCodeEmail: mockSendVerificationCodeEmail,
 }));
 
 const { signUp, signIn } = await import("../../controllers/authControllers.js");
@@ -79,10 +86,11 @@ describe("authControllers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.ACCESS_TOKEN_SECRET = "test-secret";
+    mockIsMailConfigured.mockReturnValue(true);
   });
 
   describe("signUp", () => {
-    it("creates a new user with normalized credentials", async () => {
+    it("creates a local user and sends verification email", async () => {
       mockSignUpParse.mockReturnValue({
         userName: "TestUser123",
         password: "SecurePass123",
@@ -92,7 +100,20 @@ describe("authControllers", () => {
       });
       mockUserFindOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
       mockBcryptHash.mockResolvedValue("hashed-password");
-      mockUserCreate.mockResolvedValue({ _id: "user-1" });
+      mockJwtSign.mockReturnValue("verification-token");
+
+      const createdUser = {
+        _id: "user-1",
+        userName: "testuser123",
+        hashedPassword: "hashed-password",
+        email: "test@example.com",
+        displayName: "Doe John",
+        authProvider: "local",
+        emailVerified: false,
+        save: jest.fn(),
+      };
+
+      mockUserCreate.mockResolvedValue(createdUser);
 
       const req = { body: {} };
       const res = createRes();
@@ -112,12 +133,24 @@ describe("authControllers", () => {
         email: "test@example.com",
         displayName: "Doe John",
         authProvider: "local",
-        emailVerified: true,
+        emailVerified: false,
       });
+      expect(createdUser.save).toHaveBeenCalled();
+      expect(mockSendVerificationCodeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "test@example.com" }),
+      );
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Người dùng đã được tạo thành công",
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiresEmailVerification: true,
+          verificationToken: "verification-token",
+          email: "test@example.com",
+          purpose: "signup",
+          resendAvailableAt: expect.any(Number),
+          message:
+            "Đã gửi mã xác minh tới email của bạn. Vui lòng xác minh trước khi đăng nhập.",
+        }),
+      );
     });
 
     it("rejects duplicate usernames", async () => {
@@ -194,6 +227,48 @@ describe("authControllers", () => {
       );
     });
 
+    it("returns a verification session for unverified local users", async () => {
+      mockSignInParse.mockReturnValue({
+        userName: "TestUser123",
+        password: "SecurePass123",
+      });
+      mockUserFindOne.mockResolvedValue({
+        _id: "user-1",
+        userName: "testuser123",
+        displayName: "Doe John",
+        email: "test@example.com",
+        avatarUrl: null,
+        authProvider: "local",
+        emailVerified: false,
+        hashedPassword: "hashed-password",
+        save: jest.fn(),
+      });
+      mockBcryptCompare.mockResolvedValue(true);
+      mockJwtSign.mockReturnValue("verification-token");
+
+      const req = { body: {} };
+      const res = createRes();
+
+      await signIn(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(mockSendVerificationCodeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "test@example.com" }),
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requiresEmailVerification: true,
+          verificationToken: "verification-token",
+          email: "test@example.com",
+          purpose: "signup",
+          resendAvailableAt: expect.any(Number),
+          message:
+            "Email cua ban chua duoc xac minh. Chung toi da gui lai ma xac minh.",
+        }),
+      );
+      expect(mockSessionCreate).not.toHaveBeenCalled();
+    });
+
     it("rejects invalid credentials", async () => {
       mockSignInParse.mockReturnValue({
         userName: "wrongUser",
@@ -208,7 +283,7 @@ describe("authControllers", () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
-        message: "userName hoặc Password không chính xác",
+        message: "userName hoac Password khong chinh xac",
       });
       expect(mockSessionCreate).not.toHaveBeenCalled();
     });

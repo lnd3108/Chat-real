@@ -25,17 +25,26 @@ export const authService = {
       { userName, password },
       { withCredentials: true },
     );
-    return res.data as {
-      message: string;
-      accessToken: string;
-      user: {
-        id: string;
-        userName: string;
-        displayName: string;
-        email: string;
-        avatarUrl: string | null;
-      };
-    };
+    return res.data as
+      | {
+          message: string;
+          accessToken: string;
+          user: {
+            id: string;
+            userName: string;
+            displayName: string;
+            email: string;
+            avatarUrl: string | null;
+          };
+        }
+      | {
+          requiresEmailVerification: true;
+          verificationToken: string;
+          email: string;
+          purpose: "signup" | "google-signin";
+          resendAvailableAt: number;
+          message: string;
+        };
   },
 
   googleCallback: async (code: string) => {
@@ -63,29 +72,52 @@ export const authService = {
           requiresEmailVerification: true;
           verificationToken: string;
           email: string;
+          purpose: "signup" | "google-signin";
+          resendAvailableAt: number;
           message: string;
         };
   },
 
-  verifyGoogleEmailCode: async (verificationToken: string, code: string) => {
+  verifyEmailCode: async (verificationToken: string, code: string) => {
     const res = await api.post(
-      "/auth/google/verify-email",
+      "/auth/verify-email",
       { verificationToken, code },
       { withCredentials: true },
     );
 
+    return res.data as
+      | {
+          message: string;
+        }
+      | {
+          message: string;
+          accessToken: string;
+          user: {
+            id: string;
+            userName: string;
+            displayName: string;
+            email: string;
+            avatarUrl: string | null;
+            authProvider: "local" | "google";
+            emailVerified: boolean;
+          };
+        };
+  },
+
+  resendVerificationCode: async (verificationToken: string) => {
+    const res = await api.post(
+      "/auth/resend-verification",
+      { verificationToken },
+      { withCredentials: true },
+    );
+
     return res.data as {
+      requiresEmailVerification: true;
+      verificationToken: string;
+      email: string;
+      purpose: "signup" | "google-signin";
+      resendAvailableAt: number;
       message: string;
-      accessToken: string;
-      user: {
-        id: string;
-        userName: string;
-        displayName: string;
-        email: string;
-        avatarUrl: string | null;
-        authProvider: "local" | "google";
-        emailVerified: boolean;
-      };
     };
   },
 

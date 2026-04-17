@@ -3,7 +3,7 @@ import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPasge";
 import ChatAppPage from "./pages/ChatAppPage";
 import { GoogleAuthCallbackPage } from "./pages/GoogleAuthCallbackPage";
-import { VerifyGoogleEmailPage } from "./pages/VerifyGoogleEmailPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useThemeStore } from "./stores/useThemeStore";
@@ -61,8 +61,8 @@ function App() {
             element={<GoogleAuthCallbackPage />}
           />
           <Route
-            path="/verify-google-email"
-            element={<VerifyGoogleEmailPage />}
+            path="/verify-email"
+            element={<VerifyEmailPage />}
           />
 
           {/* protected routes */}

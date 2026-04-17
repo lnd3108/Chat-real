@@ -21,8 +21,9 @@ export function SignInForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const { signIn } = useAuthStore();
+  const { loading, signIn } = useAuthStore();
   const navigate = useNavigate();
+
   const {
     register,
     handleSubmit,
@@ -36,15 +37,15 @@ export function SignInForm({
   const onSubmit = async (data: SignInFormValues) => {
     const { userName, password } = data;
 
-    const ok = await signIn(userName, password);
-    if (!ok) {
+    const result = await signIn(userName, password);
+    if (result === false) {
       setValue("userName", "");
       setValue("password", "");
       setFocus("userName");
       return;
     }
 
-    navigate("/");
+    navigate(result === "verify_email" ? "/verify-email" : "/");
   };
 
   const onGoogleSignIn = () => {
@@ -101,8 +102,12 @@ export function SignInForm({
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                Đăng nhập
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || loading}
+              >
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
               </Button>
 
               <div className="relative">
@@ -121,8 +126,9 @@ export function SignInForm({
                 variant="outline"
                 className="w-full"
                 onClick={onGoogleSignIn}
+                disabled={loading}
               >
-                Đăng nhập bằng Gmail
+                {loading ? "Đang chuyển hướng..." : "Đăng nhập bằng Gmail"}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">

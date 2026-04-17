@@ -35,7 +35,7 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const { signUp } = useAuthStore();
+  const { loading, signUp } = useAuthStore();
   const navigate = useNavigate();
   const {
     register,
@@ -50,7 +50,7 @@ export function SignupForm({
     const ok = await signUp(userName, password, email, firstname, lastname);
 
     if (ok) {
-      navigate("/signin");
+      navigate("/verify-email");
     }
   };
 
@@ -146,8 +146,12 @@ export function SignupForm({
                 </p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                Tạo tài khoản
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || loading}
+              >
+                {loading ? "Đang tạo tài khoản và gửi mã..." : "Tạo tài khoản"}
               </Button>
 
               <div className="text-center text-sm">
