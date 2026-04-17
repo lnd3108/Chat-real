@@ -56,6 +56,8 @@ const SendFriendRequest = ({
             type="submit"
             disabled={loading}
             className="flex-1 bg-gradient-chat text-white hover:opacity-90 transition-smooth"
+            loading={loading}
+            loadingText="Đang gửi..."
           >
             {loading ? (
               <span>Đang gửi...</span>

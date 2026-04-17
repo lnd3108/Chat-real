@@ -167,6 +167,8 @@ const PersonalInForm = ({ userInfo }: Props) => {
           disabled={!isChanged || loading}
           onClick={handleSave}
           className="w-full bg-gradient-primary transition-opacity hover:opacity-90 md:w-auto"
+          loading={loading}
+          loadingText="Đang lưu..."
         >
           <Save className="mr-2 size-4" />
           {loading ? "Đang lưu..." : "Lưu thay đổi"}

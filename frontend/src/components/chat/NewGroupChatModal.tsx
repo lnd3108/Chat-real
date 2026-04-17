@@ -149,6 +149,8 @@ const NewGroupChatModal = () => {
               type="submit"
               disabled={loading}
               className="flex-1 bg-gradient-chat text-white hover:opacity/90 transition-smooth"
+              loading={loading}
+              loadingText="Đang tạo nhóm..."
             >
               {loading ? (
                 <span>Đang tạo nhóm...</span>

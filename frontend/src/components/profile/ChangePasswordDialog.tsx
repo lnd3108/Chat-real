@@ -225,6 +225,8 @@ const ChangePasswordDialog = ({ open, setOpen }: Props) => {
               className="flex-1 bg-gradient-primary hover:opacity-90"
               disabled={!isValid || loading}
               onClick={handleChangePassword}
+              loading={loading}
+              loadingText="Đang cập nhật..."
             >
               {loading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
             </Button>

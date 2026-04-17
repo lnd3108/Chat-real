@@ -70,6 +70,8 @@ export const useFriendStore = create<FriendState>((set) => ({
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
       console.error("Loi xay ra khi acceptRequest", error);
+    } finally {
+      set({ loading: false });
     }
   },
 

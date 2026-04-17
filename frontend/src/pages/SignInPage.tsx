@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { SignInForm } from "@/components/auth/signin-form";
+import { normalizeToastMessage } from "@/lib/toastMessage";
 
 const AUTH_REDIRECT_TOAST_KEY = "auth_redirect_toast";
 
@@ -20,13 +21,13 @@ export const SignInPage = () => {
       if (!payload?.message) return;
 
       if (payload.type === "error") {
-        toast.error(payload.message);
+        toast.error(normalizeToastMessage(payload.message));
         return;
       }
 
-      toast.success(payload.message);
+      toast.success(normalizeToastMessage(payload.message));
     } catch {
-      toast.success(rawValue);
+      toast.success(normalizeToastMessage(rawValue));
     }
   }, []);
 

@@ -46,6 +46,9 @@ export function SignInForm({
       return;
     }
 
+    setValue("userName", "");
+    setValue("password", "");
+
     navigate(result === "verify_email" ? "/verify-email" : "/");
   };
 

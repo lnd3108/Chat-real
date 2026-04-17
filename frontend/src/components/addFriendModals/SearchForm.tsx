@@ -71,6 +71,8 @@ const SearchForm = ({
           type="submit"
           disabled={loading || !usernameValue?.trim()}
           className="flex-1 bg-gradient-chat text-white hover:opacity-90 transition-smooth"
+          loading={loading}
+          loadingText="Đang tìm..."
         >
           {loading ? (
             <span>Đang Tìm...</span>

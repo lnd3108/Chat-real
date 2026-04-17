@@ -494,14 +494,14 @@ export const signIn = async (req, res) => {
     if (!user) {
       return res
         .status(401)
-        .json({ message: "userName hoac Password khong chinh xac" });
+        .json({ message: "Tên tài khoản hoặc mật khẩu không chính xác." });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.hashedPassword);
     if (!passwordCorrect) {
       return res
         .status(401)
-        .json({ message: "userName hoac Password khong chinh xac" });
+        .json({ message: "Tên tài khoản hoặc mật khẩu không chính xác." });
     }
 
     if (user.authProvider === "local" && !user.emailVerified) {
@@ -510,19 +510,19 @@ export const signIn = async (req, res) => {
       });
 
       if (verification.ok) {
-        return res.status(403).json({
+        return res.status(200).json({
           ...verification.payload,
           message:
-            "Email cua ban chua duoc xac minh. Chung toi da gui lai ma xac minh.",
+            "Email của bạn chưa được xác minh. Chúng tôi đã gửi lại mã xác minh.",
         });
       }
 
       if (verification.status === 429) {
-        return res.status(403).json({
+        return res.status(200).json({
           ...buildPendingVerificationResponse(
             user,
             "signup",
-            "Email cua ban chua duoc xac minh. Vui long tiep tuc xac minh truoc khi dang nhap.",
+            "Email của bạn chưa được xác minh. Vui lòng tiếp tục xác minh trước khi đăng nhập.",
           ),
           resendAvailableAt: verification.resendAvailableAt,
         });

@@ -4,13 +4,14 @@ import { persist } from "zustand/middleware";
 import axios from "axios";
 import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
+import { normalizeToastMessage } from "@/lib/toastMessage";
 import { useChatStore } from "./useChatStore";
 
 const getAxiosMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message;
     if (typeof message === "string" && message.trim()) {
-      return message;
+      return normalizeToastMessage(message);
     }
   }
 
@@ -99,7 +100,7 @@ export const useAuthStore = create<AuthState>()(
               result.purpose,
               result.resendAvailableAt,
             );
-            toast.success(result.message);
+            toast.success(normalizeToastMessage(result.message));
             return true;
           }
 
@@ -127,7 +128,7 @@ export const useAuthStore = create<AuthState>()(
               result.purpose,
               result.resendAvailableAt,
             );
-            toast.success(result.message);
+            toast.success(normalizeToastMessage(result.message));
             return "verify_email";
           }
 
@@ -139,20 +140,6 @@ export const useAuthStore = create<AuthState>()(
           toast.success("Chào mừng bạn quay lại.");
           return "signed_in";
         } catch (error) {
-          if (axios.isAxiosError(error) && error.response?.status === 403) {
-            const result = error.response.data;
-            if (result?.requiresEmailVerification) {
-              get().setPendingGoogleVerification(
-                result.verificationToken,
-                result.email,
-                result.purpose,
-                result.resendAvailableAt,
-              );
-              toast.success(result.message);
-              return "verify_email";
-            }
-          }
-
           if (axios.isAxiosError(error) && error.response?.status === 401) {
             toast.error("Sai tên tài khoản hoặc mật khẩu. Vui lòng nhập lại.");
             return false;
@@ -181,7 +168,7 @@ export const useAuthStore = create<AuthState>()(
               result.purpose,
               result.resendAvailableAt,
             );
-            toast.success(result.message);
+            toast.success(normalizeToastMessage(result.message));
             return false;
           }
 
@@ -224,7 +211,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           get().setPendingGoogleVerification(null, null, null, null);
-          toast.success(result.message);
+          toast.success(normalizeToastMessage(result.message));
           return "verified_only";
         } catch (error) {
           console.error(error);
@@ -253,7 +240,7 @@ export const useAuthStore = create<AuthState>()(
             result.purpose,
             result.resendAvailableAt,
           );
-          toast.success(result.message);
+          toast.success(normalizeToastMessage(result.message));
           return true;
         } catch (error) {
           console.error(error);

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useFriendStore } from "@/stores/useFriendStore";
 import FriendRequestItem from "./FriendRequestItem";
 import { Button } from "../ui/button";
@@ -6,6 +7,10 @@ import { toast } from "sonner";
 const ReceivedRequests = () => {
   const { acceptRequest, declineRequest, loading, receivedList } =
     useFriendStore();
+  const [pendingRequest, setPendingRequest] = useState<{
+    id: string;
+    action: "accept" | "decline";
+  } | null>(null);
 
   if (!receivedList || receivedList.length === 0) {
     return (
@@ -17,19 +22,25 @@ const ReceivedRequests = () => {
 
   const handleAccept = async (requestId: string) => {
     try {
+      setPendingRequest({ id: requestId, action: "accept" });
       await acceptRequest(requestId);
       toast.success("Đã chấp nhận lời mời kết bạn");
     } catch (error) {
       console.error(error);
+    } finally {
+      setPendingRequest(null);
     }
   };
 
   const handleDecline = async (requestId: string) => {
     try {
+      setPendingRequest({ id: requestId, action: "decline" });
       await declineRequest(requestId);
       toast.success("Đã từ chối lời mời kết bạn");
     } catch (error) {
       console.error(error);
+    } finally {
+      setPendingRequest(null);
     }
   };
 
@@ -47,6 +58,12 @@ const ReceivedRequests = () => {
                 variant="primary"
                 onClick={() => handleAccept(req._id)}
                 disabled={loading}
+                loading={
+                  loading &&
+                  pendingRequest?.id === req._id &&
+                  pendingRequest.action === "accept"
+                }
+                loadingText="Đang chấp nhận..."
               >
                 Chấp nhận
               </Button>
@@ -55,6 +72,12 @@ const ReceivedRequests = () => {
                 variant="destructiveOutline"
                 onClick={() => handleDecline(req._id)}
                 disabled={loading}
+                loading={
+                  loading &&
+                  pendingRequest?.id === req._id &&
+                  pendingRequest.action === "decline"
+                }
+                loadingText="Đang từ chối..."
               >
                 Từ chối
               </Button>
