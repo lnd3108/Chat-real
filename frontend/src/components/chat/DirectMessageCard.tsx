@@ -32,6 +32,7 @@ import {
   getParticipantId,
   getParticipantProfile,
 } from "@/lib/chatParticipants";
+import { playClickSound } from "@/lib/sound";
 import { useState } from "react";
 import DirectNotificationSettingsDialog from "./DirectNotificationSettingsDialog";
 import DirectProfileDialog from "./DirectProfileDialog";
@@ -124,6 +125,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
                   className="relative block rounded-full transition-opacity hover:opacity-85"
                   onClick={(event) => {
                     event.stopPropagation();
+                    playClickSound();
                     setProfileOpen(true);
                   }}
                   aria-label={`Xem hồ sơ ${otherUser.displayName}`}
@@ -157,23 +159,37 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={playClickSound}
+              >
                 <MoreHorizontal className="size-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+              <DropdownMenuItem onClick={() => {
+                playClickSound();
+                setProfileOpen(true);
+              }}>
                 <Info className="mr-2 size-4" />
                 Xem hồ sơ
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setInfoOpen(true)}>
+              <DropdownMenuItem onClick={() => {
+                playClickSound();
+                setInfoOpen(true);
+              }}>
                 <Flag className="mr-2 size-4" />
                 Thiết lập đoạn chat
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setNotificationOpen(true)}>
+              <DropdownMenuItem onClick={() => {
+                playClickSound();
+                setNotificationOpen(true);
+              }}>
                 {notificationsEnabled ? (
                   <Bell className="mr-2 size-4" />
                 ) : (
@@ -182,7 +198,10 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
                 Cài đặt thông báo
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={handleToggleBlock}>
+              <DropdownMenuItem onClick={() => {
+                playClickSound();
+                handleToggleBlock();
+              }}>
                 <ShieldBan className="mr-2 size-4" />
                 {blocked ? "Bỏ chặn" : "Chặn"}
               </DropdownMenuItem>
@@ -212,7 +231,10 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Hủy</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => deleteOrLeaveGroupConversation(convo._id)}
+                      onClick={() => {
+                        playClickSound();
+                        deleteOrLeaveGroupConversation(convo._id);
+                      }}
                     >
                       Xóa
                     </AlertDialogAction>

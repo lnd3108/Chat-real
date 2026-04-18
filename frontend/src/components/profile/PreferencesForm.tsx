@@ -7,10 +7,16 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  areAllSoundsEnabled,
+  getNotificationSettings,
+  setAllSoundsEnabled,
+  subscribeNotificationSettings,
+} from "@/lib/messageNotifications";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Moon, Sun } from "lucide-react";
-import { useEffect } from "react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const PreferencesForm = () => {
   const { isDark, toggleTheme } = useThemeStore();
@@ -19,10 +25,21 @@ const PreferencesForm = () => {
     loadShowOnlineStatus,
     updateShowOnlineStatus,
   } = useSocketStore();
+  const [soundEnabled, setSoundEnabled] = useState(() =>
+    areAllSoundsEnabled(getNotificationSettings()),
+  );
 
   useEffect(() => {
     loadShowOnlineStatus();
   }, [loadShowOnlineStatus]);
+
+  useEffect(
+    () =>
+      subscribeNotificationSettings((settings) => {
+        setSoundEnabled(areAllSoundsEnabled(settings));
+      }),
+    [],
+  );
 
   const handleToggleOnline = async (checked: boolean) => {
     try {
@@ -83,6 +100,34 @@ const PreferencesForm = () => {
             onCheckedChange={handleToggleOnline}
             className="data-[state=checked]:bg-primary-glow"
           />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="sound-toggle" className="text-base font-medium">
+              Âm thanh ứng dụng
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Khi tắt, toàn bộ âm thanh trong hệ thống sẽ bị tắt
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {soundEnabled ? (
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <VolumeX className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Switch
+              id="sound-toggle"
+              checked={soundEnabled}
+              onCheckedChange={(checked) => {
+                setSoundEnabled(checked);
+                setAllSoundsEnabled(checked);
+              }}
+              className="data-[state=checked]:bg-primary-glow"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

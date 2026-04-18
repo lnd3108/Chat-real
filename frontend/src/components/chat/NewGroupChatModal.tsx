@@ -1,5 +1,6 @@
 import { useFriendStore } from "@/stores/useFriendStore";
 import { useState } from "react";
+import { playClickSound } from "@/lib/sound";
 import {
   Dialog,
   DialogContent,
@@ -79,6 +80,7 @@ const NewGroupChatModal = () => {
     <Dialog
       open={open}
       onOpenChange={(v) => {
+        playClickSound();
         setOpen(v);
         if (!v) resetForm();
       }}

@@ -4,7 +4,11 @@ import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { playSound } from "@/lib/sound";
+import {
+  playClickSound,
+  playKeystrokeSound,
+  shouldPlayKeystrokeSound,
+} from "@/lib/sound";
 import type { Conversation } from "@/types/chat";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -34,6 +38,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const uploadProgressValueRef = useRef(0);
   const uploadProgressTargetRef = useRef(0);
   const uploadProgressTimerRef = useRef<number | null>(null);
+  const isComposingRef = useRef(false);
 
   useEffect(() => {
     if (!editingMessage) return;
@@ -198,7 +203,6 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       setValue("");
       resetImage();
-      playSound("send");
     } catch (error) {
       console.error(error);
       const message =
@@ -221,10 +225,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void sendMessage();
+      return;
+    }
+
+    if (shouldPlayKeystrokeSound(e, isComposingRef.current)) {
+      playKeystrokeSound();
     }
   };
 
@@ -266,6 +275,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             size="icon"
             className="size-7"
             onClick={() => {
+              playClickSound();
               setReplyingTo(null);
               setEditingMessage(null);
               setValue("");
@@ -308,7 +318,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             variant="secondary"
             size="icon"
             className="absolute -right-2 -top-2 size-6 rounded-full"
-            onClick={resetImage}
+            onClick={() => {
+              playClickSound();
+              resetImage();
+            }}
             disabled={sending}
           >
             <X className="size-3" />
@@ -328,6 +341,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             className={
               sending ? "cursor-not-allowed pointer-events-none" : "cursor-pointer"
             }
+            onClick={() => {
+              if (!sending) {
+                playClickSound();
+              }
+            }}
           >
             <input
               type="file"
@@ -343,6 +361,12 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         <div className="relative flex-1">
           <Input
             onKeyDown={handleKeyPress}
+            onCompositionStart={() => {
+              isComposingRef.current = true;
+            }}
+            onCompositionEnd={() => {
+              isComposingRef.current = false;
+            }}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Soạn tin nhắn..."
@@ -366,7 +390,10 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </div>
 
         <Button
-          onClick={() => void sendMessage()}
+          onClick={() => {
+            playClickSound();
+            void sendMessage();
+          }}
           className="min-w-24 bg-gradient-chat transition-smooth hover:scale-105 hover:shadow-glow"
           disabled={sending || (!value.trim() && !image)}
           aria-label={statusText ?? "Gửi tin nhắn"}

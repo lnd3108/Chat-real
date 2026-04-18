@@ -1,4 +1,5 @@
 import { useThemeStore } from "@/stores/useThemeStore";
+import { playClickSound } from "@/lib/sound";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Smile } from "lucide-react";
 import Picker from "@emoji-mart/react";
@@ -16,7 +17,13 @@ const EmojiPicker = ({ onChange }: EmojiPickerProps) => {
   const { isDark } = useThemeStore();
 
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (open) {
+          playClickSound();
+        }
+      }}
+    >
       <PopoverTrigger className="cursor-pointer">
         <Smile className="size-4" />
       </PopoverTrigger>
@@ -29,7 +36,10 @@ const EmojiPicker = ({ onChange }: EmojiPickerProps) => {
         <Picker
           theme={isDark ? "dark" : "light"}
           data={data}
-          onEmojiSelect={(emoji: EmojiSelection) => onChange(emoji.native ?? "")}
+          onEmojiSelect={(emoji: EmojiSelection) => {
+            playClickSound();
+            onChange(emoji.native ?? "");
+          }}
           emojiSize={24}
         />
       </PopoverContent>

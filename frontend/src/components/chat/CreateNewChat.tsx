@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useFriendStore } from "@/stores/useFriendStore";
+import { playClickSound } from "@/lib/sound";
 import FriendListModal from "../createNewChat/FriendListModal";
 import { Dialog, DialogTrigger } from "../ui/dialog";
 import { Card } from "../ui/card";
@@ -17,7 +18,13 @@ const CreateNewChat = () => {
 
   return (
     <div className="flex gap-2">
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          playClickSound();
+          setOpen(nextOpen);
+        }}
+      >
         <DialogTrigger asChild>
           <button type="button" className="w-full text-left">
             <Card className="flex-1 p-3 glass hover:shadow-soft transition-smooth cursor-pointer group/card">

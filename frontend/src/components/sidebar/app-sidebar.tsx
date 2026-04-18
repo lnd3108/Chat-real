@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
 import { Switch } from "../ui/switch";
 import CreateNewChat from "../chat/CreateNewChat";
 import NewGroupChatModal from "../chat/NewGroupChatModal";
@@ -27,11 +27,28 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import ConversationSkeleton from "../skeleton/ConversationSkeleton";
+import {
+  areAllSoundsEnabled,
+  getNotificationSettings,
+  setAllSoundsEnabled,
+  subscribeNotificationSettings,
+} from "@/lib/messageNotifications";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isDark, toggleTheme } = useThemeStore();
   const { user } = useAuthStore();
   const { convoLoading } = useChatStore();
+  const [soundEnabled, setSoundEnabled] = React.useState(() =>
+    areAllSoundsEnabled(getNotificationSettings()),
+  );
+
+  React.useEffect(
+    () =>
+      subscribeNotificationSettings((settings) => {
+        setSoundEnabled(areAllSoundsEnabled(settings));
+      }),
+    [],
+  );
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -55,6 +72,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       className="data-[state=checked]:bg-background/80"
                     />
                     <Moon className="size-4 text-white/80" />
+                    {soundEnabled ? (
+                      <Volume2 className="size-4 text-white/80" />
+                    ) : (
+                      <VolumeX className="size-4 text-white/80" />
+                    )}
+                    <Switch
+                      checked={soundEnabled}
+                      onCheckedChange={(checked) => {
+                        setSoundEnabled(checked);
+                        setAllSoundsEnabled(checked);
+                      }}
+                      className="data-[state=checked]:bg-background/80"
+                      aria-label="Bật hoặc tắt âm thanh"
+                    />
                   </div>
                 </div>
               </a>

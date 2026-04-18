@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { playClickSound } from "@/lib/sound";
 import { formatOnlineTime, cn } from "@/lib/utils";
 import { MoreHorizontal } from "lucide-react";
 import type React from "react";
@@ -57,7 +58,10 @@ const ChatCard = ({
         isActive &&
           "ring-2 ring-primary/50 bg-gradient-to-tr from-primary-glow/10 to-primary-foreground ",
       )}
-      onClick={() => onSelect(convoId)}
+      onClick={() => {
+        playClickSound();
+        onSelect(convoId);
+      }}
     >
       <div className="flex items-center gap-3">
         <div className="relative">{leftSection}</div>

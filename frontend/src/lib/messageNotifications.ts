@@ -2,41 +2,111 @@ import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
 import { getParticipantId } from "./chatParticipants";
-import { isGroupNotificationEnabled } from "./groupNotificationSettings";
 import { isDirectNotificationEnabled } from "./directChatPreferences";
+import { isGroupNotificationEnabled } from "./groupNotificationSettings";
 
-type NotificationSetting = {
+export type NotificationSetting = {
   enableAll: boolean;
+  soundEnabled: boolean;
   messageNotification: boolean;
   messageSound: boolean;
+  typingSound: boolean;
+  clickSound: boolean;
   friendRequestNotification: boolean;
   systemNotification: boolean;
 };
 
 const STORAGE_KEY = "chat_notification_settings";
+const SETTINGS_EVENT = "chat-notification-settings-changed";
 
-const defaultSettings: NotificationSetting = {
+export const defaultNotificationSettings: NotificationSetting = {
   enableAll: true,
+  soundEnabled: true,
   messageNotification: true,
   messageSound: true,
+  typingSound: true,
+  clickSound: true,
   friendRequestNotification: true,
   systemNotification: true,
 };
 
 export const getNotificationSettings = (): NotificationSetting => {
   if (typeof window === "undefined") {
-    return defaultSettings;
+    return defaultNotificationSettings;
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultSettings;
+    if (!raw) return defaultNotificationSettings;
 
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return { ...defaultNotificationSettings, ...JSON.parse(raw) };
   } catch {
-    return defaultSettings;
+    return defaultNotificationSettings;
   }
 };
+
+export const saveNotificationSettings = (settings: NotificationSetting) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  window.dispatchEvent(new CustomEvent(SETTINGS_EVENT, { detail: settings }));
+};
+
+export const updateNotificationSettings = (
+  updater:
+    | Partial<NotificationSetting>
+    | ((current: NotificationSetting) => NotificationSetting),
+) => {
+  const current = getNotificationSettings();
+  const next =
+    typeof updater === "function"
+      ? updater(current)
+      : { ...current, ...updater };
+
+  saveNotificationSettings(next);
+  return next;
+};
+
+export const subscribeNotificationSettings = (
+  listener: (settings: NotificationSetting) => void,
+) => {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handleCustomEvent = (event: Event) => {
+    const customEvent = event as CustomEvent<NotificationSetting>;
+    listener(customEvent.detail ?? getNotificationSettings());
+  };
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) {
+      listener(getNotificationSettings());
+    }
+  };
+
+  window.addEventListener(SETTINGS_EVENT, handleCustomEvent as EventListener);
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    window.removeEventListener(SETTINGS_EVENT, handleCustomEvent as EventListener);
+    window.removeEventListener("storage", handleStorage);
+  };
+};
+
+export const areAllSoundsEnabled = (settings = getNotificationSettings()) =>
+  settings.soundEnabled;
+
+export const setAllSoundsEnabled = (enabled: boolean) =>
+  updateNotificationSettings((current) => ({
+    ...current,
+    soundEnabled: enabled,
+    messageSound: enabled,
+    typingSound: enabled,
+    clickSound: enabled,
+  }));
 
 export const requestDesktopNotificationPermission = async () => {
   if (typeof window === "undefined" || !("Notification" in window)) {
@@ -80,7 +150,7 @@ const getSenderName = (
   currentUserId?: string,
 ) => {
   if (!conversation) {
-    return "Ai do";
+    return "Ai đó";
   }
 
   const participants = conversation.participants ?? [];

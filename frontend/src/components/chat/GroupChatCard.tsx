@@ -8,6 +8,7 @@ import {
   getParticipantId,
   getParticipantProfile,
 } from "@/lib/chatParticipants";
+import { playClickSound } from "@/lib/sound";
 import { isGroupNotificationEnabled } from "@/lib/groupNotificationSettings";
 import type { Conversation } from "@/types/chat";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
                   className="rounded-full transition-opacity hover:opacity-85"
                   onClick={(event) => {
                     event.stopPropagation();
+                    playClickSound();
                     setGroupInfoOpen(true);
                   }}
                   aria-label={`Xem thông tin nhóm ${name}`}
@@ -126,18 +128,33 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={playClickSound}
+              >
                 <MoreHorizontal className="size-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => setGroupInfoOpen(true)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  playClickSound();
+                  setGroupInfoOpen(true);
+                }}
+              >
                 <Info className="mr-2 size-4" />
                 Thông tin nhóm
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setNotificationOpen(true)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  playClickSound();
+                  setNotificationOpen(true);
+                }}
+              >
                 {notificationsEnabled ? (
                   <Bell className="mr-2 size-4" />
                 ) : (
@@ -173,7 +190,10 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
                       <AlertDialogCancel>Hủy</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
-                        onClick={() => deleteOrLeaveGroupConversation(convo._id)}
+                        onClick={() => {
+                          playClickSound();
+                          deleteOrLeaveGroupConversation(convo._id);
+                        }}
                       >
                         Xác nhận xóa
                       </AlertDialogAction>
@@ -202,7 +222,10 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
                       <AlertDialogCancel>Hủy</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
-                        onClick={() => deleteOrLeaveGroupConversation(convo._id)}
+                        onClick={() => {
+                          playClickSound();
+                          deleteOrLeaveGroupConversation(convo._id);
+                        }}
                       >
                         Xác nhận rời nhóm
                       </AlertDialogAction>
