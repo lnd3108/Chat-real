@@ -15,6 +15,12 @@ type KeystrokeEventLike = {
   };
 };
 
+type BeforeInputEventLike = {
+  data?: string | null;
+  inputType?: string | null;
+  isComposing?: boolean;
+};
+
 const keystrokeSounds = [
   "/frontend_public_sounds_keystroke1.mp3",
   "/frontend_public_sounds_keystroke2.mp3",
@@ -72,6 +78,77 @@ const blockedKeystrokeKeys = new Set([
 const lastPlayedAt = new Map<SoundType, number>();
 const audioPoolByPath = new Map<string, HTMLAudioElement[]>();
 const AUDIO_POOL_SIZE = 3;
+const GLOBAL_CLICK_SELECTOR = [
+  "button",
+  "a[href]",
+  "summary",
+  "label[for]",
+  "input[type='checkbox']",
+  "input[type='radio']",
+  "input[type='file']",
+  "select",
+  "[role='button']",
+  "[role='menuitem']",
+  "[role='option']",
+  "[role='switch']",
+  "[role='tab']",
+  "[data-slot='button']",
+  "[data-slot='switch']",
+  "[data-slot='dropdown-menu-trigger']",
+  "[data-slot='dropdown-menu-item']",
+  "[data-slot='dropdown-menu-checkbox-item']",
+  "[data-slot='dropdown-menu-radio-item']",
+  "[data-slot='dropdown-menu-sub-trigger']",
+  "[data-radix-collection-item]",
+].join(", ");
+
+const isElementDisabled = (element: Element | null) => {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (element.getAttribute("aria-disabled") === "true") {
+    return true;
+  }
+
+  if ("disabled" in element) {
+    return Boolean((element as HTMLButtonElement | HTMLInputElement).disabled);
+  }
+
+  return false;
+};
+
+const isTextEntryTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target instanceof HTMLTextAreaElement) {
+    return !target.disabled && !target.readOnly;
+  }
+
+  if (target instanceof HTMLInputElement) {
+    const blockedTypes = new Set([
+      "checkbox",
+      "radio",
+      "range",
+      "file",
+      "submit",
+      "button",
+      "reset",
+      "color",
+      "date",
+      "datetime-local",
+      "month",
+      "time",
+      "week",
+    ]);
+
+    return !target.disabled && !target.readOnly && !blockedTypes.has(target.type);
+  }
+
+  return target.isContentEditable;
+};
 
 const resolveSoundPath = (type: SoundType) => {
   const entry = soundMap[type];
@@ -184,4 +261,85 @@ export const shouldPlayKeystrokeSound = (
   }
 
   return event.key.length === 1;
+};
+
+export const shouldPlayBeforeInputSound = (event: BeforeInputEventLike) => {
+  if (
+    event.isComposing ||
+    !event.inputType?.startsWith("insert") ||
+    !event.data
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+export const shouldPlayGlobalClickSound = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  const interactive = target.closest(GLOBAL_CLICK_SELECTOR);
+  if (!interactive || isElementDisabled(interactive)) {
+    return false;
+  }
+
+  return true;
+};
+
+export const shouldPlayGlobalKeystrokeSound = (
+  event: KeystrokeEventLike,
+  target: EventTarget | null,
+) => {
+  if (!isTextEntryTarget(target)) {
+    return false;
+  }
+
+  return shouldPlayKeystrokeSound(event);
+};
+
+export const shouldPlayGlobalBeforeInputSound = (
+  event: BeforeInputEventLike,
+  target: EventTarget | null,
+) => {
+  if (!isTextEntryTarget(target)) {
+    return false;
+  }
+
+  return shouldPlayBeforeInputSound(event);
+};
+
+export const installGlobalUiSoundEffects = () => {
+  if (typeof document === "undefined") {
+    return () => undefined;
+  }
+
+  const handleClick = (event: MouseEvent) => {
+    if (shouldPlayGlobalClickSound(event.target)) {
+      playClickSound();
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (shouldPlayGlobalKeystrokeSound(event, event.target)) {
+      playKeystrokeSound();
+    }
+  };
+
+  const handleBeforeInput = (event: InputEvent) => {
+    if (shouldPlayGlobalBeforeInputSound(event, event.target)) {
+      playKeystrokeSound();
+    }
+  };
+
+  document.addEventListener("click", handleClick, true);
+  document.addEventListener("keydown", handleKeyDown, true);
+  document.addEventListener("beforeinput", handleBeforeInput, true);
+
+  return () => {
+    document.removeEventListener("click", handleClick, true);
+    document.removeEventListener("keydown", handleKeyDown, true);
+    document.removeEventListener("beforeinput", handleBeforeInput, true);
+  };
 };

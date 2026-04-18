@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
 import { useSocketStore } from "./stores/useSocketStore";
 import { requestDesktopNotificationPermission } from "./lib/messageNotifications";
+import { installGlobalUiSoundEffects } from "./lib/sound";
 
 function App() {
   const { isDark, setTheme } = useThemeStore();
@@ -29,6 +30,8 @@ function App() {
 
     return () => disconnectSocket();
   }, [accessToken, connectSocket, disconnectSocket]);
+
+  useEffect(() => installGlobalUiSoundEffects(), []);
 
   return (
     <>
