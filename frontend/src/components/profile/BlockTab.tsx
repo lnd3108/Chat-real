@@ -6,24 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { userService } from "@/services/userService";
+import type { BlockedUser } from "@/types/user";
 
 import SuggestUserInput, { type FriendItem } from "./SuggestUserInput";
 
-export type BlockedUser = {
-  userName: string;
-  reason?: string;
-  createdAt: string;
-};
-
 type Props = {
   friends: FriendItem[];
-
   blocked: BlockedUser[];
   setBlocked: (next: BlockedUser[]) => void;
-
   blockUserName: string;
   setBlockUserName: (v: string) => void;
-
   blockReason: string;
   setBlockReason: (v: string) => void;
 };
@@ -37,47 +30,78 @@ const BlockTab = ({
   blockReason,
   setBlockReason,
 }: Props) => {
+  const selectedFriend = friends.find(
+    (friend) => friend.userName.toLowerCase() === blockUserName.trim().toLowerCase(),
+  );
+
   const isBlocked = () => {
-    const u = blockUserName.trim().toLowerCase();
-    if (!u) return false;
-    return blocked.some((b) => b.userName.toLowerCase() === u);
+    const userName = blockUserName.trim().toLowerCase();
+    if (!userName) return false;
+    return blocked.some((item) => item.userName.toLowerCase() === userName);
   };
 
   const handleBlock = () => {
-    const u = blockUserName.trim();
-    if (!u) {
+    const userName = blockUserName.trim();
+    const selectedFriendId = selectedFriend?._id;
+    if (!userName) {
       toast.error("Nhập username cần chặn.");
       return;
     }
+
+    if (!selectedFriendId) {
+      toast.error("Chỉ hỗ trợ chặn từ danh sách bạn bè hiện có.");
+      return;
+    }
+
     if (isBlocked()) {
       toast.error("User này đã bị chặn rồi.");
       return;
     }
 
-    const next: BlockedUser[] = [
-      ...blocked,
-      {
-        userName: u,
-        reason: blockReason.trim() || undefined,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-
-    setBlocked(next);
-    toast.success(`Đã chặn @${u}`);
-    setBlockUserName("");
-    setBlockReason("");
+    void (async () => {
+      try {
+        const next = await userService.blockUser(
+          selectedFriendId,
+          blockReason.trim() || undefined,
+        );
+        setBlocked(next);
+        toast.success(`Đã chặn @${userName}`);
+        setBlockUserName("");
+        setBlockReason("");
+      } catch (error) {
+        console.error("Lỗi chặn người dùng:", error);
+        toast.error("Không thể chặn người dùng lúc này.");
+      }
+    })();
   };
 
-  const handleUnblock = (userName: string) => {
-    const next = blocked.filter((b) => b.userName !== userName);
-    setBlocked(next);
-    toast.success(`Đã bỏ chặn @${userName}`);
+  const handleUnblock = (user: BlockedUser) => {
+    void (async () => {
+      try {
+        const next = await userService.unblockUser(user._id);
+        setBlocked(next);
+        toast.success(`Đã bỏ chặn @${user.userName}`);
+      } catch (error) {
+        console.error("Lỗi bỏ chặn người dùng:", error);
+        toast.error("Không thể bỏ chặn người dùng lúc này.");
+      }
+    })();
   };
 
   const handleClearAllBlocked = () => {
-    setBlocked([]);
-    toast.message("Đã xoá danh sách chặn");
+    void (async () => {
+      try {
+        let next = blocked;
+        for (const user of blocked) {
+          next = await userService.unblockUser(user._id);
+        }
+        setBlocked(next);
+        toast.message("Đã xóa danh sách chặn");
+      } catch (error) {
+        console.error("Lỗi xóa toàn bộ danh sách chặn:", error);
+        toast.error("Không thể xóa toàn bộ danh sách chặn lúc này.");
+      }
+    })();
   };
 
   return (
@@ -92,7 +116,7 @@ const BlockTab = ({
         />
 
         <div className="space-y-2">
-          <Label>Lý do (tuỳ chọn)</Label>
+          <Label>Lý do (tùy chọn)</Label>
           <Input
             value={blockReason}
             onChange={(e) => setBlockReason(e.target.value)}
@@ -102,7 +126,7 @@ const BlockTab = ({
         </div>
 
         <Button className="w-full" variant="destructive" onClick={handleBlock}>
-          <ShieldBan className="h-4 w-4 mr-2" />
+          <ShieldBan className="mr-2 h-4 w-4" />
           Chặn
         </Button>
       </div>
@@ -120,7 +144,7 @@ const BlockTab = ({
           onClick={handleClearAllBlocked}
           disabled={blocked.length === 0}
         >
-          <Trash2 className="h-4 w-4 mr-2" />
+          <Trash2 className="mr-2 h-4 w-4" />
           Xoá hết
         </Button>
       </div>
@@ -128,25 +152,26 @@ const BlockTab = ({
       {blocked.length === 0 ? (
         <p className="text-sm text-muted-foreground">Chưa có ai bị chặn.</p>
       ) : (
-        <div className="space-y-2 max-h-52 overflow-auto pr-1">
-          {blocked.map((u) => (
+        <div className="max-h-52 space-y-2 overflow-auto pr-1">
+          {blocked.map((user) => (
             <div
-              key={u.userName}
-              className="flex items-center justify-between rounded-lg border border-border/30 p-3 glass-light"
+              key={user._id}
+              className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3"
             >
               <div>
-                <p className="font-medium">@{u.userName}</p>
-                {u.reason && (
-                  <p className="text-xs text-muted-foreground">
-                    Lý do: {u.reason}
-                  </p>
+                <p className="font-medium">@{user.userName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.displayName}
+                </p>
+                {user.reason && (
+                  <p className="text-xs text-muted-foreground">Lý do: {user.reason}</p>
                 )}
               </div>
 
               <Button
                 variant="outline"
                 className="glass-light border-border/30"
-                onClick={() => handleUnblock(u.userName)}
+                onClick={() => handleUnblock(user)}
               >
                 Bỏ chặn
               </Button>

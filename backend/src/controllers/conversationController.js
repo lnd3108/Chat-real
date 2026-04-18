@@ -2,6 +2,12 @@ import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
 import {
+  buildDirectBlockInfo,
+  ensureDirectMessagingAllowed,
+  findDirectConversationBetweenUsers,
+  getDirectConversationOtherParticipantId,
+} from "../utils/blocking.js";
+import {
   deleteImageFromCloudinary,
   uploadImageFromBuffer,
 } from "../middlewares/uploadMiddleWare.js";
@@ -27,7 +33,10 @@ const createSystemMessage = async (conversation, actorId, content) => {
 
 const populateConversationForClient = async (conversation) => {
   await conversation.populate([
-    { path: "participants.userId", select: "displayName avatarUrl" },
+    {
+      path: "participants.userId",
+      select: "userName displayName avatarUrl bio blockedUsers",
+    },
     { path: "seenBy", select: "displayName avatarUrl" },
     { path: "lastMessage.senderId", select: "displayName avatarUrl" },
   ]);
@@ -38,8 +47,10 @@ const populateConversationForClient = async (conversation) => {
 const formatConversationForClient = (conversation) => {
   const participants = (conversation.participants || []).map((p) => ({
     _id: p.userId?._id,
+    userName: p.userId?.userName,
     displayName: p.userId?.displayName,
     avatarUrl: p.userId?.avatarUrl ?? null,
+    bio: p.userId?.bio ?? null,
     joinedAt: p.joinedAt,
   }));
 
@@ -47,6 +58,44 @@ const formatConversationForClient = (conversation) => {
     ...conversation.toObject(),
     unreadCounts: conversation.unreadCounts || {},
     participants,
+  };
+};
+
+const attachBlockInfoToConversation = (conversation, viewerUser) => {
+  if (!conversation || conversation.type !== "direct" || !viewerUser?._id) {
+    return conversation;
+  }
+
+  const sanitizedParticipants = (conversation.participants || []).map((participant) => {
+    const { blockedUsers, ...rest } = participant;
+    return rest;
+  });
+
+  const otherParticipant = (conversation.participants || []).find(
+    (participant) => participant._id?.toString() !== viewerUser._id.toString(),
+  );
+
+  if (!otherParticipant?._id) {
+    return {
+      ...conversation,
+      participants: sanitizedParticipants,
+    };
+  }
+
+  const otherBlockedUsers =
+    otherParticipant.blockedUsers ??
+    otherParticipant.userId?.blockedUsers ??
+    [];
+
+  return {
+    ...conversation,
+    participants: sanitizedParticipants,
+    blockInfo: buildDirectBlockInfo({
+      viewerId: viewerUser._id,
+      otherUserId: otherParticipant._id,
+      viewerUser,
+      otherUser: { blockedUsers: otherBlockedUsers },
+    }),
   };
 };
 
@@ -110,6 +159,25 @@ export const createConversation = async (req, res) => {
 
     if (type === "direct") {
       const participantId = memberIds[0];
+      const participantUser = await User.findById(participantId).select("blockedUsers");
+
+      if (!participantUser) {
+        return res.status(404).json({ message: "Người dùng không tồn tại" });
+      }
+
+      const directPermission = ensureDirectMessagingAllowed({
+        senderUser: req.user,
+        recipientUser: participantUser,
+        senderId: userId,
+        recipientId: participantId,
+      });
+
+      if (!directPermission.allowed) {
+        return res.status(directPermission.status).json({
+          message: directPermission.message,
+          code: directPermission.code,
+        });
+      }
 
       conversation = await Conversation.findOne({
         type: "direct",
@@ -160,7 +228,10 @@ export const createConversation = async (req, res) => {
 
     await populateConversationForClient(conversation);
 
-    const formatted = formatConversationForClient(conversation);
+    const formatted = attachBlockInfoToConversation(
+      formatConversationForClient(conversation),
+      req.user,
+    );
 
     if (type === "group") {
       formatted.participants.forEach((p) => {
@@ -189,7 +260,7 @@ export const getConversation = async (req, res) => {
       .sort({ lastMessageAt: -1 })
       .populate({
         path: "participants.userId",
-        select: "displayName avatarUrl",
+        select: "userName displayName avatarUrl bio blockedUsers",
       })
       .populate({
         path: "lastMessage.senderId",
@@ -205,15 +276,20 @@ export const getConversation = async (req, res) => {
       .map((convo) => {
         const participants = (convo.participants || []).map((p) => ({
           _id: p.userId?._id,
+          userName: p.userId?.userName,
           displayName: p.userId?.displayName,
           avatarUrl: p.userId?.avatarUrl ?? null,
+          bio: p.userId?.bio ?? null,
+          blockedUsers: p.userId?.blockedUsers ?? [],
           joinedAt: p.joinedAt,
         }));
-        return {
+        const formattedConversation = {
           ...convo.toObject(),
           unreadCounts: convo.unreadCounts || {},
           participants,
         };
+
+        return attachBlockInfoToConversation(formattedConversation, req.user);
       });
 
     return res.status(200).json({ conversations: formatted });
@@ -770,6 +846,25 @@ export const uploadGroupAvatar = async (req, res) => {
     console.error("Lá»—i uploadGroupAvatar:", error);
     return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
+};
+
+export const emitDirectBlockStatusChanged = async ({
+  actorUser,
+  targetUserId,
+  isBlocked,
+}) => {
+  const io = getIo();
+  const conversation = await findDirectConversationBetweenUsers(actorUser._id, targetUserId);
+
+  const payload = {
+    blockerId: actorUser._id.toString(),
+    blockedUserId: targetUserId.toString(),
+    isBlocked,
+    conversationId: conversation?._id?.toString() ?? null,
+  };
+
+  io.to(actorUser._id.toString()).emit("direct:block-status", payload);
+  io.to(targetUserId.toString()).emit("direct:block-status", payload);
 };
 
 export const getGroupDetails = async (req, res) => {

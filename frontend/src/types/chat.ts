@@ -44,6 +44,14 @@ export interface LastMessage {
   senderId?: string | { _id?: string };
 }
 
+export interface DirectBlockInfo {
+  blockedByMe: boolean;
+  blockedByOther: boolean;
+  blockerId?: string | null;
+  blockedUserId?: string | null;
+  canSendMessage: boolean;
+}
+
 export interface MessageReply {
   messageId: string;
   senderId: string;
@@ -63,6 +71,7 @@ export interface Conversation {
   type: "direct" | "group";
   group: Group;
   participants: Participant[];
+  blockInfo?: DirectBlockInfo;
   lastMessageAt: string;
   seenBy: SeenUser[];
   lastMessage: LastMessage | null;

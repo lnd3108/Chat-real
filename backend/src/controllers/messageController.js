@@ -1,5 +1,6 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import User from "../models/User.js";
 import {
   emitMessageUpdated,
   emitNewMessage,
@@ -7,6 +8,7 @@ import {
   updateConversationAfterCreateMessage,
 } from "../utils/messageHelper.js";
 import { getIo, isConversationActiveForUser } from "../socket/index.js";
+import { ensureDirectMessagingAllowed } from "../utils/blocking.js";
 import {
   deleteImageFromCloudinary,
   deleteImageFromCloudinaryUrl,
@@ -104,7 +106,7 @@ const syncConversationAndEmitUpdate = async (conversation, message) => {
 const buildConversationSocketPayload = async (conversation) => {
   await conversation.populate({
     path: "participants.userId",
-    select: "displayName avatarUrl",
+    select: "userName displayName avatarUrl bio",
   });
 
   return {
@@ -222,9 +224,49 @@ export const sendDirectMessage = async (req, res) => {
 
     let conversation = null;
     let isNewConversation = false;
+    const recipientUser = await User.findById(recipientId).select("blockedUsers");
+
+    if (!recipientUser) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    const directPermission = ensureDirectMessagingAllowed({
+      senderUser: req.user,
+      recipientUser,
+      senderId,
+      recipientId,
+    });
+
+    if (!directPermission.allowed) {
+      return res.status(directPermission.status).json({
+        message: directPermission.message,
+        code: directPermission.code,
+      });
+    }
 
     if (conversationId) {
       conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ message: "Cuộc trò chuyện không tồn tại" });
+      }
+
+      if (conversation.type !== "direct") {
+        return res.status(400).json({ message: "Chỉ hỗ trợ gửi direct vào cuộc trò chuyện 1-1" });
+      }
+
+      const memberIds = conversation.participants.map((participant) =>
+        participant.userId.toString(),
+      );
+      const isValidDirectConversation =
+        memberIds.includes(senderId.toString()) &&
+        memberIds.includes(recipientId.toString()) &&
+        memberIds.length === 2;
+
+      if (!isValidDirectConversation) {
+        return res.status(403).json({
+          message: "Bạn không thể gửi tin nhắn vào cuộc trò chuyện direct này",
+        });
+      }
     }
 
     if (!conversation) {

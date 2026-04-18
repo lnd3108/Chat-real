@@ -1,5 +1,5 @@
 import type { Socket } from "socket.io-client";
-import type { Conversation, LastMessage, Message } from "./chat";
+import type { Conversation, DirectBlockInfo, LastMessage, Message } from "./chat";
 import type { Friend, FriendRequest, User } from "./user";
 
 export interface ConversationPatch {
@@ -11,6 +11,7 @@ export interface ConversationPatch {
   seenBy?: Conversation["seenBy"] | string[];
   lastMessage?: LastMessage | null;
   unreadCounts?: Record<string, number>;
+  blockInfo?: DirectBlockInfo;
   moveToTop?: boolean;
 }
 

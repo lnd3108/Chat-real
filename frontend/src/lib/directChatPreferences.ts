@@ -1,12 +1,11 @@
-import type { ReportPayload } from "@/components/profile/ReportTab";
-import type { BlockedUser } from "@/components/profile/BlockTab";
-
 const DIRECT_NOTIFICATION_KEY = "direct_chat_notification_settings";
-const BLOCKED_USERS_KEY = "chat_blocked_users";
 const REPORTS_KEY = "chat_reports";
 
 type DirectNotificationSettings = Record<string, boolean>;
-type StoredReport = ReportPayload & {
+type StoredReport = {
+  targetUserName: string;
+  reason: string;
+  description: string;
   createdAt: string;
   conversationId?: string;
 };
@@ -60,49 +59,6 @@ export const setDirectNotificationEnabled = (
     ...settings,
     [conversationId]: enabled,
   });
-};
-
-export const getBlockedUsers = () =>
-  readJson<BlockedUser[]>(BLOCKED_USERS_KEY, []);
-
-export const setBlockedUsers = (blockedUsers: BlockedUser[]) => {
-  writeJson(BLOCKED_USERS_KEY, blockedUsers);
-};
-
-export const isUserBlocked = (userName?: string | null) => {
-  if (!userName) return false;
-
-  const normalized = userName.trim().toLowerCase();
-  return getBlockedUsers().some(
-    (user) => user.userName.trim().toLowerCase() === normalized,
-  );
-};
-
-export const toggleBlockedUser = (userName: string, reason?: string) => {
-  const blockedUsers = getBlockedUsers();
-  const normalized = userName.trim().toLowerCase();
-  const exists = blockedUsers.some(
-    (user) => user.userName.trim().toLowerCase() === normalized,
-  );
-
-  if (exists) {
-    const next = blockedUsers.filter(
-      (user) => user.userName.trim().toLowerCase() !== normalized,
-    );
-    setBlockedUsers(next);
-    return { blocked: false, items: next };
-  }
-
-  const next = [
-    ...blockedUsers,
-    {
-      userName: userName.trim(),
-      reason: reason?.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-  setBlockedUsers(next);
-  return { blocked: true, items: next };
 };
 
 export const appendReport = (report: StoredReport) => {

@@ -13,8 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useFriendStore } from "@/stores/useFriendStore";
 import type { Friend } from "@/types/user";
+import { userService } from "@/services/userService";
+import type { BlockedUser } from "@/types/user";
 
-import BlockTab, { type BlockedUser } from "./BlockTab";
+import BlockTab from "./BlockTab";
 import ReportTab, { type ReportPayload } from "./ReportTab";
 import type { FriendItem } from "./SuggestUserInput";
 
@@ -28,7 +30,6 @@ type FriendLike = Friend & {
   friendId?: Partial<Friend>;
 };
 
-const STORAGE_BLOCKED_KEY = "chat_blocked_users";
 const STORAGE_REPORTS_KEY = "chat_reports";
 
 const normalizeFriend = (friend: FriendLike): FriendItem => {
@@ -42,20 +43,11 @@ const normalizeFriend = (friend: FriendLike): FriendItem => {
   };
 };
 
-const getBlockedUsers = (): BlockedUser[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_BLOCKED_KEY);
-    return raw ? (JSON.parse(raw) as BlockedUser[]) : [];
-  } catch {
-    return [];
-  }
-};
-
 const BlockReportDialog = ({ open, setOpen }: Props) => {
   const [tab, setTab] = useState<"block" | "report">("block");
   const { friends, getFriends } = useFriendStore();
 
-  const [blocked, setBlockedState] = useState<BlockedUser[]>(getBlockedUsers);
+  const [blocked, setBlockedState] = useState<BlockedUser[]>([]);
   const [blockUserName, setBlockUserName] = useState("");
   const [blockReason, setBlockReason] = useState("");
 
@@ -71,20 +63,23 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
 
   useEffect(() => {
     if (!open) return;
-    void getFriends();
-  }, [open, getFriends]);
 
-  const setBlocked = (next: BlockedUser[]) => {
-    setBlockedState(next);
-    localStorage.setItem(STORAGE_BLOCKED_KEY, JSON.stringify(next));
-  };
+    void getFriends();
+    void (async () => {
+      try {
+        setBlockedState(await userService.getBlockedUsers());
+      } catch (error) {
+        console.error("Lỗi tải danh sách chặn:", error);
+        toast.error("Không thể tải danh sách chặn.");
+      }
+    })();
+  }, [open, getFriends]);
 
   const onOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
 
     if (nextOpen) {
       setTab("block");
-      setBlockedState(getBlockedUsers());
     }
   };
 
@@ -99,7 +94,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       });
       localStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(list));
 
-      toast.success("Da gui bao cao");
+      toast.success("Đã gửi báo cáo");
       setReport({
         targetUserName: "",
         reason: "Spam",
@@ -107,7 +102,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       });
       setTab("block");
     } catch {
-      toast.error("Gui bao cao that bai, thu lai.");
+      toast.error("Gửi báo cáo thất bại, thử lại.");
     }
   };
 
@@ -117,24 +112,24 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldBan className="h-5 w-5 text-primary" />
-            Chan va Bao cao
+            Chặn và Báo cáo
           </DialogTitle>
           <DialogDescription>
-            Chan nguoi dung de khong nhan tin nhan hoac bao cao hanh vi xau
+            Chặn người dùng để ngừng nhắn tin direct hoặc gửi báo cáo hành vi xấu.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "block" | "report")}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="block">Chan</TabsTrigger>
-            <TabsTrigger value="report">Bao cao</TabsTrigger>
+            <TabsTrigger value="block">Chặn</TabsTrigger>
+            <TabsTrigger value="report">Báo cáo</TabsTrigger>
           </TabsList>
 
           <TabsContent value="block">
             <BlockTab
               friends={friendList}
               blocked={blocked}
-              setBlocked={setBlocked}
+              setBlocked={setBlockedState}
               blockUserName={blockUserName}
               setBlockUserName={setBlockUserName}
               blockReason={blockReason}

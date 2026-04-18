@@ -6,7 +6,7 @@ import {
 } from "@/lib/messageNotifications";
 import { playSound } from "@/lib/sound";
 import type { SocketState } from "@/types/store";
-import type { Participant } from "@/types/chat";
+import type { DirectBlockInfo, Participant } from "@/types/chat";
 import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
@@ -27,6 +27,45 @@ const isDocumentVisible = () =>
   typeof document !== "undefined" &&
   document.visibilityState === "visible" &&
   document.hasFocus();
+
+const mergeDirectBlockInfo = (
+  current: DirectBlockInfo | undefined = {
+    blockedByMe: false,
+    blockedByOther: false,
+    blockerId: null,
+    blockedUserId: null,
+    canSendMessage: true,
+  },
+  meId: string | undefined,
+  payload: {
+    blockerId: string;
+    blockedUserId: string;
+    isBlocked: boolean;
+  },
+) => {
+  const nextBlockedByMe =
+    payload.blockerId === meId ? payload.isBlocked : current.blockedByMe;
+  const nextBlockedByOther =
+    payload.blockedUserId === meId ? payload.isBlocked : current.blockedByOther;
+
+  return {
+    blockedByMe: nextBlockedByMe,
+    blockedByOther: nextBlockedByOther,
+    blockerId:
+      nextBlockedByMe
+        ? meId ?? payload.blockerId
+        : nextBlockedByOther
+          ? payload.blockerId
+          : null,
+    blockedUserId:
+      nextBlockedByMe
+        ? payload.blockedUserId
+        : nextBlockedByOther
+          ? meId ?? payload.blockedUserId
+          : null,
+    canSendMessage: !nextBlockedByMe && !nextBlockedByOther,
+  };
+};
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
@@ -334,6 +373,26 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         _id: conversation._id,
         group: conversation.group,
         participants: conversation.participants,
+        moveToTop: false,
+      });
+    });
+    socket.on("direct:block-status", ({ conversationId, blockerId, blockedUserId, isBlocked }) => {
+      if (!conversationId || !blockerId || !blockedUserId) {
+        return;
+      }
+
+      const meId = useAuthStore.getState().user?._id;
+      const currentConversation = useChatStore
+        .getState()
+        .conversations.find((conversation) => conversation._id === conversationId);
+
+      useChatStore.getState().updateConversation({
+        _id: conversationId,
+        blockInfo: mergeDirectBlockInfo(currentConversation?.blockInfo, meId, {
+          blockerId,
+          blockedUserId,
+          isBlocked,
+        }),
         moveToTop: false,
       });
     });

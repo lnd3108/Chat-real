@@ -82,6 +82,32 @@ const userSchema = new mongoose.Schema(
         default: true,
       },
     },
+    blockedUsers: {
+      type: [
+        new mongoose.Schema(
+          {
+            userId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+              required: true,
+            },
+            reason: {
+              type: String,
+              trim: true,
+              default: null,
+            },
+            createdAt: {
+              type: Date,
+              default: Date.now,
+            },
+          },
+          {
+            _id: false,
+          },
+        ),
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

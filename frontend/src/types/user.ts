@@ -12,6 +12,15 @@ export interface User {
   updateAt?: string;
 }
 
+export interface BlockedUser {
+  _id: string;
+  userName: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  reason?: string | null;
+  createdAt: string;
+}
+
 export interface Friend {
   _id: string;
   userName: string;

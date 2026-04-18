@@ -36,9 +36,10 @@ import { playClickSound } from "@/lib/sound";
 import { useState } from "react";
 import DirectNotificationSettingsDialog from "./DirectNotificationSettingsDialog";
 import DirectProfileDialog from "./DirectProfileDialog";
-import { isDirectNotificationEnabled, isUserBlocked, toggleBlockedUser } from "@/lib/directChatPreferences";
+import { isDirectNotificationEnabled } from "@/lib/directChatPreferences";
 import { toast } from "sonner";
 import DirectInfoDialog from "./DirectInfoDialog";
+import { userService } from "@/services/userService";
 
 const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   const { user } = useAuthStore();
@@ -75,7 +76,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
       : `${otherUser.displayName ?? "Người dùng"} đã xóa một tin nhắn`
     : (convo.lastMessage?.content ?? "");
   const notificationsEnabled = isDirectNotificationEnabled(convo._id);
-  const blocked = isUserBlocked(otherUser.userName);
+  const blocked = convo.blockInfo?.blockedByMe ?? false;
 
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
@@ -85,15 +86,23 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
   };
 
   const handleToggleBlock = () => {
-    if (!otherUser.userName) {
-      toast.error("Không tìm thấy username để chặn.");
-      return;
-    }
+    if (!otherId) return;
 
-    const result = toggleBlockedUser(otherUser.userName);
-    toast.success(
-      result.blocked ? `Đã chặn @${otherUser.userName}` : `Đã bỏ chặn @${otherUser.userName}`,
-    );
+    void (async () => {
+      try {
+        if (blocked) {
+          await userService.unblockUser(otherId);
+          toast.success(`Đã bỏ chặn @${otherUser.userName ?? otherUser.displayName}`);
+          return;
+        }
+
+        await userService.blockUser(otherId);
+        toast.success(`Đã chặn @${otherUser.userName ?? otherUser.displayName}`);
+      } catch (error) {
+        console.error("Lỗi cập nhật chặn người dùng:", error);
+        toast.error("Không thể cập nhật trạng thái chặn lúc này.");
+      }
+    })();
   };
 
   return (
@@ -145,16 +154,23 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
           </>
         }
         subtitle={
-          <p
-            className={cn(
-              "truncate text-sm",
-              unreadCount > 0
-                ? "font-medium text-foreground"
-                : "text-muted-foreground",
+          <div className="min-w-0">
+            {blocked && (
+              <p className="truncate text-xs font-medium text-destructive">
+                Đã chặn
+              </p>
             )}
-          >
-            {lastMessage}
-          </p>
+            <p
+              className={cn(
+                "truncate text-sm",
+                unreadCount > 0
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {lastMessage}
+            </p>
+          </div>
         }
         actions={
           <DropdownMenu>

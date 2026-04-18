@@ -3,6 +3,39 @@ import {
   uploadImageFromBuffer,
 } from "../middlewares/uploadMiddleWare.js";
 import User from "../models/User.js";
+import { emitDirectBlockStatusChanged } from "./conversationController.js";
+
+const formatBlockedUsers = async (blockedUsers = []) => {
+  const targetIds = blockedUsers
+    .map((entry) => entry.userId?.toString())
+    .filter(Boolean);
+
+  if (targetIds.length === 0) {
+    return [];
+  }
+
+  const users = await User.find({
+    _id: { $in: targetIds },
+  }).select("userName displayName avatarUrl");
+
+  const usersById = new Map(users.map((user) => [user._id.toString(), user]));
+
+  return blockedUsers
+    .map((entry) => {
+      const targetUser = usersById.get(entry.userId?.toString());
+      if (!targetUser) return null;
+
+      return {
+        _id: targetUser._id,
+        userName: targetUser.userName,
+        displayName: targetUser.displayName,
+        avatarUrl: targetUser.avatarUrl ?? null,
+        reason: entry.reason ?? null,
+        createdAt: entry.createdAt,
+      };
+    })
+    .filter(Boolean);
+};
 
 export const authMe = async (req, res) => {
   try {
@@ -188,6 +221,105 @@ export const updatePreferences = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi updatePreferences:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const getBlockedUsers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user?._id).select("blockedUsers");
+
+    return res.status(200).json({
+      blockedUsers: await formatBlockedUsers(user?.blockedUsers ?? []),
+    });
+  } catch (error) {
+    console.error("Lỗi getBlockedUsers:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const blockUser = async (req, res) => {
+  try {
+    const actorId = req.user?._id;
+    const { targetUserId } = req.params;
+    const { reason } = req.body || {};
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: "Thiếu người dùng cần chặn" });
+    }
+
+    if (actorId.toString() === targetUserId.toString()) {
+      return res.status(400).json({ message: "Bạn không thể tự chặn chính mình" });
+    }
+
+    const targetUser = await User.findById(targetUserId).select("_id");
+    if (!targetUser) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    await User.findByIdAndUpdate(actorId, {
+      $pull: { blockedUsers: { userId: targetUserId } },
+    });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      actorId,
+      {
+        $push: {
+          blockedUsers: {
+            userId: targetUserId,
+            reason: reason?.trim() || null,
+            createdAt: new Date(),
+          },
+        },
+      },
+      { new: true },
+    ).select("blockedUsers");
+
+    await emitDirectBlockStatusChanged({
+      actorUser: req.user,
+      targetUserId,
+      isBlocked: true,
+    });
+
+    return res.status(200).json({
+      message: "Đã chặn người dùng",
+      blockedUsers: await formatBlockedUsers(updatedUser?.blockedUsers ?? []),
+    });
+  } catch (error) {
+    console.error("Lỗi blockUser:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+export const unblockUser = async (req, res) => {
+  try {
+    const actorId = req.user?._id;
+    const { targetUserId } = req.params;
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: "Thiếu người dùng cần bỏ chặn" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      actorId,
+      {
+        $pull: { blockedUsers: { userId: targetUserId } },
+      },
+      { new: true },
+    ).select("blockedUsers");
+
+    await emitDirectBlockStatusChanged({
+      actorUser: req.user,
+      targetUserId,
+      isBlocked: false,
+    });
+
+    return res.status(200).json({
+      message: "Đã bỏ chặn người dùng",
+      blockedUsers: await formatBlockedUsers(updatedUser?.blockedUsers ?? []),
+    });
+  } catch (error) {
+    console.error("Lỗi unblockUser:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

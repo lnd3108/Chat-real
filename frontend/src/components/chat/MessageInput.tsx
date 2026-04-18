@@ -4,6 +4,7 @@ import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 import {
   playClickSound,
   playKeystrokeSound,
@@ -63,6 +64,23 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   }, [uploadProgress]);
 
   if (!user) return null;
+
+  const otherParticipant =
+    selectedConvo.type === "direct"
+      ? selectedConvo.participants.find(
+          (participant) => getParticipantId(participant) !== user._id,
+        )
+      : null;
+  const otherUser = getParticipantProfile(otherParticipant);
+  const isBlockedByMe = selectedConvo.blockInfo?.blockedByMe ?? false;
+  const isBlockedByOther = selectedConvo.blockInfo?.blockedByOther ?? false;
+  const isComposerBlocked =
+    selectedConvo.type === "direct" && (isBlockedByMe || isBlockedByOther);
+  const blockBannerText = isBlockedByMe
+    ? "Bạn đã chặn người dùng này. Bạn không thể nhắn tin cho họ trong cuộc trò chuyện này."
+    : isBlockedByOther
+      ? "Bạn hiện không thể nhắn tin cho tài khoản này."
+      : null;
 
   const runUploadProgressAnimation = () => {
     if (uploadProgressTimerRef.current) return;
@@ -301,6 +319,20 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         </div>
       )}
 
+      {isComposerBlocked && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-3">
+          <p className="text-sm font-medium text-destructive">
+            {blockBannerText}
+          </p>
+          {isBlockedByMe && otherUser?.displayName && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cuộc trò chuyện với {otherUser.displayName} vẫn được giữ lại, nhưng gửi
+              tin nhắn mới đang bị tắt cho đến khi bạn bỏ chặn.
+            </p>
+          )}
+        </div>
+      )}
+
       {previewUrl && (
         <div className="relative inline-flex overflow-hidden rounded-xl border border-border/60 bg-card p-2">
           <img
@@ -351,13 +383,14 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           size="icon"
           className="transition-smooth hover:bg-primary/10"
           asChild
+          disabled={sending || isComposerBlocked}
         >
           <label
             className={
               sending ? "cursor-not-allowed pointer-events-none" : "cursor-pointer"
             }
             onClick={() => {
-              if (!sending) {
+              if (!sending && !isComposerBlocked) {
                 playClickSound();
               }
             }}
@@ -367,7 +400,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               accept="image/*"
               className="hidden"
               onChange={handleSelectImage}
-              disabled={sending}
+              disabled={sending || isComposerBlocked}
             />
             <ImagePlus className="size-4" />
           </label>
@@ -387,7 +420,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             onChange={(e) => setValue(e.target.value)}
             placeholder="Soạn tin nhắn..."
             className="h-9 resize-none border-border/50 bg-white pr-20 transition-smooth focus:border-primary/50"
-            disabled={sending}
+            disabled={sending || isComposerBlocked}
           />
           <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
             <Button
@@ -395,10 +428,15 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               variant="ghost"
               size="icon"
               className="size-8 transition-smooth hover:bg-background/10"
+              disabled={isComposerBlocked}
             >
               <div>
                 <EmojiPicker
-                  onChange={(emoji: string) => setValue(`${value}${emoji}`)}
+                  onChange={(emoji: string) => {
+                    if (!isComposerBlocked) {
+                      setValue(`${value}${emoji}`);
+                    }
+                  }}
                 />
               </div>
             </Button>
@@ -411,7 +449,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             void sendMessage();
           }}
           className="min-w-24 bg-gradient-chat transition-smooth hover:scale-105 hover:shadow-glow"
-          disabled={sending || (!value.trim() && !image)}
+          disabled={sending || isComposerBlocked || (!value.trim() && !image)}
           aria-label={statusText ?? "Gửi tin nhắn"}
         >
           {sending ? (

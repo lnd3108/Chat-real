@@ -1,8 +1,11 @@
 import express from "express";
 import {
   authMe,
+  blockUser,
+  getBlockedUsers,
   searchUserByUserName,
   test,
+  unblockUser,
   updateMe,
   updatePreferences,
   uploadAvatar,
@@ -17,6 +20,9 @@ router.patch("/me", updateMe);
 router.get("/test", test);
 
 router.get("/search", searchUserByUserName);
+router.get("/blocks", getBlockedUsers);
+router.post("/blocks/:targetUserId", blockUser);
+router.delete("/blocks/:targetUserId", unblockUser);
 
 router.post("/uploadAvatar", upload.single("file"), uploadAvatar);
 

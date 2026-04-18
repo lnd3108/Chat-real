@@ -3,14 +3,12 @@ import { ChevronDown, FileText, Flag, ImageIcon, Loader2, ShieldBan } from "luci
 import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
+import { getParticipantId } from "@/lib/chatParticipants";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { cn } from "@/lib/utils";
-import {
-  appendReport,
-  getBlockedUsers,
-  isUserBlocked,
-  setBlockedUsers,
-} from "@/lib/directChatPreferences";
+import { appendReport } from "@/lib/directChatPreferences";
+import { userService } from "@/services/userService";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +22,6 @@ import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
 import UserAvatar from "./UserAvatar";
-import type { BlockedUser } from "../profile/BlockTab";
 
 interface DirectInfoDialogProps {
   chat: Conversation;
@@ -50,17 +47,24 @@ const DirectInfoDialog = ({
   onOpenChange,
 }: DirectInfoDialogProps) => {
   const { messages } = useChatStore();
+  const currentUserId = useAuthStore((state) => state.user?._id);
   const [internalOpen, setInternalOpen] = useState(false);
   const [mediaExpanded, setMediaExpanded] = useState(false);
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [reportExpanded, setReportExpanded] = useState(true);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
-  const sharedAssetsLoading = false;
   const [blockReason, setBlockReason] = useState("");
-  const [isBlocked, setIsBlocked] = useState(() => isUserBlocked(userName));
+  const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(() => chat.blockInfo?.blockedByMe ?? false);
   const [reportReason, setReportReason] = useState(reportReasons[0]);
   const [reportDescription, setReportDescription] = useState("");
   const open = controlledOpen ?? internalOpen;
+  const sharedAssetsLoading = false;
+
+  const otherParticipant = chat.participants.find(
+    (participant) => getParticipantId(participant) !== currentUserId,
+  );
+  const targetUserId = getParticipantId(otherParticipant);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (controlledOpen === undefined) {
@@ -71,8 +75,8 @@ const DirectInfoDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    setIsBlocked(isUserBlocked(userName));
-  }, [open, userName]);
+    setIsBlocked(chat.blockInfo?.blockedByMe ?? false);
+  }, [chat.blockInfo?.blockedByMe, open]);
 
   useEffect(() => {
     if (open) return;
@@ -80,6 +84,7 @@ const DirectInfoDialog = ({
     setFilesExpanded(true);
     setReportExpanded(true);
     setMediaViewerOpen(false);
+    setIsSubmittingBlock(false);
   }, [open]);
 
   const sharedMedia = useMemo(
@@ -98,36 +103,33 @@ const DirectInfoDialog = ({
   const previewMedia = sharedMedia.slice(0, 8);
 
   const handleToggleBlock = () => {
-    if (!userName) {
-      toast.error("Không tìm thấy username để chặn.");
+    if (!targetUserId) {
+      toast.error("Không tìm thấy người dùng để chặn.");
       return;
     }
 
-    const nextBlockedUsers = getBlockedUsers();
-    let next: BlockedUser[];
+    void (async () => {
+      try {
+        setIsSubmittingBlock(true);
 
-    if (isBlocked) {
-      next = nextBlockedUsers.filter(
-        (user) => user.userName.trim().toLowerCase() !== userName.trim().toLowerCase(),
-      );
-      setBlockedUsers(next);
-      setIsBlocked(false);
-      setBlockReason("");
-      toast.success(`Đã bỏ chặn @${userName}`);
-      return;
-    }
+        if (isBlocked) {
+          await userService.unblockUser(targetUserId);
+          setIsBlocked(false);
+          setBlockReason("");
+          toast.success(`Đã bỏ chặn @${userName ?? displayName}`);
+          return;
+        }
 
-    next = [
-      ...nextBlockedUsers,
-      {
-        userName: userName.trim(),
-        reason: blockReason.trim() || undefined,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    setBlockedUsers(next);
-    setIsBlocked(true);
-    toast.success(`Đã chặn @${userName}`);
+        await userService.blockUser(targetUserId, blockReason.trim() || undefined);
+        setIsBlocked(true);
+        toast.success(`Đã chặn @${userName ?? displayName}`);
+      } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái chặn:", error);
+        toast.error("Không thể cập nhật trạng thái chặn lúc này.");
+      } finally {
+        setIsSubmittingBlock(false);
+      }
+    })();
   };
 
   const handleSendReport = () => {
@@ -162,8 +164,8 @@ const DirectInfoDialog = ({
         <DialogHeader className="pr-8">
           <DialogTitle>Thiết lập đoạn chat</DialogTitle>
           <DialogDescription>
-            Quản lý hồ sơ công khai, ảnh đã gửi, file đã gửi và báo cáo cho cuộc trò chuyện
-            này.
+            Quản lý hồ sơ công khai, ảnh đã gửi, file đã gửi và báo cáo cho cuộc trò
+            chuyện này.
           </DialogDescription>
         </DialogHeader>
 
@@ -294,8 +296,8 @@ const DirectInfoDialog = ({
               <div>
                 <p className="text-sm font-semibold">File đã gửi</p>
                 <p className="text-xs text-muted-foreground">
-                  Khu vực này sẵn sàng cho danh sách file khi direct chat hỗ trợ file đính
-                  kèm.
+                  Khu vực này sẵn sàng cho danh sách file khi direct chat hỗ trợ file
+                  đính kèm.
                 </p>
               </div>
               <ChevronDown
@@ -346,7 +348,7 @@ const DirectInfoDialog = ({
                       <p className="text-sm font-medium">Trạng thái chặn</p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {isBlocked
-                          ? `@${userName} hiện đang nằm trong danh sách chặn của bạn.`
+                          ? `@${userName ?? displayName} hiện đang nằm trong danh sách chặn của bạn.`
                           : "Bạn có thể chặn người này ngay từ direct chat."}
                       </p>
                     </div>
@@ -365,6 +367,7 @@ const DirectInfoDialog = ({
                           onChange={(event) => setBlockReason(event.target.value)}
                           placeholder="Spam, làm phiền, giả mạo..."
                           className="min-h-20"
+                          disabled={isSubmittingBlock}
                         />
                       </>
                     ) : null}
@@ -374,8 +377,13 @@ const DirectInfoDialog = ({
                       variant={isBlocked ? "outline" : "destructive"}
                       className="w-full"
                       onClick={handleToggleBlock}
+                      disabled={isSubmittingBlock}
                     >
-                      <ShieldBan className="mr-2 size-4" />
+                      {isSubmittingBlock ? (
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                      ) : (
+                        <ShieldBan className="mr-2 size-4" />
+                      )}
                       {isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng"}
                     </Button>
                   </div>
