@@ -237,6 +237,21 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     }
   };
 
+  const handleBeforeInput = (e: React.FormEvent<HTMLInputElement>) => {
+    const nativeEvent = e.nativeEvent as InputEvent;
+
+    if (
+      isComposingRef.current ||
+      nativeEvent.isComposing ||
+      !nativeEvent.inputType?.startsWith("insert") ||
+      !nativeEvent.data
+    ) {
+      return;
+    }
+
+    playKeystrokeSound();
+  };
+
   const statusText =
     pendingAction === "edit"
       ? "Đang lưu chỉnh sửa..."
@@ -361,6 +376,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         <div className="relative flex-1">
           <Input
             onKeyDown={handleKeyPress}
+            onBeforeInput={handleBeforeInput}
             onCompositionStart={() => {
               isComposingRef.current = true;
             }}

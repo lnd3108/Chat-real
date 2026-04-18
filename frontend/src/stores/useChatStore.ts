@@ -11,6 +11,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { toast } from "sonner";
 import { useAuthStore } from "./useAuthStore";
+import { useNotificationStore } from "./useNotificationStore";
 import { useSocketStore } from "./useSocketStore";
 
 const inflightMessageFetches = new Map<string, Promise<void>>();
@@ -483,6 +484,10 @@ export const useChatStore = create<ChatState>()(
           const { activeConversationId, conversations } = get();
           const targetConversationId = conversationId ?? activeConversationId;
           if (!targetConversationId || !user) return;
+
+          useNotificationStore
+            .getState()
+            .markConversationNotificationsAsRead(targetConversationId);
 
           const convo = conversations.find(
             (conversation) => conversation._id === targetConversationId,

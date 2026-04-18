@@ -191,6 +191,7 @@ export interface NotificationState {
     },
   ) => void;
   syncFriendRequestNotifications: (requests: FriendRequest[]) => void;
+  markConversationNotificationsAsRead: (conversationId: string) => void;
   removeNotificationByEntity: (entityId: string) => void;
   removeNotification: (id: string) => void;
   clearAllNotifications: () => void;

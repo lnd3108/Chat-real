@@ -70,6 +70,8 @@ const blockedKeystrokeKeys = new Set([
 ]);
 
 const lastPlayedAt = new Map<SoundType, number>();
+const audioPoolByPath = new Map<string, HTMLAudioElement[]>();
+const AUDIO_POOL_SIZE = 3;
 
 const resolveSoundPath = (type: SoundType) => {
   const entry = soundMap[type];
@@ -79,6 +81,27 @@ const resolveSoundPath = (type: SoundType) => {
   }
 
   return entry;
+};
+
+const getAudioFromPool = (path: string) => {
+  const existingPool = audioPoolByPath.get(path);
+
+  if (existingPool?.length) {
+    const availableAudio =
+      existingPool.find((audio) => audio.paused || audio.ended) ?? existingPool[0];
+
+    availableAudio.currentTime = 0;
+    return availableAudio;
+  }
+
+  const pool = Array.from({ length: AUDIO_POOL_SIZE }, () => {
+    const audio = new Audio(path);
+    audio.preload = "auto";
+    return audio;
+  });
+
+  audioPoolByPath.set(path, pool);
+  return pool[0];
 };
 
 const canPlaySound = (type: SoundType) => {
@@ -118,9 +141,9 @@ export const playSound = (type: SoundType) => {
   lastPlayedAt.set(type, now);
 
   try {
-    const audio = new Audio(resolveSoundPath(type));
-    audio.preload = "auto";
+    const audio = getAudioFromPool(resolveSoundPath(type));
     audio.volume = soundVolumeMap[type];
+    audio.currentTime = 0;
 
     const playPromise = audio.play();
     if (playPromise && typeof playPromise.catch === "function") {

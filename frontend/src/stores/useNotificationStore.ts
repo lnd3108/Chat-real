@@ -108,6 +108,18 @@ export const useNotificationStore = create<NotificationState>()(
         });
       },
 
+      markConversationNotificationsAsRead: (conversationId) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.type === "new_message" &&
+            item.conversationId === conversationId &&
+            !item.isRead
+              ? { ...item, isRead: true }
+              : item,
+          ),
+        }));
+      },
+
       removeNotificationByEntity: (entityId) => {
         set((state) => ({
           items: state.items.filter((item) => item.entityId !== entityId),
