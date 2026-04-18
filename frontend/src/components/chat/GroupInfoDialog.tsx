@@ -48,7 +48,7 @@ const GroupInfoDialog = ({
   onOpenChange,
 }: GroupInfoDialogProps) => {
   const { user } = useAuthStore();
-  const { deleteOrLeaveGroupConversation, fetchMessages, messages } = useChatStore();
+  const { deleteOrLeaveGroupConversation, messages } = useChatStore();
   const { friends, getFriends, loading } = useFriendStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -60,10 +60,10 @@ const GroupInfoDialog = ({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"leave" | "delete" | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
-  const [mediaExpanded, setMediaExpanded] = useState(true);
+  const [mediaExpanded, setMediaExpanded] = useState(false);
   const [filesExpanded, setFilesExpanded] = useState(true);
-  const [sharedAssetsLoading, setSharedAssetsLoading] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const sharedAssetsLoading = false;
   const open = controlledOpen ?? internalOpen;
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -88,36 +88,6 @@ const GroupInfoDialog = ({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const loadConversationHistory = async () => {
-      try {
-        setSharedAssetsLoading(true);
-
-        while (true) {
-          const current = useChatStore.getState().messages[chat._id];
-          const hasLoadedOnce = !!current;
-          const hasMore = current?.nextCursor !== null;
-
-          if (hasLoadedOnce && !hasMore) break;
-
-          await fetchMessages(chat._id);
-
-          const nextState = useChatStore.getState().messages[chat._id];
-          if (nextState?.nextCursor === null) break;
-          if (!nextState && hasLoadedOnce) break;
-        }
-      } catch (error) {
-        console.error("loadConversationHistory failed", error);
-      } finally {
-        setSharedAssetsLoading(false);
-      }
-    };
-
-    void loadConversationHistory();
-  }, [chat._id, fetchMessages, open]);
-
-  useEffect(() => {
     if (!open || !actionType) return;
 
     const frame = window.requestAnimationFrame(() => {
@@ -137,6 +107,12 @@ const GroupInfoDialog = ({
 
     return () => window.cancelAnimationFrame(frame);
   }, [actionType, open]);
+
+  useEffect(() => {
+    if (open) return;
+    setMediaExpanded(false);
+    setFilesExpanded(true);
+  }, [open]);
 
   const members = useMemo(() => {
     const mapped = chat.participants.map((participant: Participant) => {

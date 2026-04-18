@@ -1,5 +1,6 @@
 import type { NotificationState } from "@/types/store";
 import type { FriendRequest } from "@/types/user";
+import { shouldStoreNotification } from "@/lib/messageNotifications";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -31,6 +32,14 @@ export const useNotificationStore = create<NotificationState>()(
       items: [],
 
       addNotification: (notification) => {
+        if (
+          !shouldStoreNotification(notification.type, {
+            conversationId: notification.conversationId,
+          })
+        ) {
+          return;
+        }
+
         set((state) => {
           const exists = state.items.some((item) => item.id === notification.id);
           if (exists) {
@@ -76,6 +85,10 @@ export const useNotificationStore = create<NotificationState>()(
           let nextItems = [...nonFriendRequestItems];
 
           requests.forEach((request) => {
+            if (!shouldStoreNotification("friend_request")) {
+              return;
+            }
+
             const existing = nextItems.find(
               (item) => item.id === `friend-request-${request._id}`,
             );

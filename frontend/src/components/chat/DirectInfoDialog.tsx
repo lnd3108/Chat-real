@@ -49,13 +49,13 @@ const DirectInfoDialog = ({
   open: controlledOpen,
   onOpenChange,
 }: DirectInfoDialogProps) => {
-  const { fetchMessages, messages } = useChatStore();
+  const { messages } = useChatStore();
   const [internalOpen, setInternalOpen] = useState(false);
-  const [mediaExpanded, setMediaExpanded] = useState(true);
+  const [mediaExpanded, setMediaExpanded] = useState(false);
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [reportExpanded, setReportExpanded] = useState(true);
-  const [sharedAssetsLoading, setSharedAssetsLoading] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const sharedAssetsLoading = false;
   const [blockReason, setBlockReason] = useState("");
   const [isBlocked, setIsBlocked] = useState(() => isUserBlocked(userName));
   const [reportReason, setReportReason] = useState(reportReasons[0]);
@@ -75,34 +75,12 @@ const DirectInfoDialog = ({
   }, [open, userName]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const loadConversationHistory = async () => {
-      try {
-        setSharedAssetsLoading(true);
-
-        while (true) {
-          const current = useChatStore.getState().messages[chat._id];
-          const hasLoadedOnce = !!current;
-          const hasMore = current?.nextCursor !== null;
-
-          if (hasLoadedOnce && !hasMore) break;
-
-          await fetchMessages(chat._id);
-
-          const nextState = useChatStore.getState().messages[chat._id];
-          if (nextState?.nextCursor === null) break;
-          if (!nextState && hasLoadedOnce) break;
-        }
-      } catch (error) {
-        console.error("loadDirectConversationHistory failed", error);
-      } finally {
-        setSharedAssetsLoading(false);
-      }
-    };
-
-    void loadConversationHistory();
-  }, [chat._id, fetchMessages, open]);
+    if (open) return;
+    setMediaExpanded(false);
+    setFilesExpanded(true);
+    setReportExpanded(true);
+    setMediaViewerOpen(false);
+  }, [open]);
 
   const sharedMedia = useMemo(
     () =>

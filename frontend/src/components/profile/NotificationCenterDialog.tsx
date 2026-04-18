@@ -7,6 +7,11 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 import ReceivedRequests from "../friendRequest/ReceivedRequests";
 import SentRequest from "../friendRequest/SentRequest";
 import { cn, formatMessageTime } from "@/lib/utils";
+import {
+  getNotificationSettings,
+  shouldStoreNotification,
+  subscribeNotificationSettings,
+} from "@/lib/messageNotifications";
 import { useChatStore } from "@/stores/useChatStore";
 import { Button } from "../ui/button";
 import {
@@ -50,17 +55,27 @@ const NotificationCenterDialog = ({
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
   const [highlightedUnreadIds, setHighlightedUnreadIds] = useState<string[]>([]);
+  const [notificationSettings, setNotificationSettings] = useState(getNotificationSettings);
   const { getAllFriendRequests } = useFriendStore();
   const { items, clearAllNotifications, markAllAsRead, removeNotification } =
     useNotificationStore();
-  const { fetchMessages, setActiveConversation } = useChatStore();
+  const { fetchMessages, messages, setActiveConversation } = useChatStore();
+
+  useEffect(() => subscribeNotificationSettings(setNotificationSettings), []);
 
   const allNotifications = useMemo(
     () =>
-      [...items].sort(
+      [...items]
+        .filter((item) =>
+          shouldStoreNotification(item.type, {
+            conversationId: item.conversationId,
+            settings: notificationSettings,
+          }),
+        )
+        .sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ),
-    [items],
+    [items, notificationSettings],
   );
 
   useEffect(() => {
@@ -111,7 +126,9 @@ const NotificationCenterDialog = ({
     if (!conversationId || !messageId || isClearingAll) return;
 
     setActiveConversation(conversationId);
-    await fetchMessages(conversationId);
+    if (!messages[conversationId]) {
+      await fetchMessages(conversationId);
+    }
     setOpen(false);
     scrollToMessage(messageId);
   };

@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
+import type { AppNotification } from "@/types/store";
 import { getParticipantId } from "./chatParticipants";
 import { isDirectNotificationEnabled } from "./directChatPreferences";
 import { isGroupNotificationEnabled } from "./groupNotificationSettings";
@@ -108,6 +109,57 @@ export const setAllSoundsEnabled = (enabled: boolean) =>
     clickSound: enabled,
   }));
 
+export const isNotificationEnabledForConversation = (
+  conversation?: Conversation,
+  conversationId?: string,
+) => {
+  const targetConversationId = conversation?._id ?? conversationId;
+
+  if (conversation?.type === "group") {
+    return targetConversationId ? isGroupNotificationEnabled(targetConversationId) : true;
+  }
+
+  if (conversation?.type === "direct") {
+    return targetConversationId ? isDirectNotificationEnabled(targetConversationId) : true;
+  }
+
+  return true;
+};
+
+export const shouldStoreNotification = (
+  type: AppNotification["type"],
+  options?: {
+    conversation?: Conversation;
+    conversationId?: string;
+    settings?: NotificationSetting;
+  },
+) => {
+  const settings = options?.settings ?? getNotificationSettings();
+
+  if (!settings.enableAll) {
+    return false;
+  }
+
+  switch (type) {
+    case "new_message":
+      return (
+        settings.messageNotification &&
+        isNotificationEnabledForConversation(
+          options?.conversation,
+          options?.conversationId,
+        )
+      );
+    case "friend_request":
+      return settings.friendRequestNotification;
+    case "added_to_group":
+    case "conversation_removed":
+    case "conversation_deleted":
+      return settings.systemNotification;
+    default:
+      return true;
+  }
+};
+
 export const requestDesktopNotificationPermission = async () => {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return;
@@ -200,16 +252,14 @@ export const notifyIncomingMessage = ({
   currentUserId,
   onOpenConversation,
 }: NotifyIncomingMessageArgs) => {
-  if (conversation?.type === "group" && !isGroupNotificationEnabled(conversation._id)) {
-    return;
-  }
-
-  if (conversation?.type === "direct" && !isDirectNotificationEnabled(conversation._id)) {
-    return;
-  }
-
   const settings = getNotificationSettings();
-  if (!settings.enableAll || !settings.messageNotification) {
+  if (
+    !shouldStoreNotification("new_message", {
+      conversation,
+      conversationId: message.conversationId,
+      settings,
+    })
+  ) {
     return;
   }
 
