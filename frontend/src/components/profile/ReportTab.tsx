@@ -17,22 +17,31 @@ type Props = {
   friends: FriendItem[];
   report: ReportPayload;
   setReport: (next: ReportPayload) => void;
-  onSendReport: () => void;
+  onSendReport: () => void | Promise<void>;
+  isSubmitting?: boolean;
 };
 
 const reasons = ["Spam", "Quấy rối", "Nội dung xấu", "Giả mạo", "Khác"];
 
-const ReportTab = ({ friends, report, setReport, onSendReport }: Props) => {
+const ReportTab = ({
+  friends,
+  report,
+  setReport,
+  onSendReport,
+  isSubmitting = false,
+}: Props) => {
   const handleSend = () => {
     if (!report.targetUserName.trim()) {
       toast.error("Nhập username cần báo cáo.");
       return;
     }
+
     if (!report.description.trim()) {
-      toast.error("Nhập mô tả báo cáo (ít nhất 1 câu).");
+      toast.error("Nhập mô tả báo cáo.");
       return;
     }
-    onSendReport();
+
+    void onSendReport();
   };
 
   return (
@@ -47,20 +56,21 @@ const ReportTab = ({ friends, report, setReport, onSendReport }: Props) => {
 
       <div className="space-y-2">
         <Label>Lý do</Label>
-        <div className="flex gap-2 flex-wrap">
-          {reasons.map((r) => (
+        <div className="flex flex-wrap gap-2">
+          {reasons.map((reason) => (
             <Button
-              key={r}
+              key={reason}
               type="button"
-              variant={report.reason === r ? "default" : "outline"}
+              variant={report.reason === reason ? "default" : "outline"}
               className={
-                report.reason === r
+                report.reason === reason
                   ? "bg-gradient-primary"
                   : "glass-light border-border/30"
               }
-              onClick={() => setReport({ ...report, reason: r })}
+              onClick={() => setReport({ ...report, reason })}
+              disabled={isSubmitting}
             >
-              {r}
+              {reason}
             </Button>
           ))}
         </div>
@@ -72,13 +82,14 @@ const ReportTab = ({ friends, report, setReport, onSendReport }: Props) => {
           value={report.description}
           onChange={(e) => setReport({ ...report, description: e.target.value })}
           placeholder="Mô tả chi tiết hành vi vi phạm..."
-          className="glass-light border-border/30 min-h-24"
+          className="glass-light min-h-24 border-border/30"
+          disabled={isSubmitting}
         />
       </div>
 
-      <Button className="w-full" onClick={handleSend}>
-        <Flag className="h-4 w-4 mr-2" />
-        Gửi báo cáo
+      <Button className="w-full" onClick={handleSend} disabled={isSubmitting}>
+        <Flag className="mr-2 h-4 w-4" />
+        {isSubmitting ? "Đang gửi báo cáo..." : "Gửi báo cáo"}
       </Button>
     </div>
   );

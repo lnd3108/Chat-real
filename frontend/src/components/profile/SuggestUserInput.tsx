@@ -3,11 +3,6 @@ import { Check } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 export type FriendItem = {
   _id?: string;
@@ -24,6 +19,8 @@ type Props = {
   friends: FriendItem[];
 };
 
+const DEFAULT_SUGGESTION_COUNT = 5;
+
 const SuggestUserInput = ({
   label,
   value,
@@ -35,100 +32,98 @@ const SuggestUserInput = ({
 
   const filteredFriends = useMemo(() => {
     const keyword = value.trim().toLowerCase();
-    if (!keyword) return friends;
 
-    return friends.filter((f) => {
-      const u = f?.userName?.toLowerCase() || "";
-      const d = f?.displayName?.toLowerCase() || "";
-      return u.includes(keyword) || d.includes(keyword);
+    if (!keyword) {
+      return friends.slice(0, DEFAULT_SUGGESTION_COUNT);
+    }
+
+    return friends.filter((friend) => {
+      const userName = friend.userName?.toLowerCase() || "";
+      const displayName = friend.displayName?.toLowerCase() || "";
+      return userName.includes(keyword) || displayName.includes(keyword);
     });
-  }, [value, friends]);
+  }, [friends, value]);
+
+  const showSuggestions = open && friends.length > 0;
 
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div>
-            <Input
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (friends.length > 0) setOpen(true);
-              }}
-              placeholder={placeholder}
-              className="glass-light border-border/30"
-            />
+      <div className="relative">
+        <Input
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            if (friends.length > 0) {
+              setOpen(true);
+            }
+          }}
+          onBlur={() => {
+            window.setTimeout(() => setOpen(false), 150);
+          }}
+          placeholder={placeholder}
+          className="glass-light border-border/30"
+        />
+
+        {showSuggestions && (
+          <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-border/40 bg-popover p-2 text-popover-foreground shadow-xl">
+            {filteredFriends.length === 0 ? (
+              <p className="px-2 py-2 text-sm text-muted-foreground">
+                Không tìm thấy bạn bè phù hợp.
+              </p>
+            ) : (
+              <div className="max-h-56 overflow-auto">
+                {filteredFriends.slice(0, 10).map((friend) => {
+                  const active = friend.userName === value.trim();
+
+                  return (
+                    <button
+                      key={friend._id || friend.userName}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setValue(friend.userName);
+                        setOpen(false);
+                      }}
+                      className={[
+                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left",
+                        "select-none transition",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        active ? "bg-accent text-accent-foreground" : "",
+                      ].join(" ")}
+                    >
+                      <div className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                        {friend.displayName?.[0]?.toUpperCase() || "U"}
+                      </div>
+
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium leading-5">
+                          {friend.displayName}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          @{friend.userName}
+                        </span>
+                      </div>
+
+                      {active && <Check className="size-4 text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </PopoverTrigger>
+        )}
 
-        <PopoverContent
-          align="start"
-          sideOffset={6}
-          // ✅ ĐẸP + RÕ: dùng bg-popover thay vì glass-strong (đỡ mờ/xấu)
-          className="z-50 w-[--radix-popover-trigger-width] p-2 rounded-xl border bg-popover text-popover-foreground shadow-xl"
-        >
-          {friends.length === 0 && (
-            <p className="text-sm text-muted-foreground px-2 py-2">
-              Bạn chưa có bạn bè để gợi ý.
-            </p>
-          )}
-
-          {friends.length > 0 && filteredFriends.length === 0 && (
-            <p className="text-sm text-muted-foreground px-2 py-2">
-              Không tìm thấy bạn bè phù hợp
-            </p>
-          )}
-
-          {filteredFriends.length > 0 && (
-            <div className="max-h-56 overflow-auto">
-              {filteredFriends.slice(0, 10).map((f) => {
-                const active = f.userName === value.trim();
-
-                return (
-                  <button
-                    key={f?._id || f.userName}
-                    type="button"
-                    // ✅ FIX CLICK 1 PHÁT ĂN: chặn blur/close trước khi click chạy
-                    onPointerDown={(e) => e.preventDefault()}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setValue(f.userName);
-                      setOpen(false);
-                    }}
-                    className={[
-                      "w-full px-3 py-2 rounded-lg text-left flex items-center gap-3",
-                      "transition select-none",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      active ? "bg-accent text-accent-foreground" : "",
-                    ].join(" ")}
-                  >
-                    {/* avatar chữ cái */}
-                    <div className="size-9 rounded-full bg-muted flex items-center justify-center text-sm font-semibold">
-                      {f.displayName?.[0]?.toUpperCase() || "U"}
-                    </div>
-
-                    <div className="flex flex-col flex-1">
-                      <span className="font-medium leading-5">
-                        {f.displayName}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        @{f.userName}
-                      </span>
-                    </div>
-
-                    {active && <Check className="size-4 text-primary" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+        {open && friends.length === 0 && (
+          <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-border/40 bg-popover p-4 text-sm text-muted-foreground shadow-xl">
+            Bạn chưa có bạn bè để gợi ý.
+          </div>
+        )}
+      </div>
     </div>
   );
 };

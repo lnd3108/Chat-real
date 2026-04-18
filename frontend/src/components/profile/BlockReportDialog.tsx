@@ -5,16 +5,15 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import { useFriendStore } from "@/stores/useFriendStore";
-import type { Friend } from "@/types/user";
+import { appendReport } from "@/lib/directChatPreferences";
 import { userService } from "@/services/userService";
-import type { BlockedUser } from "@/types/user";
+import { useFriendStore } from "@/stores/useFriendStore";
+import type { BlockedUser, Friend } from "@/types/user";
 
 import BlockTab from "./BlockTab";
 import ReportTab, { type ReportPayload } from "./ReportTab";
@@ -30,7 +29,11 @@ type FriendLike = Friend & {
   friendId?: Partial<Friend>;
 };
 
-const STORAGE_REPORTS_KEY = "chat_reports";
+const defaultReportState: ReportPayload = {
+  targetUserName: "",
+  reason: "Spam",
+  description: "",
+};
 
 const normalizeFriend = (friend: FriendLike): FriendItem => {
   const user = friend.userId ?? friend.friendId ?? friend;
@@ -45,24 +48,27 @@ const normalizeFriend = (friend: FriendLike): FriendItem => {
 
 const BlockReportDialog = ({ open, setOpen }: Props) => {
   const [tab, setTab] = useState<"block" | "report">("block");
-  const { friends, getFriends } = useFriendStore();
-
   const [blocked, setBlockedState] = useState<BlockedUser[]>([]);
   const [blockUserName, setBlockUserName] = useState("");
   const [blockReason, setBlockReason] = useState("");
-
-  const [report, setReport] = useState<ReportPayload>({
-    targetUserName: "",
-    reason: "Spam",
-    description: "",
-  });
+  const [report, setReport] = useState<ReportPayload>(defaultReportState);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const { friends, getFriends } = useFriendStore();
 
   const friendList: FriendItem[] = (friends || [])
     .map((friend) => normalizeFriend(friend as FriendLike))
     .filter((friend) => friend.userName && friend.displayName);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+
+    setTab("block");
+    setBlockUserName("");
+    setBlockReason("");
+    setReport(defaultReportState);
+    setIsSubmittingReport(false);
 
     void getFriends();
     void (async () => {
@@ -77,38 +83,33 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
 
   const onOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
-
-    if (nextOpen) {
-      setTab("block");
-    }
   };
 
-  const onSendReport = () => {
+  const onSendReport = async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_REPORTS_KEY);
-      const list = raw ? (JSON.parse(raw) as Array<ReportPayload & { createdAt: string }>) : [];
-      list.push({
-        ...report,
+      setIsSubmittingReport(true);
+
+      appendReport({
         targetUserName: report.targetUserName.trim(),
+        reason: report.reason,
+        description: report.description.trim(),
         createdAt: new Date().toISOString(),
       });
-      localStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(list));
 
       toast.success("Đã gửi báo cáo");
-      setReport({
-        targetUserName: "",
-        reason: "Spam",
-        description: "",
-      });
+      setReport(defaultReportState);
       setTab("block");
-    } catch {
+    } catch (error) {
+      console.error("Lỗi gửi báo cáo:", error);
       toast.error("Gửi báo cáo thất bại, thử lại.");
+    } finally {
+      setIsSubmittingReport(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-border/30">
+      <DialogContent className="glass-strong max-h-[85vh] overflow-y-auto border-border/30 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldBan className="h-5 w-5 text-primary" />
@@ -143,6 +144,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
               report={report}
               setReport={setReport}
               onSendReport={onSendReport}
+              isSubmitting={isSubmittingReport}
             />
           </TabsContent>
         </Tabs>

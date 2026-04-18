@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { ShieldBan, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { userService } from "@/services/userService";
 import type { BlockedUser } from "@/types/user";
 
@@ -30,6 +31,10 @@ const BlockTab = ({
   blockReason,
   setBlockReason,
 }: Props) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [isClearingAll, setIsClearingAll] = useState(false);
+
   const selectedFriend = friends.find(
     (friend) => friend.userName.toLowerCase() === blockUserName.trim().toLowerCase(),
   );
@@ -43,6 +48,7 @@ const BlockTab = ({
   const handleBlock = () => {
     const userName = blockUserName.trim();
     const selectedFriendId = selectedFriend?._id;
+
     if (!userName) {
       toast.error("Nhập username cần chặn.");
       return;
@@ -54,12 +60,13 @@ const BlockTab = ({
     }
 
     if (isBlocked()) {
-      toast.error("User này đã bị chặn rồi.");
+      toast.error("Người dùng này đã bị chặn rồi.");
       return;
     }
 
     void (async () => {
       try {
+        setIsSubmitting(true);
         const next = await userService.blockUser(
           selectedFriendId,
           blockReason.trim() || undefined,
@@ -71,6 +78,8 @@ const BlockTab = ({
       } catch (error) {
         console.error("Lỗi chặn người dùng:", error);
         toast.error("Không thể chặn người dùng lúc này.");
+      } finally {
+        setIsSubmitting(false);
       }
     })();
   };
@@ -78,28 +87,40 @@ const BlockTab = ({
   const handleUnblock = (user: BlockedUser) => {
     void (async () => {
       try {
+        setBusyUserId(user._id);
         const next = await userService.unblockUser(user._id);
         setBlocked(next);
         toast.success(`Đã bỏ chặn @${user.userName}`);
       } catch (error) {
         console.error("Lỗi bỏ chặn người dùng:", error);
         toast.error("Không thể bỏ chặn người dùng lúc này.");
+      } finally {
+        setBusyUserId(null);
       }
     })();
   };
 
   const handleClearAllBlocked = () => {
+    if (blocked.length === 0) {
+      return;
+    }
+
     void (async () => {
       try {
+        setIsClearingAll(true);
         let next = blocked;
+
         for (const user of blocked) {
           next = await userService.unblockUser(user._id);
         }
+
         setBlocked(next);
         toast.message("Đã xóa danh sách chặn");
       } catch (error) {
         console.error("Lỗi xóa toàn bộ danh sách chặn:", error);
         toast.error("Không thể xóa toàn bộ danh sách chặn lúc này.");
+      } finally {
+        setIsClearingAll(false);
       }
     })();
   };
@@ -122,18 +143,24 @@ const BlockTab = ({
             onChange={(e) => setBlockReason(e.target.value)}
             placeholder="Spam / làm phiền..."
             className="glass-light border-border/30"
+            disabled={isSubmitting}
           />
         </div>
 
-        <Button className="w-full" variant="destructive" onClick={handleBlock}>
+        <Button
+          className="w-full"
+          variant="destructive"
+          onClick={handleBlock}
+          disabled={isSubmitting || isClearingAll}
+        >
           <ShieldBan className="mr-2 h-4 w-4" />
-          Chặn
+          {isSubmitting ? "Đang chặn..." : "Chặn"}
         </Button>
       </div>
 
       <Separator />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p className="font-medium">
           Danh sách đã chặn <Badge variant="secondary">{blocked.length}</Badge>
         </p>
@@ -142,10 +169,10 @@ const BlockTab = ({
           variant="outline"
           className="glass-light border-border/30"
           onClick={handleClearAllBlocked}
-          disabled={blocked.length === 0}
+          disabled={blocked.length === 0 || isClearingAll || isSubmitting}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          Xoá hết
+          {isClearingAll ? "Đang xóa..." : "Xóa hết"}
         </Button>
       </div>
 
@@ -156,15 +183,17 @@ const BlockTab = ({
           {blocked.map((user) => (
             <div
               key={user._id}
-              className="glass-light flex items-center justify-between rounded-lg border border-border/30 p-3"
+              className="glass-light flex items-center justify-between gap-3 rounded-lg border border-border/30 p-3"
             >
-              <div>
-                <p className="font-medium">@{user.userName}</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="min-w-0">
+                <p className="truncate font-medium">@{user.userName}</p>
+                <p className="truncate text-xs text-muted-foreground">
                   {user.displayName}
                 </p>
                 {user.reason && (
-                  <p className="text-xs text-muted-foreground">Lý do: {user.reason}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Lý do: {user.reason}
+                  </p>
                 )}
               </div>
 
@@ -172,8 +201,9 @@ const BlockTab = ({
                 variant="outline"
                 className="glass-light border-border/30"
                 onClick={() => handleUnblock(user)}
+                disabled={isClearingAll || busyUserId === user._id}
               >
-                Bỏ chặn
+                {busyUserId === user._id ? "Đang bỏ chặn..." : "Bỏ chặn"}
               </Button>
             </div>
           ))}
