@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
+import { userService } from "@/services/userService";
 import {
   playClickSound,
   playKeystrokeSound,
@@ -36,6 +37,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const [pendingAction, setPendingAction] = useState<
     "message" | "image" | "edit" | null
   >(null);
+  const [isUnblocking, setIsUnblocking] = useState(false);
   const uploadProgressValueRef = useRef(0);
   const uploadProgressTargetRef = useRef(0);
   const uploadProgressTimerRef = useRef<number | null>(null);
@@ -114,6 +116,27 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   const setUploadProgressTarget = (progress: number) => {
     uploadProgressTargetRef.current = Math.max(0, Math.min(progress, 100));
     runUploadProgressAnimation();
+  };
+
+  const handleUnblock = async () => {
+    const targetUserId = getParticipantId(otherParticipant);
+    const targetLabel = otherUser?.userName ?? otherUser?.displayName ?? "người dùng này";
+
+    if (!targetUserId) {
+      toast.error("Không tìm thấy người dùng để bỏ chặn.");
+      return;
+    }
+
+    try {
+      setIsUnblocking(true);
+      await userService.unblockUser(targetUserId);
+      toast.success(`Đã bỏ chặn @${targetLabel}`);
+    } catch (error) {
+      console.error("Lỗi bỏ chặn người dùng từ khung chat:", error);
+      toast.error("Không thể bỏ chặn người dùng lúc này.");
+    } finally {
+      setIsUnblocking(false);
+    }
   };
 
   const finishUploadProgress = async () => {
@@ -321,15 +344,41 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       {isComposerBlocked && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-3">
-          <p className="text-sm font-medium text-destructive">
-            {blockBannerText}
-          </p>
-          {isBlockedByMe && otherUser?.displayName && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Cuộc trò chuyện với {otherUser.displayName} vẫn được giữ lại, nhưng gửi
-              tin nhắn mới đang bị tắt cho đến khi bạn bỏ chặn.
-            </p>
-          )}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-destructive">
+                {blockBannerText}
+              </p>
+              {isBlockedByMe && otherUser?.displayName && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cuộc trò chuyện với {otherUser.displayName} vẫn được giữ lại, nhưng gửi
+                  tin nhắn mới đang bị tắt cho đến khi bạn bỏ chặn.
+                </p>
+              )}
+            </div>
+
+            {isBlockedByMe && (
+              <Button
+                type="button"
+                variant="outline"
+                className="border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/10 hover:text-destructive sm:shrink-0"
+                onClick={() => {
+                  playClickSound();
+                  void handleUnblock();
+                }}
+                disabled={isUnblocking}
+              >
+                {isUnblocking ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Đang bỏ chặn</span>
+                  </>
+                ) : (
+                  <span>Bỏ chặn</span>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
