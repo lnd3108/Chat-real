@@ -148,6 +148,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         addConvo,
         addMessage,
         activeConversationId,
+        conversations,
+        fetchConversations,
         fetchMessages,
         markasSeen,
         messages,
@@ -155,6 +157,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         updateConversation,
       } = useChatStore.getState();
       const { user } = useAuthStore.getState();
+      const targetConversationId = conversation?._id ?? message.conversationId;
+      const hasConversation = conversations.some(
+        (item) => item._id === targetConversationId,
+      );
       const isCurrentConversation = activeConversationId === message.conversationId;
       const isCurrentConversationVisible = isCurrentConversation && isDocumentVisible();
       const senderParticipant = conversation?.participants?.find(
@@ -165,6 +171,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       if (conversation?.participants?.length) {
         addConvo(conversation, { activate: false });
         socket.emit("join-conversation", conversation._id);
+      } else if (!hasConversation) {
+        void fetchConversations();
       }
 
       const payloadLastMessage = conversation?.lastMessage ?? message;

@@ -56,9 +56,9 @@ export const initSocket = (server) => {
 
     emitOnlineUsers();
 
+    socket.join(userId);
     const conversations = await getUserConversationsForSocketIO(user._id);
     conversations.forEach((id) => socket.join(id.toString()));
-    socket.join(userId);
 
     socket.on("disconnect", () => {
       const socketIds = socketsByUser.get(userId);
@@ -109,6 +109,24 @@ export const getIo = () => {
   }
 
   return io;
+};
+
+export const emitToUser = (userId, eventName, payload) => {
+  if (!io || !userId || !eventName) {
+    return;
+  }
+
+  const normalizedUserId = userId.toString();
+  const socketIds = socketsByUser.get(normalizedUserId);
+
+  if (socketIds && socketIds.size > 0) {
+    socketIds.forEach((socketId) => {
+      io.to(socketId).emit(eventName, payload);
+    });
+    return;
+  }
+
+  io.to(normalizedUserId).emit(eventName, payload);
 };
 
 export const isConversationActiveForUser = (userId, conversationId) => {

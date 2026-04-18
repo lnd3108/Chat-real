@@ -21,12 +21,14 @@ type Friend = {
 };
 
 interface FriendListModalProps {
+  open?: boolean;
   friends?: Friend[];
   loading?: boolean;
   onPick?: () => void;
 }
 
 const FriendListModal = ({
+  open = false,
   friends: friendsProp,
   loading: loadingProp,
   onPick,
@@ -46,12 +48,25 @@ const FriendListModal = ({
   const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
 
   useEffect(() => {
-    if (!currentUserId || !shouldShowSuggestions) {
+    if (
+      !open ||
+      !currentUserId ||
+      !shouldShowSuggestions ||
+      suggestionsLoading ||
+      suggestions.length > 0
+    ) {
       return;
     }
 
     void getSuggestions(8);
-  }, [currentUserId, getSuggestions, shouldShowSuggestions]);
+  }, [
+    currentUserId,
+    getSuggestions,
+    open,
+    shouldShowSuggestions,
+    suggestions.length,
+    suggestionsLoading,
+  ]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);

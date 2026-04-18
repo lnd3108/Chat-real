@@ -115,8 +115,10 @@ const buildConversationSocketPayload = async (conversation) => {
     group: conversation.group ?? null,
     participants: (conversation.participants || []).map((participant) => ({
       _id: participant.userId?._id,
+      userName: participant.userId?.userName,
       displayName: participant.userId?.displayName,
       avatarUrl: participant.userId?.avatarUrl ?? null,
+      bio: participant.userId?.bio ?? null,
       joinedAt: participant.joinedAt,
     })),
     lastMessage: conversation.lastMessage,

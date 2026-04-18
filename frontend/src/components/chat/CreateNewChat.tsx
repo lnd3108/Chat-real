@@ -41,6 +41,7 @@ const CreateNewChat = () => {
         </DialogTrigger>
 
         <FriendListModal
+          open={open}
           friends={friends}
           loading={loading}
           onPick={() => setOpen(false)}

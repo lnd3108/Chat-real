@@ -77,23 +77,35 @@ export const acceptFriendRequest = async (req, res) => {
       });
     }
 
-    const friend = await Friend.create({
-      userA: request.from,
-      userB: request.to,
-    });
+    let userA = request.from.toString();
+    let userB = request.to.toString();
+
+    if (userA > userB) {
+      [userA, userB] = [userB, userA];
+    }
+
+    const existingFriend = await Friend.findOne({ userA, userB });
+
+    if (!existingFriend) {
+      await Friend.create({
+        userA: request.from,
+        userB: request.to,
+      });
+    }
 
     await FriendRequest.findByIdAndDelete(requestId);
 
     const from = await User.findById(request.from)
-      .select("_id displayName avataUrl")
+      .select("_id userName displayName avatarUrl")
       .lean();
 
     return res.status(200).json({
       message: "Chấp nhận lời mời thành công",
       newFriend: {
         _id: from?._id,
+        userName: from?.userName,
         displayName: from?.displayName,
-        avataUrl: from?.avatarUrl,
+        avatarUrl: from?.avatarUrl,
       },
     });
   } catch (error) {

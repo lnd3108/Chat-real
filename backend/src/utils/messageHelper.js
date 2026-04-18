@@ -1,3 +1,5 @@
+import { emitToUser } from "../socket/index.js";
+
 export const buildLastMessagePayload = (message, senderIdOverride) => {
   const senderId = senderIdOverride ?? message.senderId;
   const lastMessageContent = message.isDeletedForEveryone
@@ -72,6 +74,18 @@ export const emitNewMessage = (io, conversation, message, conversationPayload) =
       },
     unreadCounts: conversation.unreadCounts,
   };
+
+  if (conversationPayload && Array.isArray(conversation.participants)) {
+    conversation.participants.forEach((participant) => {
+      const participantId =
+        participant?.userId?.toString?.() ?? participant?.userId ?? null;
+
+      if (participantId) {
+        emitToUser(participantId.toString(), "new-message", payload);
+      }
+    });
+    return;
+  }
 
   io.to(conversation._id.toString()).emit("new-message", payload);
 };

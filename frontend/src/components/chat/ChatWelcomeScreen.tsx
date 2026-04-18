@@ -11,12 +11,17 @@ const ChatWelcomeScreen = () => {
   const { suggestions, getSuggestions, suggestionsLoading } = useFriendStore();
 
   useEffect(() => {
-    if (!currentUserId || conversations.length > 0) {
+    if (
+      !currentUserId ||
+      conversations.length > 0 ||
+      suggestionsLoading ||
+      suggestions.length > 0
+    ) {
       return;
     }
 
     void getSuggestions(8);
-  }, [currentUserId, conversations.length, getSuggestions]);
+  }, [currentUserId, conversations.length, getSuggestions, suggestions.length, suggestionsLoading]);
 
   return (
     <SidebarInset className="flex h-full w-full bg-transparent">

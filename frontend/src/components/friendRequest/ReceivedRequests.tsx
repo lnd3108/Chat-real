@@ -5,8 +5,7 @@ import { Button } from "../ui/button";
 import { toast } from "sonner";
 
 const ReceivedRequests = () => {
-  const { acceptRequest, declineRequest, loading, receivedList } =
-    useFriendStore();
+  const { acceptRequest, declineRequest, receivedList } = useFriendStore();
   const [pendingRequest, setPendingRequest] = useState<{
     id: string;
     action: "accept" | "decline";
@@ -57,9 +56,8 @@ const ReceivedRequests = () => {
                 size="sm"
                 variant="primary"
                 onClick={() => handleAccept(req._id)}
-                disabled={loading}
+                disabled={pendingRequest !== null}
                 loading={
-                  loading &&
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "accept"
                 }
@@ -71,9 +69,8 @@ const ReceivedRequests = () => {
                 size="sm"
                 variant="destructiveOutline"
                 onClick={() => handleDecline(req._id)}
-                disabled={loading}
+                disabled={pendingRequest !== null}
                 loading={
-                  loading &&
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "decline"
                 }

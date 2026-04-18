@@ -5,7 +5,7 @@ import FriendRequestItem from "./FriendRequestItem";
 import { Button } from "../ui/button";
 
 const SentRequest = () => {
-  const { sentList, cancelSentRequest, loading } = useFriendStore();
+  const { sentList, cancelSentRequest } = useFriendStore();
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
 
   if (!sentList || sentList.length === 0) {
@@ -42,8 +42,8 @@ const SentRequest = () => {
               <Button
                 size="sm"
                 variant="destructiveOutline"
-                disabled={loading}
-                loading={loading && pendingRequestId === request._id}
+                disabled={pendingRequestId !== null}
+                loading={pendingRequestId === request._id}
                 loadingText="Đang hủy..."
                 onClick={() => void handleCancel(request._id, request.to?._id)}
               >

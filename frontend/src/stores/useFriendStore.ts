@@ -99,14 +99,31 @@ export const useFriendStore = create<FriendState>((set) => ({
   acceptRequest: async (requestId) => {
     try {
       set({ loading: true });
-      await friendService.acceptRequest(requestId);
+      const newFriend = await friendService.acceptRequest(requestId);
 
       set((state) => ({
+        friends:
+          newFriend && !state.friends.some((friend) => friend._id === newFriend._id)
+            ? [newFriend, ...state.friends]
+            : state.friends,
         receivedList: state.receivedList.filter((request) => request._id !== requestId),
+        suggestions: newFriend
+          ? state.suggestions.map((user) =>
+              user._id === newFriend._id
+                ? {
+                    ...user,
+                    isFriend: true,
+                    requestSent: false,
+                    requestReceived: false,
+                  }
+                : user,
+            )
+          : state.suggestions,
       }));
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
       console.error("Loi xay ra khi acceptRequest", error);
+      throw error;
     } finally {
       set({ loading: false });
     }

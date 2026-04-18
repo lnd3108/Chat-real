@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { useFriendStore } from "@/stores/useFriendStore";
 import type { DiscoverUser } from "@/types/user";
@@ -33,7 +32,6 @@ const UserSuggestionsList = ({
   title = "Bạn có thể biết",
   emptyText = "Chưa có gợi ý phù hợp.",
   loading = false,
-  compact = false,
 }: UserSuggestionsListProps) => {
   const { addFriend } = useFriendStore();
   const [pendingIds, setPendingIds] = useState<string[]>([]);
@@ -78,7 +76,7 @@ const UserSuggestionsList = ({
       ) : null}
 
       {mergedUsers.length > 0 ? (
-        <div className={compact ? "space-y-2" : "grid gap-3 md:grid-cols-2"}>
+        <div className="space-y-2">
           {mergedUsers.map((user) => {
             const requestSent = user.requestSent || pendingIds.includes(user._id);
             const buttonLabel = user.isFriend
@@ -89,63 +87,10 @@ const UserSuggestionsList = ({
                   ? "Phản hồi"
                   : "Kết bạn";
 
-            if (compact) {
-              return (
-                <div
-                  key={user._id}
-                  className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/45 px-3 py-3"
-                >
-                  <DirectProfileDialog
-                    displayName={user.displayName}
-                    userName={user.userName}
-                    avatarUrl={user.avatarUrl ?? undefined}
-                    statusLabel={getSubtitle(user)}
-                    trigger={
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-smooth hover:opacity-85"
-                      >
-                        <UserAvatar
-                          type="sidebar"
-                          name={user.displayName}
-                          avatarUrl={user.avatarUrl ?? undefined}
-                          className="size-10"
-                        />
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{user.displayName}</p>
-                          <p className="truncate text-xs text-muted-foreground">@{user.userName}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {getSubtitle(user)}
-                          </p>
-                        </div>
-                      </button>
-                    }
-                  />
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={requestSent || user.isFriend ? "outline" : "default"}
-                    disabled={requestSent || user.isFriend}
-                    className={
-                      requestSent || user.isFriend
-                        ? "shrink-0 rounded-xl"
-                        : "shrink-0 rounded-xl bg-gradient-chat text-white hover:opacity-90"
-                    }
-                    onClick={() => void handleAddFriend(user)}
-                  >
-                    {requestSent || user.isFriend ? null : <UserPlus className="size-4" />}
-                    {buttonLabel}
-                  </Button>
-                </div>
-              );
-            }
-
             return (
-              <Card
+              <div
                 key={user._id}
-                className="flex items-center gap-3 rounded-2xl border-border/60 bg-background/70 px-4 py-4"
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/45 px-3 py-3"
               >
                 <DirectProfileDialog
                   displayName={user.displayName}
@@ -155,20 +100,18 @@ const UserSuggestionsList = ({
                   trigger={
                     <button
                       type="button"
-                      className="flex min-w-0 flex-1 items-center gap-4 rounded-xl text-left transition-smooth hover:opacity-85"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition-smooth hover:opacity-85"
                     >
                       <UserAvatar
                         type="sidebar"
                         name={user.displayName}
                         avatarUrl={user.avatarUrl ?? undefined}
-                        className="size-14"
+                        className="size-10"
                       />
 
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-lg font-semibold leading-tight">
-                          {user.displayName}
-                        </p>
-                        <p className="truncate text-sm text-muted-foreground">@{user.userName}</p>
+                        <p className="truncate text-sm font-semibold">{user.displayName}</p>
+                        <p className="truncate text-xs text-muted-foreground">@{user.userName}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {getSubtitle(user)}
                         </p>
@@ -184,15 +127,15 @@ const UserSuggestionsList = ({
                   disabled={requestSent || user.isFriend}
                   className={
                     requestSent || user.isFriend
-                      ? "shrink-0 rounded-xl px-4"
-                      : "shrink-0 rounded-xl bg-gradient-chat px-4 text-white hover:opacity-90"
+                      ? "shrink-0 rounded-xl"
+                      : "shrink-0 rounded-xl bg-gradient-chat text-white hover:opacity-90"
                   }
                   onClick={() => void handleAddFriend(user)}
                 >
                   {requestSent || user.isFriend ? null : <UserPlus className="size-4" />}
                   {buttonLabel}
                 </Button>
-              </Card>
+              </div>
             );
           })}
         </div>
