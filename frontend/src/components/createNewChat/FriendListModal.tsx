@@ -1,11 +1,17 @@
+import { useEffect } from "react";
 import { MessageCircle, Users } from "lucide-react";
-
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useFriendStore } from "@/stores/useFriendStore";
-
-import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Card } from "../ui/card";
+import {
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import UserAvatar from "../chat/UserAvatar";
+import UserSuggestionsList from "../chat/UserSuggestionsList";
 
 type Friend = {
   _id: string;
@@ -25,76 +31,98 @@ const FriendListModal = ({
   loading: loadingProp,
   onPick,
 }: FriendListModalProps) => {
-  const { friends: friendsStore, loading: loadingStore } = useFriendStore();
+  const currentUserId = useAuthStore((state) => state.user?._id);
+  const {
+    friends: friendsStore,
+    loading: loadingStore,
+    suggestions,
+    suggestionsLoading,
+    getSuggestions,
+  } = useFriendStore();
   const { createConversation } = useChatStore();
 
   const friends = friendsProp ?? friendsStore;
   const loading = loadingProp ?? loadingStore;
+  const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
+
+  useEffect(() => {
+    if (!currentUserId || !shouldShowSuggestions) {
+      return;
+    }
+
+    void getSuggestions(8);
+  }, [currentUserId, getSuggestions, shouldShowSuggestions]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
-
-    // convo đã fetchMessages bên store rồi -> đóng dialog
     onPick?.();
   };
 
   return (
-    <DialogContent className="glass max-w-md">
+    <DialogContent className="glass max-w-2xl">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl capitalize">
           <MessageCircle className="size-5" />
           Bắt đầu hội thoại mới
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          Chọn một người bạn để mở cuộc trò chuyện trực tiếp hoặc xem các gợi ý kết bạn.
+        </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4">
-        <h1 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-          Danh sách bạn bè
-        </h1>
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <h1 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Danh sách bạn bè
+          </h1>
 
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {/* Loading */}
-          {loading && (
-            <div className="text-center py-8 text-muted-foreground">
-              Đang tải danh sách bạn bè...
-            </div>
-          )}
+          <div className="max-h-60 space-y-2 overflow-y-auto">
+            {loading ? (
+              <div className="py-8 text-center text-muted-foreground">
+                Đang tải danh sách bạn bè...
+              </div>
+            ) : null}
 
-          {/* List */}
-          {!loading &&
-            friends?.map((friend) => (
-              <Card
-                key={friend._id}
-                onClick={() => handleAddConversation(friend._id)}
-                className="p-3 cursor-pointer transition-smooth hover:shadow-soft glass hover:bg-muted/30 group/friendCard"
-              >
-                <div className="flex items-center gap-3">
-                  <UserAvatar
-                    type="sidebar"
-                    name={friend.displayName}
-                    avatarUrl={friend.avatarUrl}
-                  />
+            {!loading &&
+              friends?.map((friend) => (
+                <Card
+                  key={friend._id}
+                  onClick={() => void handleAddConversation(friend._id)}
+                  className="group/friendCard cursor-pointer p-3 transition-smooth hover:bg-muted/30 hover:shadow-soft"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      type="sidebar"
+                      name={friend.displayName}
+                      avatarUrl={friend.avatarUrl}
+                    />
 
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <h2 className="font-semibold text-sm truncate">
-                      {friend.displayName}
-                    </h2>
-                    <span className="text-sm text-muted-foreground">
-                      @{friend.userName}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-sm font-semibold">{friend.displayName}</h2>
+                      <span className="text-sm text-muted-foreground">@{friend.userName}</span>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
 
-          {/* Empty */}
-          {!loading && (!friends || friends.length === 0) && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="size-12 mx-auto mb-3 opacity-50" />
-              Chưa có bạn bè nào. Hãy thêm bạn bè để bắt đầu trò chuyện!
-            </div>
-          )}
+            {shouldShowSuggestions ? (
+              <div className="py-2 text-center text-muted-foreground">
+                <Users className="mx-auto mb-3 size-12 opacity-50" />
+                Chưa có bạn bè nào. Bạn có thể gửi lời mời từ các gợi ý bên dưới.
+              </div>
+            ) : null}
+          </div>
         </div>
+
+        {shouldShowSuggestions ? (
+          <UserSuggestionsList
+            users={suggestions}
+            loading={Boolean(currentUserId) && suggestionsLoading}
+            compact
+            title="Bạn có thể biết"
+            emptyText="Chưa có gợi ý phù hợp để bắt đầu."
+          />
+        ) : null}
       </div>
     </DialogContent>
   );

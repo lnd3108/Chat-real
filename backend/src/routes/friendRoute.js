@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   acceptFriendRequest,
+  cancelSentFriendRequest,
   sendFriendRequest,
   declineFriendRequest,
   getAllFriends,
@@ -15,6 +16,8 @@ router.post("/requests", sendFriendRequest);
 router.post("/requests/:requestId/accept", acceptFriendRequest);
 
 router.post("/requests/:requestId/decline", declineFriendRequest);
+
+router.delete("/requests/:requestId", cancelSentFriendRequest);
 
 router.get("/", getAllFriends);
 

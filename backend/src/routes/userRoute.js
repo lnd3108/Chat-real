@@ -3,6 +3,7 @@ import {
   authMe,
   blockUser,
   getBlockedUsers,
+  getUserSuggestions,
   searchUserByUserName,
   test,
   unblockUser,
@@ -20,6 +21,7 @@ router.patch("/me", updateMe);
 router.get("/test", test);
 
 router.get("/search", searchUserByUserName);
+router.get("/suggestions", getUserSuggestions);
 router.get("/blocks", getBlockedUsers);
 router.post("/blocks/:targetUserId", blockUser);
 router.delete("/blocks/:targetUserId", unblockUser);

@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { playClickSound } from "@/lib/sound";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useFriendStore } from "@/stores/useFriendStore";
+import type { DiscoverUser } from "@/types/user";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import UserSuggestionsList from "./UserSuggestionsList";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { UserPlus } from "lucide-react";
-import type { User } from "@/types/user";
-import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
-import { playClickSound } from "@/lib/sound";
-import SearchForm from "../addFriendModals/SearchForm";
-import SendFriendRequest from "../addFriendModals/SendFriendRequest";
-import { useFriendStore } from "@/stores/useFriendStore";
 
 export interface IFormValues {
   userName: string;
@@ -21,72 +23,48 @@ export interface IFormValues {
 }
 
 const AddFriendModal = () => {
+  const currentUserId = useAuthStore((state) => state.user?._id);
   const [open, setOpen] = useState(false);
-  const [isFound, setIsFound] = useState<boolean | null>(null);
-  const [searchUser, setSerchUser] = useState<User>();
-  const [searchedUserName, setSearchedUserName] = useState("");
-  const { loading, searchByUserName, addFriend } = useFriendStore();
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<DiscoverUser[]>([]);
+  const { searchUsers, getSuggestions, suggestions, searchLoading, suggestionsLoading } =
+    useFriendStore();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors },
-  } = useForm<IFormValues>({
-    defaultValues: { userName: "", message: "" },
-  });
+  const trimmedQuery = query.trim();
 
-  const usernameValue = useWatch({
-    control,
-    name: "userName",
-    defaultValue: "",
-  });
-
-  const handleSearch = handleSubmit(async (data) => {
-    const userName = (data.userName ?? "").trim();
-    if (!userName) return;
-
-    setIsFound(null);
-
-    setSearchedUserName(userName);
-
-    try {
-      const foundUser = await searchByUserName(userName);
-      if (foundUser) {
-        setIsFound(true);
-        setSerchUser(foundUser);
-      } else {
-        setIsFound(false);
-      }
-    } catch (error) {
-      console.error(error);
-      setIsFound(false);
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setSearchResults([]);
+      return;
     }
-  });
 
-  const handleSend = handleSubmit(async (data) => {
-    if (!searchUser) return;
-
-    try {
-      const message = await addFriend(
-        searchUser._id,
-        (data.message ?? "").trim()
-      );
-      toast.success(message);
-
-      handleCancel();
-    } catch (error) {
-      console.error("Lỗi xảy ra khi gửi request từ form", error);
+    if (!currentUserId) {
+      return;
     }
-  });
 
-  const handleCancel = () => {
-    reset();
-    setSearchedUserName("");
-    setIsFound(null);
-    setOpen(false);
-  };
+    if (!trimmedQuery) {
+      void getSuggestions(10);
+      setSearchResults([]);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void searchUsers(trimmedQuery, 10).then(setSearchResults);
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentUserId, open, trimmedQuery, searchUsers, getSuggestions]);
+
+  const displayedUsers = useMemo(
+    () => (trimmedQuery ? searchResults : suggestions),
+    [searchResults, suggestions, trimmedQuery],
+  );
+
+  const currentLoading = trimmedQuery ? searchLoading : suggestionsLoading;
+  const emptyText = trimmedQuery
+    ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
+    : "Chưa có gợi ý phù hợp.";
 
   return (
     <Dialog
@@ -94,51 +72,62 @@ const AddFriendModal = () => {
       onOpenChange={(nextOpen) => {
         playClickSound();
         setOpen(nextOpen);
-        if (!nextOpen) {
-          reset();
-          setSearchedUserName("");
-          setIsFound(null);
-        }
       }}
     >
       <DialogTrigger asChild>
-        <div className="flex justify-center items-center size-5 rounded-full hover:bg-sidebar-accent cursor-pointer z-10">
+        <div className="z-10 flex size-5 cursor-pointer items-center justify-center rounded-full hover:bg-sidebar-accent">
           <UserPlus className="size-4" />
           <span className="sr-only">Kết bạn</span>
         </div>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px] border-none">
-        <DialogHeader>
-          <DialogTitle>Kết bạn</DialogTitle>
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-border/40 bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">
+        <DialogHeader className="border-b border-border/40 px-5 py-4">
+          <DialogTitle className="text-xl">Kết bạn</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Tìm người dùng rồi gửi lời mời kết bạn.
+          </DialogDescription>
         </DialogHeader>
 
-        {!isFound && (
-          <>
-            <SearchForm
-              register={register}
-              errors={errors}
-              usernameValue={usernameValue}
-              loading={loading}
-              isFound={isFound}
-              searchedUsername={searchedUserName}
-              onSubmit={handleSearch}
-              onCancel={handleCancel}
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ví dụ: vanhle"
+              className="h-11 rounded-xl pl-11"
             />
-          </>
-        )}
+          </div>
 
-        {isFound && (
-          <>
-            <SendFriendRequest
-              register={register}
-              loading={loading}
-              searchedUsername={searchedUserName}
-              onSubmit={handleSend}
-              onBack={() => setIsFound(null)}
-            />
-          </>
-        )}
+          {trimmedQuery && displayedUsers.length === 0 && !currentLoading ? (
+            <div className="rounded-xl border border-dashed border-border/60 bg-background/20 px-4 py-6 text-sm text-muted-foreground">
+              {emptyText}
+            </div>
+          ) : null}
+
+          <UserSuggestionsList
+            users={displayedUsers}
+            loading={Boolean(currentUserId) && currentLoading}
+            compact
+            title={trimmedQuery ? "Kết quả tìm kiếm" : "Bạn có thể biết"}
+            emptyText={emptyText}
+          />
+        </div>
+
+        <div className="flex justify-end border-t border-border/40 px-5 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => {
+              setOpen(false);
+              toast.dismiss();
+            }}
+          >
+            Đóng
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

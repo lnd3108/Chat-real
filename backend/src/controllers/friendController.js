@@ -130,6 +130,34 @@ export const declineFriendRequest = async (req, res) => {
   }
 };
 
+export const cancelSentFriendRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id;
+
+    const request = await FriendRequest.findById(requestId);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ message: "KhÃ´ng tÃ¬m tháº¥y lá»i má»i káº¿t báº¡n" });
+    }
+
+    if (request.from.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Báº¡n khÃ´ng cÃ³ quyá»n há»§y lá»i má»i káº¿t báº¡n nÃ y",
+      });
+    }
+
+    await FriendRequest.findByIdAndDelete(requestId);
+
+    return res.status(200).json({ message: "ÄÃ£ há»§y lá»i má»i káº¿t báº¡n" });
+  } catch (error) {
+    console.error("Lá»—i khi há»§y yÃªu cáº§u káº¿t báº¡n", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+  }
+};
+
 export const getAllFriends = async (req, res) => {
   try {
     const userId = req.user._id;

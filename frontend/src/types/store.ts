@@ -1,6 +1,6 @@
 import type { Socket } from "socket.io-client";
 import type { Conversation, DirectBlockInfo, LastMessage, Message } from "./chat";
-import type { Friend, FriendRequest, User } from "./user";
+import type { DiscoverUser, Friend, FriendRequest, User } from "./user";
 
 export interface ConversationPatch {
   _id: string;
@@ -150,14 +150,21 @@ export interface SocketState {
 
 export interface FriendState {
   friends: Friend[];
+  suggestions: DiscoverUser[];
   loading: boolean;
+  suggestionsLoading: boolean;
+  searchLoading: boolean;
   receivedList: FriendRequest[];
   sentList: FriendRequest[];
   searchByUserName: (userName: string) => Promise<User | null>;
+  searchUsers: (query: string, limit?: number) => Promise<DiscoverUser[]>;
+  getSuggestions: (limit?: number) => Promise<DiscoverUser[]>;
+  markRequestSent: (userId: string) => void;
   addFriend: (to: string, message?: string) => Promise<string>;
   getAllFriendRequests: () => Promise<void>;
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
+  cancelSentRequest: (requestId: string, targetUserId?: string) => Promise<void>;
   getFriends: () => Promise<void>;
 }
 

@@ -173,7 +173,7 @@ const getAudioFromPool = (path: string) => {
 
   const pool = Array.from({ length: AUDIO_POOL_SIZE }, () => {
     const audio = new Audio(path);
-    audio.preload = "auto";
+    audio.preload = "none";
     return audio;
   });
 
@@ -243,6 +243,8 @@ export const shouldPlayKeystrokeSound = (
   event: KeystrokeEventLike,
   isComposing = false,
 ) => {
+  const key = typeof event.key === "string" ? event.key : "";
+
   if (
     isComposing ||
     event.isComposing ||
@@ -256,11 +258,11 @@ export const shouldPlayKeystrokeSound = (
     return false;
   }
 
-  if (blockedKeystrokeKeys.has(event.key)) {
+  if (!key || blockedKeystrokeKeys.has(key)) {
     return false;
   }
 
-  return event.key.length === 1;
+  return key.length === 1;
 };
 
 export const shouldPlayBeforeInputSound = (event: BeforeInputEventLike) => {

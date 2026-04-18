@@ -12,6 +12,19 @@ export interface User {
   updateAt?: string;
 }
 
+export interface DiscoverUser {
+  _id: string;
+  username: string;
+  userName: string;
+  displayName: string;
+  avatar?: string | null;
+  avatarUrl?: string | null;
+  mutualFriendsCount: number;
+  isFriend: boolean;
+  requestSent: boolean;
+  requestReceived: boolean;
+}
+
 export interface BlockedUser {
   _id: string;
   userName: string;
