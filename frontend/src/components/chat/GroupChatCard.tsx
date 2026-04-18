@@ -3,6 +3,11 @@ import { Bell, BellOff, Info, LogOut, MoreHorizontal, Trash2 } from "lucide-reac
 
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
+import {
+  getLastMessageSenderId,
+  getParticipantId,
+  getParticipantProfile,
+} from "@/lib/chatParticipants";
 import { isGroupNotificationEnabled } from "@/lib/groupNotificationSettings";
 import type { Conversation } from "@/types/chat";
 import { Button } from "@/components/ui/button";
@@ -49,6 +54,18 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
   const name = convo.group?.name ?? "";
   const isOwner = convo.group?.createdBy === user._id;
   const notificationsEnabled = isGroupNotificationEnabled(convo._id);
+  const lastMessageSenderId = getLastMessageSenderId(convo.lastMessage);
+  const senderParticipant = convo.participants.find(
+    (participant) => getParticipantId(participant) === lastMessageSenderId,
+  );
+  const senderName =
+    lastMessageSenderId === user._id
+      ? "Bạn"
+      : getParticipantProfile(senderParticipant)?.displayName ?? "Thành viên";
+  const lastMessagePreview = convo.lastMessage?.isDeletedForEveryone
+    ? `${senderName} đã xóa một tin nhắn`
+    : convo.lastMessage?.content?.trim() ||
+      (convo.lastMessage?.imgUrl ? "Đã gửi một hình ảnh" : `${convo.participants.length} members`);
 
   const handleSelectConversation = async (id: string) => {
     setActiveConversation(id);
@@ -100,8 +117,10 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
           </>
         }
         subtitle={
-          <p className="truncate text-sm text-muted-foreground">
-            {convo.participants.length} members
+          <p
+            className={`truncate text-sm ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}
+          >
+            {convo.lastMessage ? `${senderName}: ${lastMessagePreview}` : lastMessagePreview}
           </p>
         }
         actions={

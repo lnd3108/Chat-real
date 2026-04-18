@@ -18,20 +18,38 @@ export const updateConversationAfterCreateMessage = (
   conversation,
   message,
   senderId,
+  options = {},
 ) => {
   const lastMessage = buildLastMessagePayload(message, senderId);
+  const activeSeenBy = [];
+  const isConversationActive = options.isConversationActive ?? (() => false);
 
   conversation.set({
-    seenBy: [],
     lastMessageAt: message.createdAt,
     lastMessage,
   });
 
-  conversation.participants.forEach((p) => {
-    const memberId = p.userId.toString();
+  conversation.participants.forEach((participant) => {
+    const memberId = participant.userId.toString();
     const isSender = memberId === senderId.toString();
+
+    if (isSender) {
+      conversation.unreadCounts.set(memberId, 0);
+      return;
+    }
+
+    if (isConversationActive(memberId)) {
+      conversation.unreadCounts.set(memberId, 0);
+      activeSeenBy.push(participant.userId);
+      return;
+    }
+
     const prevCount = conversation.unreadCounts.get(memberId) || 0;
-    conversation.unreadCounts.set(memberId, isSender ? 0 : prevCount + 1);
+    conversation.unreadCounts.set(memberId, prevCount + 1);
+  });
+
+  conversation.set({
+    seenBy: activeSeenBy,
   });
 };
 
@@ -50,6 +68,7 @@ export const emitNewMessage = (io, conversation, message, conversationPayload) =
         _id: conversation._id,
         lastMessage: conversation.lastMessage,
         lastMessageAt: conversation.lastMessageAt,
+        seenBy: conversation.seenBy,
       },
     unreadCounts: conversation.unreadCounts,
   };

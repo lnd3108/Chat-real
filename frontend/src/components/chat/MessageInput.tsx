@@ -4,6 +4,7 @@ import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { playSound } from "@/lib/sound";
 import type { Conversation } from "@/types/chat";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -197,6 +198,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
 
       setValue("");
       resetImage();
+      playSound("send");
     } catch (error) {
       console.error(error);
       const message =

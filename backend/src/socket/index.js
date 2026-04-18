@@ -1,9 +1,14 @@
 import { Server } from "socket.io";
-import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
+
 import { getUserConversationsForSocketIO } from "../controllers/conversationController.js";
+import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
 import User from "../models/User.js";
 
 let io;
+
+const socketsByUser = new Map(); // { userId: Set(socketId) }
+const visibleByUser = new Map(); // { userId: boolean }
+const activeConversationBySocket = new Map(); // { socketId: conversationId | null }
 
 export const initSocket = (server) => {
   io = new Server(server, {
@@ -12,18 +17,16 @@ export const initSocket = (server) => {
 
   io.use(socketAuthMiddleWare);
 
-  // Presence thật: user mở bao nhiêu socket/tab
-  const socketsByUser = new Map(); // { userId: Set(socketId) }
-
-  // Preference: có cho người khác thấy online không
-  const visibleByUser = new Map(); // { userId: boolean }
-
   const emitOnlineUsers = () => {
     const onlineVisibleUsers = [];
-    for (const [userId, set] of socketsByUser.entries()) {
+
+    for (const [userId, socketIds] of socketsByUser.entries()) {
       const visible = visibleByUser.get(userId) ?? true;
-      if (set.size > 0 && visible) onlineVisibleUsers.push(userId);
+      if (socketIds.size > 0 && visible) {
+        onlineVisibleUsers.push(userId);
+      }
     }
+
     io.emit("online-users", onlineVisibleUsers);
   };
 
@@ -31,7 +34,6 @@ export const initSocket = (server) => {
     const user = socket.user;
     const userId = user._id.toString();
 
-    // ✅ Lấy preference thật (ưu tiên từ socket.user nếu có, fallback query DB)
     let visible = user?.preferences?.showOnlineStatus;
     if (typeof visible !== "boolean") {
       const dbUser = await User.findById(userId).select(
@@ -39,16 +41,19 @@ export const initSocket = (server) => {
       );
       visible = dbUser?.preferences?.showOnlineStatus;
     }
-    if (typeof visible !== "boolean") visible = true;
 
-    // Track socket presence
-    if (!socketsByUser.has(userId)) socketsByUser.set(userId, new Set());
+    if (typeof visible !== "boolean") {
+      visible = true;
+    }
+
+    if (!socketsByUser.has(userId)) {
+      socketsByUser.set(userId, new Set());
+    }
+
     socketsByUser.get(userId).add(socket.id);
-
-    // Track visibility preference
     visibleByUser.set(userId, visible);
+    activeConversationBySocket.set(socket.id, null);
 
-    // ✅ Emit list online theo preference
     emitOnlineUsers();
 
     const conversations = await getUserConversationsForSocketIO(user._id);
@@ -56,15 +61,16 @@ export const initSocket = (server) => {
     socket.join(userId);
 
     socket.on("disconnect", () => {
-      const set = socketsByUser.get(userId);
-      if (set) {
-        set.delete(socket.id);
-        if (set.size === 0) {
+      const socketIds = socketsByUser.get(userId);
+      if (socketIds) {
+        socketIds.delete(socket.id);
+
+        if (socketIds.size === 0) {
           socketsByUser.delete(userId);
-          // visibleByUser có thể giữ hoặc xoá đều được, giữ cũng ok
-          // visibleByUser.delete(userId);
         }
       }
+
+      activeConversationBySocket.delete(socket.id);
       emitOnlineUsers();
       console.log(`socket disconnect: ${socket.id}`);
     });
@@ -77,10 +83,18 @@ export const initSocket = (server) => {
       socket.leave(conversationId);
     });
 
-    // ✅ Khi toggle preference: chỉ đổi visibleByUser (KHÔNG đụng socketsByUser)
-    socket.on("preferences:showOnlineStatus", (val) => {
-      if (typeof val === "boolean") {
-        visibleByUser.set(userId, val);
+    socket.on("conversation:active", (conversationId) => {
+      activeConversationBySocket.set(
+        socket.id,
+        typeof conversationId === "string" && conversationId.trim()
+          ? conversationId
+          : null,
+      );
+    });
+
+    socket.on("preferences:showOnlineStatus", (value) => {
+      if (typeof value === "boolean") {
+        visibleByUser.set(userId, value);
         emitOnlineUsers();
       }
     });
@@ -90,9 +104,24 @@ export const initSocket = (server) => {
 };
 
 export const getIo = () => {
-  if (!io)
-    throw new Error(
-      "Socket.io chưa được khởi tạo. Gọi initSocket(server) trước.",
-    );
+  if (!io) {
+    throw new Error("Socket.io chưa được khởi tạo. Gọi initSocket(server) trước.");
+  }
+
   return io;
+};
+
+export const isConversationActiveForUser = (userId, conversationId) => {
+  const socketIds = socketsByUser.get(userId?.toString());
+  if (!socketIds || socketIds.size === 0 || !conversationId) {
+    return false;
+  }
+
+  for (const socketId of socketIds) {
+    if (activeConversationBySocket.get(socketId) === conversationId.toString()) {
+      return true;
+    }
+  }
+
+  return false;
 };

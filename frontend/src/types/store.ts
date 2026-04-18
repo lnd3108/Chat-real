@@ -123,7 +123,7 @@ export interface ChatState {
     participants: Conversation["participants"],
   ) => void;
 
-  markasSeen: () => Promise<void>;
+  markasSeen: (conversationId?: string | null) => Promise<void>;
 
   addConvo: (convo: Conversation, options?: { activate?: boolean }) => void;
   createConversation: (
@@ -143,6 +143,7 @@ export interface SocketState {
   loadShowOnlineStatus: () => Promise<void>;
   updateShowOnlineStatus: (value: boolean) => Promise<void>;
   emitShowOnlineStatus: (value: boolean) => void;
+  emitActiveConversation: (conversationId: string | null) => void;
   disconnectSocket: () => void;
 }
 

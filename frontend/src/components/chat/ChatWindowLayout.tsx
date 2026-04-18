@@ -1,11 +1,19 @@
+import { useEffect } from "react";
+
 import { useChatStore } from "@/stores/useChatStore";
+import { useSocketStore } from "@/stores/useSocketStore";
+
 import ChatWelcomeScreen from "./ChatWelcomeScreen";
 import ChatWindowSkeleton from "../skeleton/ChatWindowSkeleton";
 import { SidebarInset } from "../ui/sidebar";
 import ChatWindowHeader from "./ChatWindowHeader";
 import ChatWindowBody from "./ChatWindowBody";
 import MessageInput from "./MessageInput";
-import { useEffect } from "react";
+
+const isConversationVisible = () =>
+  typeof document !== "undefined" &&
+  document.visibilityState === "visible" &&
+  document.hasFocus();
 
 const ChatWindowLayout = () => {
   const {
@@ -16,9 +24,10 @@ const ChatWindowLayout = () => {
     setEditingMessage,
     setReplyingTo,
   } = useChatStore();
+  const emitActiveConversation = useSocketStore((state) => state.emitActiveConversation);
 
   const selectedConvo =
-    conversations.find((c) => c._id === activeConversationId) ?? null;
+    conversations.find((conversation) => conversation._id === activeConversationId) ?? null;
 
   useEffect(() => {
     setEditingMessage(null);
@@ -26,29 +35,43 @@ const ChatWindowLayout = () => {
   }, [activeConversationId, setEditingMessage, setReplyingTo]);
 
   useEffect(() => {
-    if (!selectedConvo) {
-      return;
-    }
+    const syncActiveConversation = () => {
+      const currentConversationId = isConversationVisible() ? activeConversationId : null;
+      emitActiveConversation(currentConversationId);
 
-     const isVisible =
-      typeof document !== "undefined" &&
-      document.visibilityState === "visible" &&
-      document.hasFocus();
-
-    if (!isVisible) {
-      return;
-    }
-
-    const markSeen = async () => {
-      try {
-        await markasSeen();
-      } catch (error) {
-        console.error("Lỗi khi markSeen", error);
+      if (currentConversationId) {
+        void markasSeen(currentConversationId);
       }
     };
 
-    if (!activeConversationId || !selectedConvo?.lastMessage?._id) return;
-    markSeen();
+    syncActiveConversation();
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.addEventListener("focus", syncActiveConversation);
+    window.addEventListener("blur", syncActiveConversation);
+    document.addEventListener("visibilitychange", syncActiveConversation);
+
+    return () => {
+      window.removeEventListener("focus", syncActiveConversation);
+      window.removeEventListener("blur", syncActiveConversation);
+      document.removeEventListener("visibilitychange", syncActiveConversation);
+      emitActiveConversation(null);
+    };
+  }, [activeConversationId, emitActiveConversation, markasSeen]);
+
+  useEffect(() => {
+    if (!selectedConvo || !activeConversationId || !selectedConvo.lastMessage?._id) {
+      return;
+    }
+
+    if (!isConversationVisible()) {
+      return;
+    }
+
+    void markasSeen(activeConversationId);
   }, [activeConversationId, markasSeen, selectedConvo, selectedConvo?.lastMessage?._id]);
 
   if (!selectedConvo) {
@@ -60,16 +83,13 @@ const ChatWindowLayout = () => {
   }
 
   return (
-    <SidebarInset className="flex flex-col h-full overflow-hidden rounded-sm shadow-md">
-      {/* Header */}
+    <SidebarInset className="flex h-full flex-col overflow-hidden rounded-sm shadow-md">
       <ChatWindowHeader chat={selectedConvo} />
 
-      {/* Body */}
       <div className="flex-1 overflow-y-auto bg-primary-foreground">
         <ChatWindowBody />
       </div>
 
-      {/* Footer */}
       <MessageInput selectedConvo={selectedConvo} />
     </SidebarInset>
   );

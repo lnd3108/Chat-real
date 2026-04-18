@@ -6,7 +6,7 @@ import {
   syncConversationLastMessage,
   updateConversationAfterCreateMessage,
 } from "../utils/messageHelper.js";
-import { getIo } from "../socket/index.js";
+import { getIo, isConversationActiveForUser } from "../socket/index.js";
 import {
   deleteImageFromCloudinary,
   deleteImageFromCloudinaryUrl,
@@ -119,7 +119,7 @@ const buildConversationSocketPayload = async (conversation) => {
     })),
     lastMessage: conversation.lastMessage,
     lastMessageAt: conversation.lastMessageAt,
-    seenBy: [],
+    seenBy: conversation.seenBy || [],
     unreadCounts: Object.fromEntries(conversation.unreadCounts || []),
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
@@ -159,7 +159,10 @@ const createAndEmitMessage = async ({
     replyTo,
   });
 
-  updateConversationAfterCreateMessage(conversation, message, senderId);
+  updateConversationAfterCreateMessage(conversation, message, senderId, {
+    isConversationActive: (memberId) =>
+      isConversationActiveForUser(memberId, conversationId),
+  });
   await conversation.save();
 
   const conversationPayload = includeConversationPayload

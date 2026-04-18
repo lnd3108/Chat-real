@@ -1,6 +1,7 @@
 import axios from "@/lib/axios";
 import { getParticipantId, getParticipantProfile } from "@/lib/chatParticipants";
 import { notifyIncomingMessage } from "@/lib/messageNotifications";
+import { playSound } from "@/lib/sound";
 import type { SocketState } from "@/types/store";
 import type { Participant } from "@/types/chat";
 import { io, type Socket } from "socket.io-client";
@@ -18,6 +19,11 @@ const getStoredShowOnlineStatus = () => {
   const raw = localStorage.getItem(SHOW_ONLINE_STATUS_KEY);
   return raw === null ? true : raw === "true";
 };
+
+const isDocumentVisible = () =>
+  typeof document !== "undefined" &&
+  document.visibilityState === "visible" &&
+  document.hasFocus();
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
@@ -53,6 +59,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       isRefreshingSocketAuth = false;
       console.log("Kết nối socket thành công");
       socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
+      socket.emit(
+        "conversation:active",
+        isDocumentVisible() ? useChatStore.getState().activeConversationId : null,
+      );
     });
 
     socket.on("connect_error", async (error: SocketConnectError) => {
@@ -103,6 +113,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         updateConversation,
       } = useChatStore.getState();
       const { user } = useAuthStore.getState();
+      const isCurrentConversation = activeConversationId === message.conversationId;
+      const isCurrentConversationVisible = isCurrentConversation && isDocumentVisible();
       const senderParticipant = conversation?.participants?.find(
         (participant: Participant) => getParticipantId(participant) === message.senderId,
       );
@@ -160,8 +172,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       });
       void addMessage(message);
 
-      if (activeConversationId === message.conversationId) {
-        void markasSeen();
+      if (isCurrentConversationVisible) {
+        void markasSeen(message.conversationId);
       }
 
       if (message.senderId === user?._id) {
@@ -179,13 +191,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         messageId: message._id,
       });
 
-      const isCurrentConversation = activeConversationId === message.conversationId;
-      const isWindowVisible =
-        typeof document !== "undefined" &&
-        document.visibilityState === "visible" &&
-        document.hasFocus();
-
-      if (isCurrentConversation && isWindowVisible) {
+      if (isCurrentConversationVisible) {
         return;
       }
 
@@ -196,11 +202,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
           await fetchMessages(message.conversationId);
         }
 
-        if (document.visibilityState === "visible" && document.hasFocus()) {
-          await markasSeen();
+        if (isDocumentVisible()) {
+          await markasSeen(message.conversationId);
         }
       };
 
+      playSound("notification");
       notifyIncomingMessage({
         conversation,
         message,
@@ -359,6 +366,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     const socket = get().socket;
     if (!socket) return;
     socket.emit("preferences:showOnlineStatus", value);
+  },
+
+  emitActiveConversation: (conversationId) => {
+    const socket = get().socket;
+    if (!socket) return;
+    socket.emit("conversation:active", conversationId);
   },
 
   disconnectSocket: () => {

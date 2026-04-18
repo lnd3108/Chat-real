@@ -477,13 +477,16 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      markasSeen: async () => {
+      markasSeen: async (conversationId?: string | null) => {
         try {
           const { user } = useAuthStore.getState();
           const { activeConversationId, conversations } = get();
-          if (!activeConversationId || !user) return;
+          const targetConversationId = conversationId ?? activeConversationId;
+          if (!targetConversationId || !user) return;
 
-          const convo = conversations.find((conversation) => conversation._id === activeConversationId);
+          const convo = conversations.find(
+            (conversation) => conversation._id === targetConversationId,
+          );
           if (!convo?.lastMessage) return;
 
           const senderId = getLastMessageSenderId(convo.lastMessage);
@@ -493,11 +496,11 @@ export const useChatStore = create<ChatState>()(
           const myUnread = convo.unreadCounts?.[user._id];
           if (typeof myUnread === "number" && myUnread === 0) return;
 
-          await chatServices.markasSeen(activeConversationId);
+          await chatServices.markasSeen(targetConversationId);
 
           set((state) => ({
             conversations: state.conversations.map((conversation) =>
-              conversation._id === activeConversationId
+              conversation._id === targetConversationId
                 ? {
                     ...conversation,
                     unreadCounts: {
