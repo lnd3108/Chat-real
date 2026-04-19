@@ -6,6 +6,8 @@ import Friend from "../models/Friend.js";
 import Blocking from "../models/Blocking.js";
 import Session from "../models/Session.js";
 import { disconnectUserSockets, emitToUser } from "../socket/index.js";
+import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
+import { sendAccountDeletedEmail } from "../utils/mail.js";
 
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
@@ -273,6 +275,53 @@ export const updateUserStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể cập nhật trạng thái người dùng.",
+    });
+  }
+};
+
+export const deleteUserAsAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminUserId = req.user?._id?.toString();
+    const reason =
+      typeof req.body?.reason === "string" && req.body.reason.trim()
+        ? req.body.reason.trim()
+        : null;
+
+    if (adminUserId && adminUserId === id) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
+      });
+    }
+
+    const { user, summary } = await permanentlyDeleteUserAccount({
+      targetUserId: id,
+      actorUserId: req.user?._id ?? null,
+      initiatedBy: "admin",
+      reason,
+    });
+
+    try {
+      await sendAccountDeletedEmail({
+        email: user.email,
+        displayName: user.displayName,
+        deletedByAdmin: true,
+        reason,
+      });
+    } catch (mailError) {
+      console.error("Lỗi gửi email sau khi admin xóa tài khoản", mailError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Tài khoản đã được xóa.",
+      data: summary,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Không thể xóa tài khoản.",
     });
   }
 };

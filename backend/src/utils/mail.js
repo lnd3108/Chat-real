@@ -115,25 +115,49 @@ export const sendAccountDeletionCodeEmail = async ({
   });
 };
 
-export const sendAccountDeletedEmail = async ({ email, displayName }) => {
+export const sendAccountDeletedEmail = async ({
+  email,
+  displayName,
+  deletedByAdmin = false,
+  reason = null,
+}) => {
   const appName = getAppName();
+  const trimmedReason =
+    typeof reason === "string" && reason.trim() ? reason.trim() : null;
+  const deletionMessage = deletedByAdmin
+    ? "Tài khoản ChatRealTime của bạn đã bị quản trị viên xóa."
+    : "Tài khoản ChatRealTime của bạn đã được xóa thành công.";
+  const supportMessage = deletedByAdmin
+    ? "Nếu bạn cần thêm thông tin, vui lòng liên hệ đội ngũ hỗ trợ."
+    : "Nếu đây không phải là thao tác của bạn, vui lòng liên hệ hỗ trợ ngay lập tức.";
+  const reasonText = trimmedReason
+    ? `Lý do từ quản trị viên: ${trimmedReason}`
+    : null;
+  const reasonHtml = trimmedReason
+    ? `<p><strong>Lý do từ quản trị viên:</strong> ${trimmedReason}</p>`
+    : "";
 
   await sendMail({
     to: email,
-    subject: `${appName} - Tài khoản đã được xóa`,
+    subject: deletedByAdmin
+      ? `${appName} - Tài khoản của bạn đã bị xóa bởi quản trị viên`
+      : `${appName} - Tài khoản đã được xóa`,
     text: [
       `Xin chào ${displayName || "bạn"},`,
       "",
-      "Tài khoản ChatRealTime của bạn đã được xóa thành công.",
-      "Nếu đây không phải là thao tác của bạn, vui lòng liên hệ hỗ trợ ngay lập tức.",
+      deletionMessage,
+      ...(reasonText ? ["", reasonText] : []),
+      "",
+      supportMessage,
     ].join("\n"),
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
         <h2 style="margin-bottom:12px">${appName}</h2>
         <p>Xin chào ${displayName || "bạn"},</p>
-        <p>Tài khoản ChatRealTime của bạn đã được xóa thành công.</p>
-        <p>Nếu đây không phải là thao tác của bạn, vui lòng liên hệ hỗ trợ ngay lập tức.</p>
-        <p>Email: ${email}, liên hệ để được hỗ trợ sớm nhất</p>
+        <p>${deletionMessage}</p>
+        ${reasonHtml}
+        <p>${supportMessage}</p>
+        <p>Email liên hệ: ${process.env.SMTP_USER}</p>
       </div>
     `,
   });

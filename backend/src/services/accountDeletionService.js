@@ -6,6 +6,8 @@ import FriendRequest from "../models/FriendRequest.js";
 import Message from "../models/Message.js";
 import Session from "../models/Session.js";
 import User from "../models/User.js";
+import Blocking from "../models/Blocking.js";
+import AdminDeletionLog from "../models/AdminDeletionLog.js";
 import {
   buildDeletedSenderSnapshot,
   buildLastMessagePayload,
@@ -112,6 +114,7 @@ export const permanentlyDeleteUserAccount = async ({
   targetUserId,
   actorUserId = null,
   initiatedBy = "self",
+  reason = null,
 }) => {
   const userId = ensureObjectId(targetUserId);
   const userIdString = userId.toString();
@@ -135,7 +138,7 @@ export const permanentlyDeleteUserAccount = async ({
 
   const directConversationIds = directConversations.map((conversation) => conversation._id);
 
-  const [friendRequestResult, friendshipResult, inboundBlockResult] =
+  const [friendRequestResult, friendshipResult, inboundBlockResult, blockRelationResult] =
     await Promise.all([
       FriendRequest.deleteMany({
         $or: [{ from: userId }, { to: userId }],
@@ -149,12 +152,17 @@ export const permanentlyDeleteUserAccount = async ({
           $pull: { blockedUsers: { userId } },
         },
       ),
+      Blocking.deleteMany({
+        $or: [{ userId }, { blockedUserId: userId }],
+      }),
     ]);
 
   summary.deletedFriendRequestsCount = friendRequestResult.deletedCount ?? 0;
   summary.deletedFriendshipsCount = friendshipResult.deletedCount ?? 0;
   summary.deletedBlockRelationsCount =
-    (user.blockedUsers?.length ?? 0) + (inboundBlockResult.modifiedCount ?? 0);
+    (user.blockedUsers?.length ?? 0) +
+    (inboundBlockResult.modifiedCount ?? 0) +
+    (blockRelationResult.deletedCount ?? 0);
 
   if (directConversationIds.length > 0) {
     const directMessagesResult = await Message.deleteMany({
@@ -263,6 +271,18 @@ export const permanentlyDeleteUserAccount = async ({
     actorUserId: actorUserId ? actorUserId.toString() : null,
   });
   disconnectUserSockets(userIdString);
+
+  if (initiatedBy === "admin" && actorUserId) {
+    await AdminDeletionLog.create({
+      targetUserId: user._id,
+      usernameSnapshot: user.userName,
+      displayNameSnapshot: user.displayName,
+      deletedByAdminId: ensureObjectId(actorUserId),
+      deletedAt: new Date(),
+      reason: typeof reason === "string" && reason.trim() ? reason.trim() : null,
+      cleanupSummary: summary,
+    });
+  }
 
   await User.findByIdAndDelete(userId);
 

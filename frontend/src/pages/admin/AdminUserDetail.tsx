@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
+import AdminDeleteUserDialog from "@/components/admin/AdminDeleteUserDialog";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -350,6 +351,12 @@ const AdminUserDetail = () => {
                 currentStatus={user.status}
                 fullWidth
                 onSuccess={updateUserStatusLocally}
+              />
+              <AdminDeleteUserDialog
+                userId={user._id}
+                userName={user.username}
+                displayName={user.displayName}
+                fullWidth
               />
             </div>
 
