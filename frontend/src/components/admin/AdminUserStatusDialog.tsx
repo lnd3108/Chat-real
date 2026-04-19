@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { Ban, ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
-import { axiosInstance } from "@/lib/axios";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/useAuthStore";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,6 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { axiosInstance } from "@/lib/axios";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 type AdminUserStatus = "active" | "inactive" | "suspended" | "banned";
 
@@ -26,7 +26,13 @@ interface AdminUserStatusDialogProps {
   currentStatus: AdminUserStatus;
   onSuccess: (nextStatus: "active" | "banned") => void;
   buttonClassName?: string;
-  buttonVariant?: "default" | "outline" | "destructive" | "secondary" | "ghost" | "link";
+  buttonVariant?:
+    | "default"
+    | "outline"
+    | "destructive"
+    | "secondary"
+    | "ghost"
+    | "link";
   fullWidth?: boolean;
   disabled?: boolean;
 }
@@ -70,7 +76,8 @@ const AdminUserStatusDialog = ({
       setOpen(false);
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message ?? "Không thể cập nhật trạng thái tài khoản.",
+        error?.response?.data?.message ??
+          "Không thể cập nhật trạng thái tài khoản.",
       );
     } finally {
       setSubmitting(false);
@@ -85,6 +92,7 @@ const AdminUserStatusDialog = ({
           disabled={isDisabled}
           className={`${fullWidth ? "w-full justify-start" : ""} ${buttonClassName ?? ""}`.trim()}
         >
+          <Ban className="mr-2 h-4 w-4 shrink-0" />
           {isSelf
             ? "Không thể tự khóa"
             : isBanned
@@ -95,7 +103,9 @@ const AdminUserStatusDialog = ({
 
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
-          <AlertDialogMedia className={isBanned ? "bg-emerald-500/10" : "bg-rose-500/10"}>
+          <AlertDialogMedia
+            className={isBanned ? "bg-emerald-500/10" : "bg-rose-500/10"}
+          >
             {isBanned ? (
               <ShieldCheck className="text-emerald-600" />
             ) : (
@@ -113,13 +123,17 @@ const AdminUserStatusDialog = ({
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={submitting}>Huy</AlertDialogCancel>
+          <AlertDialogCancel disabled={submitting}>Hủy</AlertDialogCancel>
           <Button
             onClick={handleSubmit}
             disabled={submitting}
             variant={isBanned ? "default" : "destructive"}
           >
-            {submitting ? "Đang xử lý..." : isBanned ? "Mở khóa" : "Khóa tài khoản"}
+            {submitting
+              ? "Đang xử lý..."
+              : isBanned
+                ? "Mở khóa"
+                : "Khóa tài khoản"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

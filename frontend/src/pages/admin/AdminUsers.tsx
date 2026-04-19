@@ -290,20 +290,24 @@ const AdminUsers = () => {
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
+                      <div className="ml-auto flex w-[172px] flex-col items-stretch gap-2">
+                        <Button
                           type="button"
-                          className="rounded-lg p-2 transition-colors hover:bg-muted/50"
+                          variant="ghost"
+                          className="h-10 justify-start rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
                           onClick={() => goToUserDetail(user._id)}
                           aria-label={`Xem chi tiết ${user.displayName}`}
                         >
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </button>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Xem chi tiết
+                        </Button>
                         <AdminUserStatusDialog
                           userId={user._id}
                           userName={user.userName}
                           displayName={user.displayName}
                           currentStatus={user.status}
+                          fullWidth
+                          buttonClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
                           onSuccess={(status) => updateUserStatusLocally(user._id, status)}
                         />
                       </div>
