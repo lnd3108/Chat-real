@@ -1,10 +1,15 @@
 import api from "@/lib/axios";
-import type { ConversationResponse, Message } from "@/types/chat";
+import type { Conversation, ConversationResponse, Message } from "@/types/chat";
 import type { AxiosProgressEvent } from "axios";
 
 interface FetchMessagesProps {
   messages: Message[];
   cursor?: string;
+}
+
+interface SendDirectMessageResponse {
+  message: Message;
+  conversation?: Conversation | null;
 }
 
 const pageLimit = 50;
@@ -44,7 +49,7 @@ export const chatServices = {
       conversationId,
       replyToMessageId,
     });
-    return res.data.message;
+    return res.data as SendDirectMessageResponse;
   },
 
   async sendGroupMessage(
@@ -84,7 +89,7 @@ export const chatServices = {
         onUploadProgress?.(toUploadPercent(event));
       },
     });
-    return res.data.message;
+    return res.data as SendDirectMessageResponse;
   },
 
   async sendGroupMessageWithImage(

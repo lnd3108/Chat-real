@@ -162,6 +162,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       const hasConversation = conversations.some(
         (item) => item._id === targetConversationId,
       );
+      const isOwnMessage = message.senderId === user?._id;
       const isCurrentConversation = activeConversationId === message.conversationId;
       const isCurrentConversationVisible = isCurrentConversation && isDocumentVisible();
       const senderParticipant = conversation?.participants?.find(
@@ -227,7 +228,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         void markasSeen(message.conversationId);
       }
 
-      if (message.senderId === user?._id) {
+      if (isOwnMessage) {
         return;
       }
 

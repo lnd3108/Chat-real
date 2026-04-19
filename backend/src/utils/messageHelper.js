@@ -1,5 +1,21 @@
 import { emitToUser } from "../socket/index.js";
 
+const getParticipantUserId = (participant) => {
+  if (!participant) return null;
+
+  const populatedUserId = participant.userId?._id;
+  if (populatedUserId?.toString) {
+    return populatedUserId.toString();
+  }
+
+  const rawUserId = participant.userId ?? participant._id ?? null;
+  if (rawUserId?.toString) {
+    return rawUserId.toString();
+  }
+
+  return typeof rawUserId === "string" ? rawUserId : null;
+};
+
 export const buildLastMessagePayload = (message, senderIdOverride) => {
   const senderId = senderIdOverride ?? message.senderId;
   const lastMessageContent = message.isDeletedForEveryone
@@ -77,11 +93,10 @@ export const emitNewMessage = (io, conversation, message, conversationPayload) =
 
   if (conversationPayload && Array.isArray(conversation.participants)) {
     conversation.participants.forEach((participant) => {
-      const participantId =
-        participant?.userId?.toString?.() ?? participant?.userId ?? null;
+      const participantId = getParticipantUserId(participant);
 
       if (participantId) {
-        emitToUser(participantId.toString(), "new-message", payload);
+        emitToUser(participantId, "new-message", payload);
       }
     });
     return;

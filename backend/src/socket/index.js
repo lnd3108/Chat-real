@@ -116,17 +116,7 @@ export const emitToUser = (userId, eventName, payload) => {
     return;
   }
 
-  const normalizedUserId = userId.toString();
-  const socketIds = socketsByUser.get(normalizedUserId);
-
-  if (socketIds && socketIds.size > 0) {
-    socketIds.forEach((socketId) => {
-      io.to(socketId).emit(eventName, payload);
-    });
-    return;
-  }
-
-  io.to(normalizedUserId).emit(eventName, payload);
+  io.to(userId.toString()).emit(eventName, payload);
 };
 
 export const isConversationActiveForUser = (userId, conversationId) => {

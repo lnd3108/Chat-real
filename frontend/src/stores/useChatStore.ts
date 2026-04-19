@@ -21,6 +21,32 @@ const normalizeIncomingMessage = (message: Message, userId?: string) => ({
   isOwn: message.senderId === userId,
 });
 
+const getConversationSortTime = (conversation: Conversation) =>
+  new Date(
+    conversation.lastMessageAt ?? conversation.updatedAt ?? conversation.createdAt ?? 0,
+  ).getTime();
+
+const mergeConversationsById = (
+  currentConversations: Conversation[],
+  incomingConversations: Conversation[],
+) => {
+  const mergedById = new Map(
+    currentConversations.map((conversation) => [conversation._id, conversation]),
+  );
+
+  incomingConversations.forEach((conversation) => {
+    const current = mergedById.get(conversation._id);
+    mergedById.set(
+      conversation._id,
+      current ? { ...current, ...conversation } : conversation,
+    );
+  });
+
+  return Array.from(mergedById.values()).sort(
+    (left, right) => getConversationSortTime(right) - getConversationSortTime(left),
+  );
+};
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -49,7 +75,15 @@ export const useChatStore = create<ChatState>()(
         try {
           set({ convoLoading: true });
           const { conversations } = await chatServices.fetchConversations();
-          set({ conversations, convoLoading: false });
+          set((state) => {
+            return {
+              conversations: mergeConversationsById(
+                state.conversations,
+                conversations,
+              ),
+              convoLoading: false,
+            };
+          });
         } catch (error) {
           console.error("Failed to fetch conversations:", error);
           set({ convoLoading: false });
@@ -138,7 +172,7 @@ export const useChatStore = create<ChatState>()(
             return;
           }
 
-          const message = await chatServices.sendDirectMessage(
+          const response = await chatServices.sendDirectMessage(
             finalRecipientId,
             content,
             imgUrl,
@@ -146,19 +180,18 @@ export const useChatStore = create<ChatState>()(
             replyingTo?._id,
           );
 
+          const { message, conversation } = response;
           const targetConversationId = message.conversationId;
 
           if (targetConversationId) {
-            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
-            get().setActiveConversation(targetConversationId);
-
-            const hasConversation = get().conversations.some(
-              (conversation) => conversation._id === targetConversationId,
-            );
-
-            if (!hasConversation) {
+            if (conversation?._id === targetConversationId) {
+              get().addConvo(conversation);
+            } else {
               await get().fetchConversations();
             }
+
+            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
+            get().setActiveConversation(targetConversationId);
 
             if (!get().messages[targetConversationId]) {
               await get().fetchMessages(targetConversationId);
@@ -205,7 +238,7 @@ export const useChatStore = create<ChatState>()(
             return;
           }
 
-          const message = await chatServices.sendDirectMessageWithImage(
+          const response = await chatServices.sendDirectMessageWithImage(
             finalRecipientId,
             image,
             content,
@@ -214,19 +247,18 @@ export const useChatStore = create<ChatState>()(
             options?.onUploadProgress,
           );
 
+          const { message, conversation } = response;
           const targetConversationId = message.conversationId;
 
           if (targetConversationId) {
-            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
-            get().setActiveConversation(targetConversationId);
-
-            const hasConversation = get().conversations.some(
-              (conversation) => conversation._id === targetConversationId,
-            );
-
-            if (!hasConversation) {
+            if (conversation?._id === targetConversationId) {
+              get().addConvo(conversation);
+            } else {
               await get().fetchConversations();
             }
+
+            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
+            get().setActiveConversation(targetConversationId);
 
             if (!get().messages[targetConversationId]) {
               await get().fetchMessages(targetConversationId);
@@ -561,13 +593,10 @@ export const useChatStore = create<ChatState>()(
 
       addConvo: (convo, options) => {
         set((state) => {
-          const exists = state.conversations.some(
-            (conversation) => conversation._id.toString() === convo._id.toString(),
-          );
           const shouldActivate = options?.activate ?? true;
 
           return {
-            conversations: exists ? state.conversations : [convo, ...state.conversations],
+            conversations: mergeConversationsById(state.conversations, [convo]),
             activeConversationId: shouldActivate
               ? convo._id
               : state.activeConversationId,

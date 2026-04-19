@@ -176,7 +176,7 @@ const createAndEmitMessage = async ({
   const io = getIo();
   emitNewMessage(io, conversation, message, conversationPayload);
 
-  return message;
+  return { message, conversationPayload: conversationPayload ?? null };
 };
 
 const ensureConversationMember = async (conversationId, userId) => {
@@ -283,19 +283,22 @@ export const sendDirectMessage = async (req, res) => {
       isNewConversation = true;
     }
 
-    const message = await createAndEmitMessage({
+    const { message, conversationPayload } = await createAndEmitMessage({
       conversation,
       conversationId: conversation._id,
       senderId,
       content,
       file,
       replyToMessageId,
-      includeConversationPayload: isNewConversation,
+      includeConversationPayload: true,
     });
 
     return res
       .status(201)
-      .json({ message: normalizeMessageForClient(message, senderId) });
+      .json({
+        message: normalizeMessageForClient(message, senderId),
+        conversation: conversationPayload,
+      });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -313,7 +316,7 @@ export const sendGroupMessage = async (req, res) => {
       return res.status(400).json({ message: "Thiếu nội dung" });
     }
 
-    const message = await createAndEmitMessage({
+    const { message } = await createAndEmitMessage({
       conversation,
       conversationId,
       senderId,
