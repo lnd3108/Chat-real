@@ -33,15 +33,37 @@ const UserSuggestionsList = ({
   emptyText = "Chưa có gợi ý phù hợp.",
   loading = false,
 }: UserSuggestionsListProps) => {
-  const { addFriend } = useFriendStore();
+  const { addFriend, friends, sentList, receivedList } = useFriendStore();
   const [pendingIds, setPendingIds] = useState<string[]>([]);
+
+  const friendIds = useMemo(
+    () => new Set(friends.map((friend) => friend._id)),
+    [friends],
+  );
+  const sentRequestIds = useMemo(
+    () => new Set(sentList.map((request) => request.to?._id).filter(Boolean)),
+    [sentList],
+  );
+  const receivedRequestIds = useMemo(
+    () => new Set(receivedList.map((request) => request.from?._id).filter(Boolean)),
+    [receivedList],
+  );
 
   const mergedUsers = useMemo(
     () =>
-      users.map((user) =>
-        pendingIds.includes(user._id) ? { ...user, requestSent: true, requestReceived: false } : user,
-      ),
-    [pendingIds, users],
+      users.map((user) => {
+        const isFriend = friendIds.has(user._id);
+        const requestSent = pendingIds.includes(user._id) || sentRequestIds.has(user._id);
+        const requestReceived = receivedRequestIds.has(user._id);
+
+        return {
+          ...user,
+          isFriend,
+          requestSent,
+          requestReceived: requestSent ? false : requestReceived,
+        };
+      }),
+    [friendIds, pendingIds, receivedRequestIds, sentRequestIds, users],
   );
 
   const handleAddFriend = async (user: DiscoverUser) => {
@@ -50,8 +72,19 @@ const UserSuggestionsList = ({
     }
 
     setPendingIds((current) => [...current, user._id]);
-    const message = await addFriend(user._id);
-    toast.success(message);
+
+    try {
+      const result = await addFriend(user._id);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setPendingIds((current) =>
+        current.filter((pendingUserId) => pendingUserId !== user._id),
+      );
+    }
   };
 
   return (

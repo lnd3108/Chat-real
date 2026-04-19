@@ -53,7 +53,15 @@ export const friendService = {
 
   async sendFriendRequest(to: string, message?: string) {
     const res = await api.post("/friends/requests", { to, message });
-    return res.data.message;
+    return {
+      success: true,
+      message: String(res.data.message ?? ""),
+      autoAccepted: Boolean(res.data.autoAccepted),
+      newFriend: (res.data.newFriend ?? null) as Friend | null,
+      matchedRequestId: res.data.matchedRequestId
+        ? String(res.data.matchedRequestId)
+        : undefined,
+    };
   },
 
   async getAllFriendRequest() {
@@ -79,5 +87,14 @@ export const friendService = {
   async getFriendList() {
     const res = await api.get("/friends");
     return res.data.friends;
+  },
+
+  async removeFriend(targetUserId: string) {
+    const res = await api.delete(`/friends/${targetUserId}`);
+    return res.data as {
+      message: string;
+      conversationId?: string | null;
+      clearedDirectChat?: boolean;
+    };
   },
 };

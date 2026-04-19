@@ -160,11 +160,21 @@ export interface FriendState {
   searchUsers: (query: string, limit?: number) => Promise<DiscoverUser[]>;
   getSuggestions: (limit?: number) => Promise<DiscoverUser[]>;
   markRequestSent: (userId: string) => void;
-  addFriend: (to: string, message?: string) => Promise<string>;
+  addFriend: (
+    to: string,
+    message?: string,
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    autoAccepted: boolean;
+    newFriend?: Friend | null;
+    matchedRequestId?: string;
+  }>;
   getAllFriendRequests: () => Promise<void>;
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
   cancelSentRequest: (requestId: string, targetUserId?: string) => Promise<void>;
+  removeFriend: (targetUserId: string) => Promise<string>;
   getFriends: () => Promise<void>;
 }
 

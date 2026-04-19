@@ -61,18 +61,44 @@ export const useFriendStore = create<FriendState>((set) => ({
   addFriend: async (to, message) => {
     try {
       set({ loading: true });
-      const resultMessage = await friendService.sendFriendRequest(to, message);
+      const result = await friendService.sendFriendRequest(to, message);
 
       set((state) => ({
+        friends:
+          result.autoAccepted && result.newFriend
+            ? state.friends.some((friend) => friend._id === result.newFriend?._id)
+              ? state.friends
+              : [result.newFriend, ...state.friends]
+            : state.friends,
         suggestions: state.suggestions.map((user) =>
-          user._id === to ? { ...user, requestSent: true, requestReceived: false } : user,
+          user._id === to
+            ? {
+                ...user,
+                isFriend: result.autoAccepted,
+                requestSent: !result.autoAccepted,
+                requestReceived: false,
+              }
+            : user,
         ),
+        receivedList: result.matchedRequestId
+          ? state.receivedList.filter((request) => request._id !== result.matchedRequestId)
+          : state.receivedList,
+        sentList: state.sentList.filter((request) => request.to?._id !== to),
       }));
 
-      return resultMessage;
+      if (result.matchedRequestId) {
+        useNotificationStore.getState().removeNotificationByEntity(result.matchedRequestId);
+      }
+
+      return result;
     } catch (error) {
       console.error("Loi xay ra khi addFriend", error);
-      return "Loi xay ra khi gui ket ban. Hay thu lai!";
+      return {
+        success: false,
+        message: "Loi xay ra khi gui ket ban. Hay thu lai!",
+        autoAccepted: false,
+        newFriend: null,
+      };
     } finally {
       set({ loading: false });
     }
@@ -162,6 +188,36 @@ export const useFriendStore = create<FriendState>((set) => ({
       }));
     } catch (error) {
       console.error("Loi xay ra khi cancelSentRequest", error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  removeFriend: async (targetUserId) => {
+    try {
+      set({ loading: true });
+      const result = await friendService.removeFriend(targetUserId);
+
+      set((state) => ({
+        friends: state.friends.filter((friend) => friend._id !== targetUserId),
+        suggestions: state.suggestions.map((user) =>
+          user._id === targetUserId
+            ? {
+                ...user,
+                isFriend: false,
+                requestSent: false,
+                requestReceived: false,
+              }
+            : user,
+        ),
+        receivedList: state.receivedList.filter((request) => request.from?._id !== targetUserId),
+        sentList: state.sentList.filter((request) => request.to?._id !== targetUserId),
+      }));
+
+      return result.message ?? "Đã hủy kết bạn";
+    } catch (error) {
+      console.error("Loi xay ra khi removeFriend", error);
       throw error;
     } finally {
       set({ loading: false });

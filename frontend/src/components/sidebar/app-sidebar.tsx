@@ -22,6 +22,7 @@ import CreateNewChat from "../chat/CreateNewChat";
 import NewGroupChatModal from "../chat/NewGroupChatModal";
 import GroupChatList from "../chat/GroupChatList";
 import AddFriendModal from "../chat/AddFriendModal";
+import FriendManagementDialog from "../chat/FriendManagementDialog";
 import DirrectMessageList from "../chat/DirrectMessageList";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -130,7 +131,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title="Kết Bạn"
             className="cursor-pointer"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <FriendManagementDialog />
               <AddFriendModal />
             </div>
           </SidebarGroupAction>

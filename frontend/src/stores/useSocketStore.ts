@@ -11,6 +11,7 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
+import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { toast } from "sonner";
 
@@ -324,6 +325,34 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("conversation:direct-cleared", ({ conversationId }) => {
       useChatStore.getState().removeConversationLocal(conversationId);
+    });
+
+    socket.on("friend:removed", ({ userId, targetUserId }) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (!currentUserId) {
+        return;
+      }
+
+      const removedFriendId = userId === currentUserId ? targetUserId : userId;
+      if (!removedFriendId) {
+        return;
+      }
+
+      useFriendStore.setState((state) => ({
+        friends: state.friends.filter((friend) => friend._id !== removedFriendId),
+        suggestions: state.suggestions.map((user) =>
+          user._id === removedFriendId
+            ? {
+                ...user,
+                isFriend: false,
+                requestSent: false,
+                requestReceived: false,
+              }
+            : user,
+        ),
+        receivedList: state.receivedList.filter((request) => request.from?._id !== removedFriendId),
+        sentList: state.sentList.filter((request) => request.to?._id !== removedFriendId),
+      }));
     });
 
     socket.on("conversation:left", ({ conversationId, groupName, removedByOther }) => {
