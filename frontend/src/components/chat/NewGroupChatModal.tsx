@@ -1,5 +1,5 @@
 import { useFriendStore } from "@/stores/useFriendStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { playClickSound } from "@/lib/sound";
 import {
   Dialog,
@@ -24,9 +24,11 @@ import InviteSuggestionList from "../newGroupChat/InviteSuggestionList";
 const NewGroupChatModal = () => {
   const [groupName, setGroupName] = useState("");
   const [search, setSearch] = useState("");
-  const { friends, getFriends } = useFriendStore();
+  const { friends, getFriends, loading: friendsLoading } = useFriendStore();
   const [invitedUsers, setInvitedUsers] = useState<Friend[]>([]);
   const [open, setOpen] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
+  
   const resetForm = () => {
     setGroupName("");
     setSearch("");
@@ -35,24 +37,45 @@ const NewGroupChatModal = () => {
 
   const { loading, createConversation } = useChatStore();
 
-  const handleGetFriends = async () => {
-    await getFriends();
-  };
+  useEffect(() => {
+    if (open && friends.length === 0 && !isInitializing) {
+      setIsInitializing(true);
+      getFriends().finally(() => setIsInitializing(false));
+    }
+  }, [open, friends.length, getFriends]);
 
   const handleSelectFriend = (friend: Friend) => {
-    setInvitedUsers([...invitedUsers, friend]);
-    setSearch("");
+    const isSelected = invitedUsers.some((u) => u._id === friend._id);
+    
+    if (isSelected) {
+      setInvitedUsers(invitedUsers.filter((u) => u._id !== friend._id));
+    } else {
+      setInvitedUsers([...invitedUsers, friend]);
+    }
   };
 
   const handleRemoveFriend = (user: Friend) => {
     setInvitedUsers(invitedUsers.filter((u) => u._id !== user._id));
   };
 
+  const filteredFriends = friends.filter(
+    (friend) =>
+      !invitedUsers.some((u) => u._id === friend._id) &&
+      (friend.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        friend.userName.toLowerCase().includes(search.toLowerCase())),
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     try {
       e.preventDefault();
-      if (invitedUsers.length === 0) {
-        toast.warning("Hãy chọn ít nhất một người bạn vào nhóm.");
+      
+      if (!groupName.trim()) {
+        toast.error("Vui lòng nhập tên nhóm");
+        return;
+      }
+      
+      if (invitedUsers.length < 2) {
+        toast.error("Nhóm cần ít nhất 2 thành viên");
         return;
       }
 
@@ -64,17 +87,15 @@ const NewGroupChatModal = () => {
 
       resetForm();
       setOpen(false);
+      toast.success("Tạo nhóm chat thành công!");
     } catch (error) {
       console.error("Lỗi khi tạo nhóm chat:", error);
       toast.error("Không thể tạo nhóm chat. Vui lòng thử lại.");
     }
   };
 
-  const filteredFriends = friends.filter(
-    (friend) =>
-      friend.displayName.toLowerCase().includes(search.toLowerCase()) &&
-      !invitedUsers.some((u) => u._id === friend._id),
-  );
+  const selectedUserIds = invitedUsers.map((u) => u._id);
+  const isSubmitDisabled = loading || !groupName.trim() || invitedUsers.length < 2;
 
   return (
     <Dialog
@@ -88,7 +109,7 @@ const NewGroupChatModal = () => {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          onClick={handleGetFriends}
+          onClick={() => setOpen(true)}
           className="flex z-10 justify-center items-center size-5 rounded-full hover:bg-sidebar-accent transition cursor-pointer"
         >
           <Users className="size-4" />
@@ -96,70 +117,92 @@ const NewGroupChatModal = () => {
         </Button>
       </DialogTrigger>
 
-      {/* Dialog Content can be added here later */}
-      <DialogContent className="sm:max-w-[425px] border-none">
+      <DialogContent className="sm:max-w-[480px] border-none max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Tạo nhóm chat mới</DialogTitle>
-          <DialogDescription>Chọn bạn bè và đặt tên nhóm</DialogDescription>
+          <DialogDescription>
+            {invitedUsers.length > 0
+              ? `Đã chọn ${invitedUsers.length} thành viên`
+              : "Chọn bạn bè và đặt tên nhóm"}
+          </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-4 flex-1 overflow-hidden" onSubmit={handleSubmit}>
           {/* Group Name Input */}
           <div className="space-y-2">
             <Label htmlFor="group-name" className="text-sm font-semibold">
-              Tên nhóm
+              Tên nhóm <span className="text-destructive">*</span>
             </Label>
             <Input
               id="group-name"
-              placeholder="Nhập tên nhóm"
+              placeholder="Nhập tên nhóm của bạn"
               className="glass border-border/50 focus:border-primary/50 transition-smooth"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              required
+              maxLength={50}
             />
+            <p className="text-xs text-muted-foreground">{groupName.length}/50</p>
           </div>
 
-          {/* Friends List and Search can be added here later */}
-          <div className="space-y-2">
-            <Label htmlFor="invite" className="text-sm font-semibold">
-              Thêm bạn bè
-            </Label>
-            <Input
-              id="invite"
-              placeholder="Tìm bạn bè..."
-              className="glass border-border/50 focus:border-primary/50 transition-smooth"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {/* Friends list rendering can be added here */}
-            {search && filteredFriends.length > 0 && (
-              <InviteSuggestionList
-                filteredFriends={filteredFriends}
-                onSelect={handleSelectFriend}
-              />
-            )}
-
-            {/* {List Users selected} */}
+          {/* Selected Users Section */}
+          {invitedUsers.length > 0 && (
             <SelectedUsersList
               invitedUsers={invitedUsers}
               onRemove={handleRemoveFriend}
             />
+          )}
+
+          {/* Search & Friends List */}
+          <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
+            <Label htmlFor="search-friends" className="text-sm font-semibold">
+              Thêm bạn bè <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="search-friends"
+              placeholder="Tìm theo tên hoặc username..."
+              className="glass border-border/50 focus:border-primary/50 transition-smooth"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            {/* Friends List - Scrollable */}
+            <div className="flex-1 overflow-hidden">
+              <InviteSuggestionList
+                filteredFriends={filteredFriends}
+                onSelect={handleSelectFriend}
+                loading={isInitializing || friendsLoading}
+                selectedUserIds={selectedUserIds}
+              />
+            </div>
           </div>
+
+          {/* Error Message if not enough members */}
+          {groupName.trim() && invitedUsers.length < 2 && (
+            <p className="text-xs text-destructive/80">
+              Cần chọn ít nhất 2 thành viên để tạo nhóm
+            </p>
+          )}
 
           <DialogFooter>
             <Button
-              type="submit"
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
               disabled={loading}
-              className="flex-1 bg-gradient-chat text-white hover:opacity/90 transition-smooth"
-              loading={loading}
-              loadingText="Đang tạo nhóm..."
+            >
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitDisabled}
+              className="bg-gradient-chat text-white hover:opacity-90 transition-smooth"
             >
               {loading ? (
                 <span>Đang tạo nhóm...</span>
               ) : (
                 <>
                   <UserPlus className="size-4 mr-2" />
-                  <span>Tạo nhóm chat</span>
+                  Tạo nhóm chat ({invitedUsers.length})
                 </>
               )}
             </Button>
