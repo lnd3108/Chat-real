@@ -45,6 +45,7 @@ export interface Friend {
 
 export interface FriendRequest {
   _id: string;
+  status?: "pending" | "accepted" | "rejected" | "cancelled";
   from?: {
     _id: string;
     userName: string;

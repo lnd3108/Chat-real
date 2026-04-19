@@ -186,6 +186,81 @@ const buildAdminFriendFilter = async ({ q = "" }) => {
   return filter;
 };
 
+const mapAdminFriendRequestRelation = (request) => ({
+  _id: request._id,
+  fromUser: mapAdminUserSummary(request.from),
+  toUser: mapAdminUserSummary(request.to),
+  message: request.message ?? "",
+  status: request.status ?? "pending",
+  createdAt: request.createdAt,
+  updatedAt: request.updatedAt,
+});
+
+const getAdminFriendRequestSort = (sort = "createdAt-desc") => {
+  switch (sort) {
+    case "createdAt-asc":
+      return { createdAt: 1 };
+    case "updatedAt-desc":
+      return { updatedAt: -1 };
+    case "status":
+      return { status: 1, createdAt: -1 };
+    case "createdAt-desc":
+    default:
+      return { createdAt: -1 };
+  }
+};
+
+const buildAdminFriendRequestFilter = async ({ q = "", status = "" }) => {
+  const filter = {};
+  const trimmedStatus = String(status || "").trim();
+  const trimmedQuery = String(q || "").trim();
+
+  if (trimmedStatus && ["pending", "accepted", "rejected", "cancelled"].includes(trimmedStatus)) {
+    if (trimmedStatus === "pending") {
+      filter.$and = [
+        {
+          $or: [{ status: "pending" }, { status: { $exists: false } }, { status: null }],
+        },
+      ];
+    } else {
+      filter.status = trimmedStatus;
+    }
+  }
+
+  if (!trimmedQuery) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
+  const matchedUsers = await User.find({
+    $or: [{ userName: regex }, { displayName: regex }, { email: regex }],
+  })
+    .select("_id")
+    .lean();
+
+  const matchedUserIds = matchedUsers.map((user) => user._id);
+
+  if (!matchedUserIds.length) {
+    filter._id = null;
+    return filter;
+  }
+
+  const participantFilter = {
+    $or: [
+    { from: { $in: matchedUserIds } },
+    { to: { $in: matchedUserIds } },
+    ],
+  };
+
+  if (filter.$and) {
+    filter.$and.push(participantFilter);
+  } else {
+    Object.assign(filter, participantFilter);
+  }
+
+  return filter;
+};
+
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
   try {
@@ -510,25 +585,29 @@ export const deleteUserAsAdmin = async (req, res) => {
 };
 
 // Danh sách lời mời kết bạn chưa xử lý
-export const getPendingFriendRequests = async (req, res) => {
+export const getFriendRequestsAdmin = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    const q = req.query.q || "";
+    const status = req.query.status || "";
+    const sort = req.query.sort || "createdAt-desc";
+    const filter = await buildAdminFriendRequestFilter({ q, status });
 
-    const requests = await FriendRequest.find()
-      .populate("senderId", "displayName userName email avatarUrl")
-      .populate("receiverId", "displayName userName email avatarUrl")
+    const requests = await FriendRequest.find(filter)
+      .populate("from", "displayName userName email avatarUrl")
+      .populate("to", "displayName userName email avatarUrl")
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 });
+      .sort(getAdminFriendRequestSort(sort));
 
-    const total = await FriendRequest.countDocuments();
+    const total = await FriendRequest.countDocuments(filter);
 
     return res.status(200).json({
       success: true,
       data: {
-        requests,
+        requests: requests.map(mapAdminFriendRequestRelation),
         pagination: {
           page,
           limit,

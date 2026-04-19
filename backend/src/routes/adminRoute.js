@@ -9,8 +9,8 @@ import {
   getConversations,
   getDashboardStats,
   getFriendships,
+  getFriendRequestsAdmin,
   getMessages,
-  getPendingFriendRequests,
   getUserDetail,
   getUsers,
   unblockBlockRelationAsAdmin,
@@ -31,7 +31,7 @@ router.patch("/users/:userId/role", updateUserRole);
 router.delete("/users/:id", deleteUserAsAdmin);
 
 router.get("/friends", getFriendships);
-router.get("/friend-requests", getPendingFriendRequests);
+router.get("/friend-requests", getFriendRequestsAdmin);
 router.get("/conversations", getConversations);
 router.get("/messages", getMessages);
 router.get("/blocks", getBlocks);
