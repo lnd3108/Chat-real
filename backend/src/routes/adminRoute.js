@@ -1,11 +1,33 @@
 import express from "express";
 
-import { requireAdmin } from "../middlewares/authMiddleware.js";
+import { requireAdmin, protectedRoute } from "../middlewares/authMiddleware.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
+import {
+  getDashboardStats,
+  getUsers,
+  getUserDetail,
+  updateUserRole,
+  getPendingFriendRequests,
+  getConversations,
+  getMessages,
+  getBlockedUsers,
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
-router.delete("/users/:id", requireAdmin, async (req, res) => {
+// Tất cả admin routes cần qua middleware protectedRoute và requireAdmin
+router.use(protectedRoute, requireAdmin);
+
+// Dashboard Statistics
+router.get("/dashboard", getDashboardStats);
+
+// Users Management
+router.get("/users", getUsers);
+router.get("/users/:userId", getUserDetail);
+router.patch("/users/:userId/role", updateUserRole);
+
+// Delete User (already existing)
+router.delete("/users/:id", async (req, res) => {
   try {
     const { summary } = await permanentlyDeleteUserAccount({
       targetUserId: req.params.id,
@@ -24,5 +46,17 @@ router.delete("/users/:id", requireAdmin, async (req, res) => {
     });
   }
 });
+
+// Friend Requests Management
+router.get("/friend-requests", getPendingFriendRequests);
+
+// Conversations Management
+router.get("/conversations", getConversations);
+
+// Messages Management
+router.get("/messages", getMessages);
+
+// Blocked Users Management
+router.get("/blocked-users", getBlockedUsers);
 
 export default router;

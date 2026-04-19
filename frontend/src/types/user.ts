@@ -3,6 +3,8 @@ export interface User {
   userName: string;
   email: string;
   displayName: string;
+  role?: "user" | "admin";
+  status?: "active" | "inactive" | "suspended";
   avatarUrl?: string;
   authProvider?: "local" | "google";
   emailVerified?: boolean;

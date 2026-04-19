@@ -47,6 +47,6 @@ export const requireAdmin = (req, res, next) => {
   }
 
   return res.status(403).json({
-    message: "Báº¡n khÃ´ng cÃ³ quyá»n admin Ä‘á»ƒ thá»±c hiá»‡n thao tÃ¡c nÃ y.",
+    message: "Bạn không có quyền admin để thực hiện thao tác này.",
   });
 };

@@ -6,6 +6,15 @@ import { GoogleAuthCallbackPage } from "./pages/GoogleAuthCallbackPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminProtectedRoute from "./components/auth/AdminProtectedRoute";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminBlocks from "./pages/admin/AdminBlocks";
+import AdminFriends from "./pages/admin/AdminFriends";
+import AdminFriendRequests from "./pages/admin/AdminFriendRequests";
+import AdminConversations from "./pages/admin/AdminConversations";
+import AdminMessages from "./pages/admin/AdminMessages";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -71,9 +80,22 @@ function App() {
             element={<VerifyEmailPage />}
           />
 
-          {/* protected routes */}
+          {/* Protected routes - User */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<ChatAppPage />} />
+          </Route>
+
+          {/* Protected routes - Admin */}
+          <Route element={<AdminProtectedRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/blocks" element={<AdminBlocks />} />
+              <Route path="/admin/friends" element={<AdminFriends />} />
+              <Route path="/admin/friend-requests" element={<AdminFriendRequests />} />
+              <Route path="/admin/conversations" element={<AdminConversations />} />
+              <Route path="/admin/messages" element={<AdminMessages />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>
