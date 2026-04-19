@@ -23,6 +23,10 @@ const ChatWelcomeScreen = () => {
     void getSuggestions(8);
   }, [currentUserId, conversations.length, getSuggestions, suggestions.length, suggestionsLoading]);
 
+  const handleRefreshSuggestions = async () => {
+    await getSuggestions(8);
+  };
+
   return (
     <SidebarInset className="flex h-full w-full bg-transparent">
       <header className="sticky top-0 z-10 flex w-full items-center gap-2 px-4 py-2 md:hidden">
@@ -49,6 +53,7 @@ const ChatWelcomeScreen = () => {
             loading={Boolean(currentUserId) && suggestionsLoading}
             title="Bạn có thể biết"
             emptyText="Chưa tìm thấy người phù hợp để gợi ý."
+            onRefresh={handleRefreshSuggestions}
           />
         </div>
       </div>

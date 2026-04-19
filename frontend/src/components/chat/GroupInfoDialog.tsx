@@ -63,6 +63,9 @@ const GroupInfoDialog = ({
   const [mediaExpanded, setMediaExpanded] = useState(false);
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const [editingGroupName, setEditingGroupName] = useState(false);
+  const [newGroupName, setNewGroupName] = useState(chat.group?.name || "");
+  const [updatingGroupName, setUpdatingGroupName] = useState(false);
   const sharedAssetsLoading = false;
   const open = controlledOpen ?? internalOpen;
 
@@ -85,7 +88,9 @@ const GroupInfoDialog = ({
     setActionType(null);
     setSubmittingAction(false);
     setMediaViewerOpen(false);
-  }, [open]);
+    setEditingGroupName(false);
+    setNewGroupName(chat.group?.name || "");
+  }, [open, chat.group?.name]);
 
   useEffect(() => {
     if (!open || !actionType) return;
@@ -190,6 +195,45 @@ const GroupInfoDialog = ({
       toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);
+    }
+  };
+
+  const handleUpdateGroupName = async () => {
+    const trimmedName = newGroupName.trim();
+
+    if (!trimmedName) {
+      toast.error("Tên nhóm không được để trống");
+      return;
+    }
+
+    if (trimmedName === chat.group?.name) {
+      setEditingGroupName(false);
+      return;
+    }
+
+    try {
+      setUpdatingGroupName(true);
+      const updatedConversation = await chatServices.updateGroupName(chat._id, trimmedName);
+
+      useChatStore.getState().updateConversation({
+        _id: updatedConversation._id,
+        group: updatedConversation.group,
+        participants: updatedConversation.participants,
+        moveToTop: false,
+      });
+
+      setEditingGroupName(false);
+      toast.success("Đã cập nhật tên nhóm");
+    } catch (error) {
+      console.error("updateGroupName failed", error);
+      const message =
+        axios.isAxiosError(error) && error.response?.data?.message
+          ? error.response.data.message
+          : "Không thể cập nhật tên nhóm";
+      toast.error(message);
+      setNewGroupName(chat.group?.name || "");
+    } finally {
+      setUpdatingGroupName(false);
     }
   };
 
@@ -315,6 +359,71 @@ const GroupInfoDialog = ({
               onChange={handleGroupAvatarChange}
             />
           </section>
+
+          {isOwner && (
+            <section className="rounded-2xl border border-dashed border-border/70 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Tên nhóm</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Thay đổi tên nhóm để dễ nhận diện hơn.
+                  </p>
+                </div>
+              </div>
+
+              {editingGroupName ? (
+                <div className="mt-4 space-y-3">
+                  <Input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Nhập tên nhóm mới"
+                    maxLength={50}
+                    className="rounded-xl"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingGroupName(false);
+                        setNewGroupName(chat.group?.name || "");
+                      }}
+                      disabled={updatingGroupName}
+                    >
+                      Hủy
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleUpdateGroupName}
+                      disabled={updatingGroupName}
+                    >
+                      {updatingGroupName ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          Đang cập nhật...
+                        </>
+                      ) : (
+                        "Cập nhật"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/30 px-4 py-3">
+                  <p className="text-sm font-medium">{chat.group?.name}</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingGroupName(true)}
+                  >
+                    Chỉnh sửa
+                  </Button>
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="rounded-2xl border border-border/60 bg-muted/10">
             <button

@@ -66,6 +66,10 @@ const AddFriendModal = () => {
     ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
     : "Chưa có gợi ý phù hợp.";
 
+  const handleRefreshSuggestions = async () => {
+    await getSuggestions(10);
+  };
+
   return (
     <Dialog
       open={open}
@@ -116,6 +120,7 @@ const AddFriendModal = () => {
             compact
             title={trimmedQuery ? "Kết quả tìm kiếm" : "Bạn có thể biết"}
             emptyText={emptyText}
+            onRefresh={!trimmedQuery ? handleRefreshSuggestions : undefined}
           />
         </div>
 

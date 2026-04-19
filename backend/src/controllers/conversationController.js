@@ -851,7 +851,59 @@ export const uploadGroupAvatar = async (req, res) => {
     return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };
+export const updateGroupName = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id.toString();
 
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return res.status(400).json({ message: "Tên nhóm không được để trống" });
+    }
+
+    if (name.trim().length > 50) {
+      return res.status(400).json({ message: "Tên nhóm không được quá 50 ký tự" });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation || conversation.type !== "group") {
+      return res.status(404).json({
+        message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
+      });
+    }
+
+    const isOwner = conversation.group?.createdBy?.toString() === userId;
+
+    if (!isOwner) {
+      return res.status(403).json({
+        message: "Chỉ chủ nhóm mới có thể đổi tên nhóm",
+      });
+    }
+
+    const oldName = conversation.group.name;
+    conversation.group.name = name.trim();
+    await conversation.save();
+    await conversation.populate([
+      { path: "participants.userId", select: "displayName avatarUrl email" },
+      { path: "group.createdBy", select: "displayName avatarUrl" },
+    ]);
+
+    const formattedConversation = formatConversationForClient(conversation);
+
+    getIo().to(conversationId).emit("conversation:updated", {
+      conversation: formattedConversation,
+    });
+
+    return res.status(200).json({
+      message: "Cập nhật tên nhóm thành công",
+      conversation: formattedConversation,
+    });
+  } catch (error) {
+    console.error("Lỗi updateGroupName:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
 export const emitDirectBlockStatusChanged = async ({
   actorUser,
   targetUserId,

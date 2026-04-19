@@ -73,6 +73,10 @@ const FriendListModal = ({
     onPick?.();
   };
 
+  const handleRefreshSuggestions = async () => {
+    await getSuggestions(8);
+  };
+
   return (
     <DialogContent className="glass max-w-2xl">
       <DialogHeader>
@@ -136,6 +140,7 @@ const FriendListModal = ({
             compact
             title="Bạn có thể biết"
             emptyText="Chưa có gợi ý phù hợp để bắt đầu."
+            onRefresh={handleRefreshSuggestions}
           />
         ) : null}
       </div>

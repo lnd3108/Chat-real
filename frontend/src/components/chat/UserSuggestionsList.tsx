@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { UserPlus, Users } from "lucide-react";
+import { UserPlus, Users, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/chat/UserAvatar";
@@ -13,6 +13,7 @@ interface UserSuggestionsListProps {
   emptyText?: string;
   loading?: boolean;
   compact?: boolean;
+  onRefresh?: () => Promise<void>;
 }
 
 const getSubtitle = (user: DiscoverUser) => {
@@ -32,9 +33,11 @@ const UserSuggestionsList = ({
   title = "Bạn có thể biết",
   emptyText = "Chưa có gợi ý phù hợp.",
   loading = false,
+  onRefresh,
 }: UserSuggestionsListProps) => {
   const { addFriend, friends, sentList, receivedList } = useFriendStore();
   const [pendingIds, setPendingIds] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const friendIds = useMemo(
     () => new Set(friends.map((friend) => friend._id)),
@@ -88,13 +91,41 @@ const UserSuggestionsList = ({
     }
   };
 
+  const handleRefresh = async () => {
+    if (isRefreshing || !onRefresh) return;
+    
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+      toast.success("Đã làm mới gợi ý");
+    } catch (error) {
+      console.error("Failed to refresh suggestions:", error);
+      toast.error("Không thể làm mới gợi ý");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Users className="size-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </h3>
+        </div>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing || loading}
+            className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Làm mới gợi ý"
+          >
+            <RotateCw className={`size-4 text-muted-foreground ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+          </button>
+        )}
       </div>
 
       {loading && mergedUsers.length === 0 ? (

@@ -170,6 +170,11 @@ export const chatServices = {
     return res.data.conversation;
   },
 
+  async updateGroupName(conversationId: string, name: string) {
+    const res = await api.patch(`/conversations/${conversationId}/name`, { name });
+    return res.data.conversation as Conversation;
+  },
+
   async editMessage(messageId: string, content: string) {
     const res = await api.patch(`/messages/${messageId}`, { content });
     return res.data.message as Message;
