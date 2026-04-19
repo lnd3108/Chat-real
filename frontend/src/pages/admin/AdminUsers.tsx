@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Eye, Search } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 
+import AdminPagination from "@/components/admin/AdminPagination";
 import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -29,10 +30,7 @@ interface PaginationData {
   pages: number;
 }
 
-const statusConfig: Record<
-  UserStatus,
-  { label: string; className: string }
-> = {
+const statusConfig: Record<UserStatus, { label: string; className: string }> = {
   active: {
     label: "Hoạt động",
     className: "bg-emerald-500/10 text-emerald-700",
@@ -123,10 +121,7 @@ const AdminUsers = () => {
     navigate(`/admin/users/${userId}`);
   };
 
-  const updateUserStatusLocally = (
-    userId: string,
-    status: "active" | "banned",
-  ) => {
+  const updateUserStatusLocally = (userId: string, status: "active" | "banned") => {
     setUsers((currentUsers) =>
       currentUsers.map((user) =>
         user._id === userId
@@ -134,8 +129,8 @@ const AdminUsers = () => {
               ...user,
               status,
             }
-          : user,
-      ),
+          : user
+      )
     );
   };
 
@@ -171,14 +166,14 @@ const AdminUsers = () => {
             <Input
               placeholder="Tìm theo tên, email..."
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(event) => handleSearch(event.target.value)}
               className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
             />
           </div>
 
           <select
             value={statusFilter}
-            onChange={(e) => handleStatusChange(e.target.value)}
+            onChange={(event) => handleStatusChange(event.target.value)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả trạng thái</option>
@@ -190,7 +185,7 @@ const AdminUsers = () => {
 
           <select
             value={sortBy}
-            onChange={(e) => handleSortChange(e.target.value)}
+            onChange={(event) => handleSortChange(event.target.value)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="createdAt">Mới nhất</option>
@@ -270,7 +265,9 @@ const AdminUsers = () => {
                     <td className="px-6 py-4 text-sm text-muted-foreground">{user.email}</td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[user.status]?.className ?? statusConfig.active.className}`}
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                          statusConfig[user.status]?.className ?? statusConfig.active.className
+                        }`}
                       >
                         {statusConfig[user.status]?.label ?? user.status}
                       </span>
@@ -317,35 +314,12 @@ const AdminUsers = () => {
               </tbody>
             </table>
 
-            {pagination.pages > 1 && (
-              <div className="flex items-center justify-between border-t border-border/50 px-6 py-4">
-                <div className="text-sm text-muted-foreground">
-                  Trang {pagination.page} / {pagination.pages}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                    className="gap-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Trước
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === pagination.pages}
-                    onClick={() => setPage(page + 1)}
-                    className="gap-2"
-                  >
-                    Sau
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <AdminPagination
+              page={pagination.page}
+              pages={pagination.pages}
+              onPrevious={() => setPage(page - 1)}
+              onNext={() => setPage(page + 1)}
+            />
           </>
         )}
       </div>

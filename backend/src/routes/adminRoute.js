@@ -8,6 +8,7 @@ import {
   getBlockedUsers,
   getConversations,
   getDashboardStats,
+  getFriendships,
   getMessages,
   getPendingFriendRequests,
   getUserDetail,
@@ -29,6 +30,7 @@ router.patch("/users/:id/status", updateUserStatus);
 router.patch("/users/:userId/role", updateUserRole);
 router.delete("/users/:id", deleteUserAsAdmin);
 
+router.get("/friends", getFriendships);
 router.get("/friend-requests", getPendingFriendRequests);
 router.get("/conversations", getConversations);
 router.get("/messages", getMessages);

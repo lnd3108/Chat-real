@@ -138,6 +138,54 @@ const buildAdminBlockFilter = async ({ q = "", status = "" }) => {
   return filter;
 };
 
+const mapAdminFriendRelation = (friendship) => ({
+  _id: friendship._id,
+  userA: mapAdminUserSummary(friendship.userA),
+  userB: mapAdminUserSummary(friendship.userB),
+  status: "accepted",
+  createdAt: friendship.createdAt,
+});
+
+const getAdminFriendSort = (sort = "createdAt-desc") => {
+  switch (sort) {
+    case "createdAt-asc":
+      return { createdAt: 1 };
+    case "createdAt-desc":
+    default:
+      return { createdAt: -1 };
+  }
+};
+
+const buildAdminFriendFilter = async ({ q = "" }) => {
+  const filter = {};
+  const trimmedQuery = String(q || "").trim();
+
+  if (!trimmedQuery) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
+  const matchedUsers = await User.find({
+    $or: [{ userName: regex }, { displayName: regex }],
+  })
+    .select("_id")
+    .lean();
+
+  const matchedUserIds = matchedUsers.map((user) => user._id);
+
+  if (!matchedUserIds.length) {
+    filter._id = null;
+    return filter;
+  }
+
+  filter.$or = [
+    { userA: { $in: matchedUserIds } },
+    { userB: { $in: matchedUserIds } },
+  ];
+
+  return filter;
+};
+
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
   try {
@@ -494,6 +542,45 @@ export const getPendingFriendRequests = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể lấy danh sách lời mời kết bạn",
+    });
+  }
+};
+
+export const getFriendships = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const q = req.query.q || "";
+    const sort = req.query.sort || "createdAt-desc";
+    const filter = await buildAdminFriendFilter({ q });
+
+    const friendships = await Friend.find(filter)
+      .populate("userA", "displayName userName email avatarUrl")
+      .populate("userB", "displayName userName email avatarUrl")
+      .limit(limit)
+      .skip(skip)
+      .sort(getAdminFriendSort(sort));
+
+    const total = await Friend.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        friendships: friendships.map(mapAdminFriendRelation),
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay danh sach friendship da accepted:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay danh sach friendship da accepted",
     });
   }
 };
