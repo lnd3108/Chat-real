@@ -52,9 +52,10 @@ const UserSuggestionsList = ({
   const mergedUsers = useMemo(
     () =>
       users.map((user) => {
-        const isFriend = friendIds.has(user._id);
-        const requestSent = pendingIds.includes(user._id) || sentRequestIds.has(user._id);
-        const requestReceived = receivedRequestIds.has(user._id);
+        const isFriend = user.isFriend || friendIds.has(user._id);
+        const requestSent =
+          user.requestSent || pendingIds.includes(user._id) || sentRequestIds.has(user._id);
+        const requestReceived = user.requestReceived || receivedRequestIds.has(user._id);
 
         return {
           ...user,

@@ -3,6 +3,10 @@ import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import {
+  deleteImageFromCloudinary,
+  deleteImageFromCloudinaryUrl,
+} from "../middlewares/uploadMiddleWare.js";
 import { getIo } from "../socket/index.js";
 import { findDirectConversationBetweenUsers } from "../utils/blocking.js";
 
@@ -24,10 +28,20 @@ const mapBasicUser = (user) => ({
   avatarUrl: user?.avatarUrl,
 });
 
+const toFriendRequestSocketPayload = ({ request, fromUser, toUser }) => ({
+  _id: request._id,
+  from: mapBasicUser(fromUser),
+  to: mapBasicUser(toUser),
+  message: request.message,
+  createdAt: request.createdAt,
+  updatedAt: request.updatedAt,
+});
+
 export const sendFriendRequest = async (req, res) => {
   try {
     const { to, message } = req.body;
     const from = req.user._id;
+    const io = getIo();
 
     if (from.toString() === to?.toString()) {
       return res
@@ -65,15 +79,24 @@ export const sendFriendRequest = async (req, res) => {
         await Friend.create({ userA: from, userB: to });
         await FriendRequest.findByIdAndDelete(existingRequest._id);
 
-        const newFriend = await User.findById(to)
-          .select("_id userName displayName avatarUrl")
-          .lean();
+        const [fromUser, toUser] = await Promise.all([
+          User.findById(from).select("_id userName displayName avatarUrl").lean(),
+          User.findById(to).select("_id userName displayName avatarUrl").lean(),
+        ]);
+        const acceptancePayload = {
+          requestId: existingRequest._id.toString(),
+          userA: mapBasicUser(fromUser),
+          userB: mapBasicUser(toUser),
+        };
+
+        io.to(from.toString()).emit("friend:request:accepted", acceptancePayload);
+        io.to(to.toString()).emit("friend:request:accepted", acceptancePayload);
 
         return res.status(200).json({
           message: "Hai bạn đã tự động trở thành bạn bè",
           autoAccepted: true,
           matchedRequestId: existingRequest._id,
-          newFriend: mapBasicUser(newFriend),
+          newFriend: mapBasicUser(toUser),
         });
       }
 
@@ -81,11 +104,23 @@ export const sendFriendRequest = async (req, res) => {
     }
 
     const request = await FriendRequest.create({ from, to, message });
+    const [fromUser, toUser] = await Promise.all([
+      User.findById(from).select("_id userName displayName avatarUrl").lean(),
+      User.findById(to).select("_id userName displayName avatarUrl").lean(),
+    ]);
+    const requestPayload = toFriendRequestSocketPayload({
+      request,
+      fromUser,
+      toUser,
+    });
+
+    io.to(to.toString()).emit("friend:request:received", { request: requestPayload });
+    io.to(from.toString()).emit("friend:request:sent", { request: requestPayload });
 
     return res.status(201).json({
       message: "Gửi lời mời kết bạn thành công",
       autoAccepted: false,
-      request,
+      request: requestPayload,
     });
   } catch (error) {
     console.error("Lỗi khi gửi yêu cầu kết bạn", error);
@@ -97,6 +132,7 @@ export const acceptFriendRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
     const userId = req.user._id;
+    const io = getIo();
 
     const request = await FriendRequest.findById(requestId);
     if (!request) {
@@ -121,13 +157,22 @@ export const acceptFriendRequest = async (req, res) => {
 
     await FriendRequest.findByIdAndDelete(requestId);
 
-    const from = await User.findById(request.from)
-      .select("_id userName displayName avatarUrl")
-      .lean();
+    const [fromUser, toUser] = await Promise.all([
+      User.findById(request.from).select("_id userName displayName avatarUrl").lean(),
+      User.findById(request.to).select("_id userName displayName avatarUrl").lean(),
+    ]);
+    const acceptancePayload = {
+      requestId: requestId.toString(),
+      userA: mapBasicUser(fromUser),
+      userB: mapBasicUser(toUser),
+    };
+
+    io.to(request.from.toString()).emit("friend:request:accepted", acceptancePayload);
+    io.to(request.to.toString()).emit("friend:request:accepted", acceptancePayload);
 
     return res.status(200).json({
       message: "Chấp nhận lời mời thành công",
-      newFriend: mapBasicUser(from),
+      newFriend: mapBasicUser(fromUser),
     });
   } catch (error) {
     console.error("Lỗi khi chấp nhận yêu cầu kết bạn", error);
@@ -139,6 +184,7 @@ export const declineFriendRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
     const userId = req.user._id;
+    const io = getIo();
 
     const request = await FriendRequest.findById(requestId);
     if (!request) {
@@ -152,6 +198,18 @@ export const declineFriendRequest = async (req, res) => {
     }
 
     await FriendRequest.findByIdAndDelete(requestId);
+    io.to(request.from.toString()).emit("friend:request:removed", {
+      requestId: requestId.toString(),
+      fromUserId: request.from.toString(),
+      toUserId: request.to.toString(),
+      reason: "declined",
+    });
+    io.to(request.to.toString()).emit("friend:request:removed", {
+      requestId: requestId.toString(),
+      fromUserId: request.from.toString(),
+      toUserId: request.to.toString(),
+      reason: "declined",
+    });
     return res.sendStatus(204);
   } catch (error) {
     console.error("Lỗi khi từ chối yêu cầu kết bạn", error);
@@ -236,6 +294,7 @@ export const removeFriend = async (req, res) => {
   try {
     const userId = req.user._id;
     const { targetUserId } = req.params;
+    const io = getIo();
 
     if (userId.toString() === targetUserId.toString()) {
       return res.status(400).json({ message: "Không thể hủy kết bạn với chính mình" });
@@ -266,10 +325,31 @@ export const removeFriend = async (req, res) => {
     if (directConversation?._id) {
       conversationId = directConversation._id.toString();
 
+      const messagesWithImages = await Message.find({
+        conversationId: directConversation._id,
+        $or: [{ imgPublicId: { $ne: null } }, { imgUrl: { $ne: null } }],
+      }).select("imgPublicId imgUrl");
+
+      await Promise.all(
+        messagesWithImages.map(async (message) => {
+          if (message.imgPublicId) {
+            await deleteImageFromCloudinary(message.imgPublicId).catch((error) => {
+              console.error("KhÃ´ng thá»ƒ xÃ³a áº£nh tin nháº¯n trÃªn Cloudinary:", error);
+            });
+            return;
+          }
+
+          if (message.imgUrl) {
+            await deleteImageFromCloudinaryUrl(message.imgUrl).catch((error) => {
+              console.error("KhÃ´ng thá»ƒ xÃ³a áº£nh tin nháº¯n trÃªn Cloudinary:", error);
+            });
+          }
+        }),
+      );
+
       await Message.deleteMany({ conversationId: directConversation._id });
       await Conversation.deleteOne({ _id: directConversation._id });
 
-      const io = getIo();
       io.to(userId.toString()).emit("conversation:deleted", { conversationId });
       io.to(targetUserId.toString()).emit("conversation:deleted", { conversationId });
       io.to(conversationId).emit("conversation:deleted", { conversationId });

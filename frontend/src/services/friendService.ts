@@ -1,5 +1,5 @@
 import api from "@/lib/axios";
-import type { DiscoverUser, Friend } from "@/types/user";
+import type { DiscoverUser, Friend, FriendRequest } from "@/types/user";
 
 const normalizeDiscoverUser = (user: Partial<DiscoverUser> & {
   username?: string;
@@ -58,6 +58,7 @@ export const friendService = {
       message: String(res.data.message ?? ""),
       autoAccepted: Boolean(res.data.autoAccepted),
       newFriend: (res.data.newFriend ?? null) as Friend | null,
+      request: (res.data.request ?? null) as FriendRequest | null,
       matchedRequestId: res.data.matchedRequestId
         ? String(res.data.matchedRequestId)
         : undefined,

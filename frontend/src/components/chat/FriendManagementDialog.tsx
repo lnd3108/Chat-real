@@ -120,13 +120,14 @@ const FriendManagementDialog = () => {
       }}
     >
       <DialogTrigger asChild>
-        <button
+        <Button
           type="button"
-          className="z-10 flex size-5 cursor-pointer items-center justify-center rounded-full hover:bg-sidebar-accent"
+          variant="ghost"
+          className="flex z-10 justify-center items-center size-5 rounded-full hover:bg-sidebar-accent transition cursor-pointer"
         >
           <Users className="size-4" />
           <span className="sr-only">Danh sách bạn bè</span>
-        </button>
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-border/40 bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">

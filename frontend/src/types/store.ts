@@ -168,6 +168,7 @@ export interface FriendState {
     message: string;
     autoAccepted: boolean;
     newFriend?: Friend | null;
+    request?: FriendRequest | null;
     matchedRequestId?: string;
   }>;
   getAllFriendRequests: () => Promise<void>;

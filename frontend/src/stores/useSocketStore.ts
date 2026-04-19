@@ -327,6 +327,127 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().removeConversationLocal(conversationId);
     });
 
+    socket.on("friend:request:received", ({ request }) => {
+      if (!request?._id || !request?.from?._id) {
+        return;
+      }
+
+      useFriendStore.setState((state) => ({
+        receivedList: state.receivedList.some((item) => item._id === request._id)
+          ? state.receivedList
+          : [request, ...state.receivedList],
+        suggestions: state.suggestions.map((user) =>
+          user._id === request.from._id
+            ? {
+                ...user,
+                isFriend: false,
+                requestSent: false,
+                requestReceived: true,
+              }
+            : user,
+        ),
+      }));
+
+      if (shouldStoreNotification("friend_request")) {
+        useNotificationStore.getState().addNotification({
+          id: `friend-request-${request._id}`,
+          type: "friend_request",
+          title: "Lời mời kết bạn mới",
+          message: `${request.from.displayName ?? "Ai đó"} đã gửi lời mời kết bạn cho bạn`,
+          actorName: request.from.displayName,
+          entityId: request._id,
+          createdAt: request.createdAt,
+        });
+      }
+    });
+
+    socket.on("friend:request:sent", ({ request }) => {
+      if (!request?._id || !request?.to?._id) {
+        return;
+      }
+
+      useFriendStore.setState((state) => ({
+        sentList: state.sentList.some((item) => item._id === request._id)
+          ? state.sentList
+          : [request, ...state.sentList],
+        suggestions: state.suggestions.map((user) =>
+          user._id === request.to._id
+            ? {
+                ...user,
+                isFriend: false,
+                requestSent: true,
+                requestReceived: false,
+              }
+            : user,
+        ),
+      }));
+    });
+
+    socket.on("friend:request:accepted", ({ requestId, userA, userB }) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (!currentUserId || !userA?._id || !userB?._id) {
+        return;
+      }
+
+      const otherUser = userA._id === currentUserId ? userB : userA;
+      if (!otherUser?._id) {
+        return;
+      }
+
+      useFriendStore.setState((state) => ({
+        friends: state.friends.some((friend) => friend._id === otherUser._id)
+          ? state.friends
+          : [otherUser, ...state.friends],
+        suggestions: state.suggestions.map((user) =>
+          user._id === otherUser._id
+            ? {
+                ...user,
+                isFriend: true,
+                requestSent: false,
+                requestReceived: false,
+              }
+            : user,
+        ),
+        receivedList: state.receivedList.filter(
+          (request) => request._id !== requestId && request.from?._id !== otherUser._id,
+        ),
+        sentList: state.sentList.filter(
+          (request) => request._id !== requestId && request.to?._id !== otherUser._id,
+        ),
+      }));
+
+      useNotificationStore.getState().removeNotificationByEntity(requestId);
+    });
+
+    socket.on("friend:request:removed", ({ requestId, fromUserId, toUserId }) => {
+      const currentUserId = useAuthStore.getState().user?._id;
+      if (!currentUserId) {
+        return;
+      }
+
+      const otherUserId = currentUserId === fromUserId ? toUserId : fromUserId;
+      if (!otherUserId) {
+        return;
+      }
+
+      useFriendStore.setState((state) => ({
+        receivedList: state.receivedList.filter((request) => request._id !== requestId),
+        sentList: state.sentList.filter((request) => request._id !== requestId),
+        suggestions: state.suggestions.map((user) =>
+          user._id === otherUserId
+            ? {
+                ...user,
+                isFriend: false,
+                requestSent: false,
+                requestReceived: false,
+              }
+            : user,
+        ),
+      }));
+
+      useNotificationStore.getState().removeNotificationByEntity(requestId);
+    });
+
     socket.on("friend:removed", ({ userId, targetUserId }) => {
       const currentUserId = useAuthStore.getState().user?._id;
       if (!currentUserId) {

@@ -83,7 +83,11 @@ export const useFriendStore = create<FriendState>((set) => ({
         receivedList: result.matchedRequestId
           ? state.receivedList.filter((request) => request._id !== result.matchedRequestId)
           : state.receivedList,
-        sentList: state.sentList.filter((request) => request.to?._id !== to),
+        sentList: result.request
+          ? state.sentList.some((request) => request._id === result.request?._id)
+            ? state.sentList
+            : [result.request, ...state.sentList]
+          : state.sentList.filter((request) => request.to?._id !== to),
       }));
 
       if (result.matchedRequestId) {
@@ -93,11 +97,21 @@ export const useFriendStore = create<FriendState>((set) => ({
       return result;
     } catch (error) {
       console.error("Loi xay ra khi addFriend", error);
+      const apiMessage =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: unknown } } }).response?.data
+          ?.message === "string"
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : null;
+
       return {
         success: false,
-        message: "Loi xay ra khi gui ket ban. Hay thu lai!",
+        message: apiMessage ?? "Loi xay ra khi gui ket ban. Hay thu lai!",
         autoAccepted: false,
         newFriend: null,
+        request: null,
       };
     } finally {
       set({ loading: false });
