@@ -6,6 +6,7 @@ import {
   getBlockDetail,
   getBlocks,
   getBlockedUsers,
+  getConversationDetail,
   getConversations,
   getDashboardStats,
   getFriendships,
@@ -33,6 +34,7 @@ router.delete("/users/:id", deleteUserAsAdmin);
 router.get("/friends", getFriendships);
 router.get("/friend-requests", getFriendRequestsAdmin);
 router.get("/conversations", getConversations);
+router.get("/conversations/:id", getConversationDetail);
 router.get("/messages", getMessages);
 router.get("/blocks", getBlocks);
 router.get("/blocks/:id", getBlockDetail);

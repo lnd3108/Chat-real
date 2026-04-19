@@ -261,6 +261,139 @@ const buildAdminFriendRequestFilter = async ({ q = "", status = "" }) => {
   return filter;
 };
 
+const mapAdminLastMessage = (lastMessage) => {
+  if (!lastMessage) return null;
+
+  return {
+    _id: lastMessage._id ?? null,
+    content: lastMessage.content ?? null,
+    imgUrl: lastMessage.imgUrl ?? null,
+    senderId: lastMessage.senderId ?? null,
+    senderDisplayName: lastMessage.senderDisplayName ?? null,
+    senderAvatar: lastMessage.senderAvatar ?? null,
+    createdAt: lastMessage.createdAt ?? null,
+  };
+};
+
+const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
+  _id: conversation._id,
+  type: conversation.type,
+  groupName: conversation.type === "group" ? conversation.group?.name ?? "Nhóm" : null,
+  membersCount: Array.isArray(conversation.participants) ? conversation.participants.length : 0,
+  messagesCount,
+  lastMessage: mapAdminLastMessage(conversation.lastMessage),
+  updatedAt: conversation.updatedAt,
+  createdAt: conversation.createdAt,
+});
+
+const getAdminConversationSort = (sort = "updatedAt-desc") => {
+  switch (sort) {
+    case "createdAt-asc":
+      return { createdAt: 1 };
+    case "createdAt-desc":
+      return { createdAt: -1 };
+    case "updatedAt-asc":
+      return { updatedAt: 1 };
+    case "updatedAt-desc":
+    default:
+      return { updatedAt: -1 };
+  }
+};
+
+const buildAdminConversationFilter = async ({ type = "", q = "" }) => {
+  const filter = {};
+  const trimmedType = String(type || "").trim();
+  const trimmedQuery = String(q || "").trim();
+
+  if (trimmedType && ["direct", "group"].includes(trimmedType)) {
+    filter.type = trimmedType;
+  }
+
+  if (!trimmedQuery) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
+  const matchedUsers = await User.find({
+    $or: [{ userName: regex }, { displayName: regex }, { email: regex }],
+  })
+    .select("_id")
+    .lean();
+
+  const matchedUserIds = matchedUsers.map((user) => user._id);
+  const queryConditions = [];
+
+  if (matchedUserIds.length) {
+    queryConditions.push({ "participants.userId": { $in: matchedUserIds } });
+  }
+
+  queryConditions.push({ "group.name": regex });
+
+  if (queryConditions.length === 0) {
+    filter._id = null;
+    return filter;
+  }
+
+  filter.$or = queryConditions;
+
+  return filter;
+};
+
+const getMessagesCountMap = async (conversationIds = []) => {
+  if (!conversationIds.length) {
+    return new Map();
+  }
+
+  const counts = await Message.aggregate([
+    {
+      $match: {
+        conversationId: { $in: conversationIds },
+      },
+    },
+    {
+      $group: {
+        _id: "$conversationId",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  return new Map(counts.map((item) => [item._id.toString(), item.count]));
+};
+
+const getDirectBlockStatusForAdmin = async (participantIds = []) => {
+  if (participantIds.length !== 2) {
+    return null;
+  }
+
+  const [userAId, userBId] = participantIds;
+  const activeBlocks = await Blocking.find({
+    isActive: { $ne: false },
+    $or: [
+      { userId: userAId, blockedUserId: userBId },
+      { userId: userBId, blockedUserId: userAId },
+    ],
+  }).lean();
+
+  const blockedByA = activeBlocks.some(
+    (block) =>
+      block.userId?.toString() === userAId.toString() &&
+      block.blockedUserId?.toString() === userBId.toString()
+  );
+  const blockedByB = activeBlocks.some(
+    (block) =>
+      block.userId?.toString() === userBId.toString() &&
+      block.blockedUserId?.toString() === userAId.toString()
+  );
+
+  return {
+    blockedByUserA: blockedByA,
+    blockedByUserB: blockedByB,
+    hasDirectBlock: blockedByA || blockedByB,
+    note: "Block chỉ ảnh hưởng direct 1-1, không ảnh hưởng group chat.",
+  };
+};
+
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
   try {
@@ -670,20 +803,29 @@ export const getConversations = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    const type = req.query.type || "";
+    const q = req.query.q || "";
+    const sort = req.query.sort || "updatedAt-desc";
+    const filter = await buildAdminConversationFilter({ type, q });
 
-    const conversations = await Conversation.find()
-      .populate("participants", "displayName userName email avatarUrl")
-      .populate("createdBy", "displayName userName email")
+    const conversations = await Conversation.find(filter)
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 });
+      .sort(getAdminConversationSort(sort));
 
-    const total = await Conversation.countDocuments();
+    const total = await Conversation.countDocuments(filter);
+    const conversationIds = conversations.map((conversation) => conversation._id);
+    const messagesCountMap = await getMessagesCountMap(conversationIds);
 
     return res.status(200).json({
       success: true,
       data: {
-        conversations,
+        conversations: conversations.map((conversation) =>
+          mapAdminConversationSummary(
+            conversation,
+            messagesCountMap.get(conversation._id.toString()) ?? 0
+          )
+        ),
         pagination: {
           page,
           limit,
@@ -771,6 +913,79 @@ export const getBlockedUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể lấy danh sách khối người dùng",
+    });
+  }
+};
+
+export const getConversationDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id)
+      .populate("participants.userId", "displayName userName email avatarUrl")
+      .populate("group.createdBy", "displayName userName email avatarUrl");
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Cuộc trò chuyện không tồn tại.",
+      });
+    }
+
+    const messagesCount = await Message.countDocuments({
+      conversationId: conversation._id,
+    });
+
+    const members = (conversation.participants || []).map((participant) => ({
+      _id: participant.userId?._id ?? null,
+      displayName: participant.userId?.displayName ?? null,
+      userName: participant.userId?.userName ?? null,
+      email: participant.userId?.email ?? null,
+      avatarUrl: participant.userId?.avatarUrl ?? null,
+      joinedAt: participant.joinedAt ?? null,
+    }));
+
+    const participantIds = members.map((member) => member._id).filter(Boolean);
+    const directBlockStatus =
+      conversation.type === "direct"
+        ? await getDirectBlockStatusForAdmin(participantIds)
+        : null;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        conversation: {
+          _id: conversation._id,
+          type: conversation.type,
+          groupName: conversation.type === "group" ? conversation.group?.name ?? "Nhóm" : null,
+          creator:
+            conversation.type === "group" && conversation.group?.createdBy
+              ? {
+                  _id: conversation.group.createdBy._id,
+                  displayName: conversation.group.createdBy.displayName,
+                  userName: conversation.group.createdBy.userName,
+                  email: conversation.group.createdBy.email ?? null,
+                  avatarUrl: conversation.group.createdBy.avatarUrl ?? null,
+                }
+              : null,
+          members,
+          membersCount: members.length,
+          messagesCount,
+          lastMessage: mapAdminLastMessage(conversation.lastMessage),
+          updatedAt: conversation.updatedAt,
+          createdAt: conversation.createdAt,
+          directBlockStatus,
+          note:
+            conversation.type === "group"
+              ? "Group chat vẫn hoạt động bình thường kể cả khi một số thành viên block nhau ở direct."
+              : "Block status ở đây chỉ phản ánh direct 1-1 giữa hai thành viên.",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết cuộc trò chuyện:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể lấy chi tiết cuộc trò chuyện",
     });
   }
 };
