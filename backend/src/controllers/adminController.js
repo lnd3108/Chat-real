@@ -4,6 +4,8 @@ import Message from "../models/Message.js";
 import FriendRequest from "../models/FriendRequest.js";
 import Friend from "../models/Friend.js";
 import Blocking from "../models/Blocking.js";
+import Session from "../models/Session.js";
+import { disconnectUserSockets, emitToUser } from "../socket/index.js";
 
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
@@ -58,7 +60,7 @@ export const getUsers = async (req, res) => {
     }
 
     // Filter by status
-    if (status && ["active", "inactive", "suspended"].includes(status)) {
+    if (status && ["active", "inactive", "suspended", "banned"].includes(status)) {
       filter.status = status;
     }
 
@@ -204,6 +206,73 @@ export const updateUserRole = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể cập nhật role",
+    });
+  }
+};
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+    const adminUserId = req.user?._id?.toString();
+
+    if (!["active", "banned"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Trạng thái không hợp lệ. Chỉ hỗ trợ `active` hoặc `banned`.",
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Người dùng không tồn tại.",
+      });
+    }
+
+    if (adminUserId && adminUserId === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không thể tự khóa tài khoản của chính mình.",
+      });
+    }
+
+    user.status = status;
+    await user.save();
+
+    if (status === "banned") {
+      await Session.deleteMany({ userId: user._id });
+      emitToUser(user._id, "account:banned", {
+        message: "Tài khoản của bạn đã bị khóa bởi quản trị viên.",
+      });
+      disconnectUserSockets(user._id);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        status === "banned"
+          ? "Đã khóa tài khoản người dùng."
+          : "Đã mở khóa tài khoản người dùng.",
+      data: {
+        user: {
+          _id: user._id,
+          avatar: user.avatarUrl ?? null,
+          username: user.userName,
+          displayName: user.displayName,
+          email: user.email,
+          status: user.status,
+          createdAt: user.createdAt,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể cập nhật trạng thái người dùng.",
     });
   }
 };

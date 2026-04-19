@@ -27,6 +27,13 @@ const buildAccessToken = (userId) =>
     expiresIn: ACCESS_TOKEN_TTL,
   });
 
+const buildBannedResponse = () => ({
+  code: "ACCOUNT_BANNED",
+  message: "Tài khoản của bạn đã bị khóa.",
+});
+
+const isUserBanned = (user) => user?.status === "banned";
+
 const createSession = async (userId, res) => {
   const accessToken = buildAccessToken(userId);
   const refreshToken = crypto.randomBytes(64).toString("hex");
@@ -504,6 +511,10 @@ export const signIn = async (req, res) => {
         .json({ message: "Tên tài khoản hoặc mật khẩu không chính xác." });
     }
 
+    if (isUserBanned(user)) {
+      return res.status(403).json(buildBannedResponse());
+    }
+
     if (user.authProvider === "local" && !user.emailVerified) {
       const verification = await sendEmailVerificationForUser(user, "signup", {
         ignoreCooldown: false,
@@ -586,6 +597,10 @@ export const googleCallback = async (req, res) => {
 
     const user = await findOrCreateGoogleUser(payload);
 
+    if (isUserBanned(user)) {
+      return res.status(403).json(buildBannedResponse());
+    }
+
     if (!user.emailVerified) {
       const verification = await sendEmailVerificationForUser(
         user,
@@ -631,6 +646,10 @@ export const verifyEmailCode = async (req, res) => {
     const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    if (isUserBanned(user)) {
+      return res.status(403).json(buildBannedResponse());
     }
 
     if (
@@ -746,6 +765,18 @@ export const refreshToken = async (req, res) => {
 
     if (session.expiresAt < new Date()) {
       return res.status(403).json({ message: "Token đã hết hạn" });
+    }
+
+    const user = await User.findById(session.userId).select("status");
+    if (!user) {
+      await Session.deleteOne({ _id: session._id });
+      return res.status(404).json({ message: "Nguoi dung khong ton tai." });
+    }
+
+    if (isUserBanned(user)) {
+      await Session.deleteMany({ userId: user._id });
+      res.clearCookie("refreshToken");
+      return res.status(403).json(buildBannedResponse());
     }
 
     const accessToken = buildAccessToken(session.userId);

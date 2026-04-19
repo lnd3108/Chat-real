@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
 
 const ProtectedRoute = () => {
-  const { accessToken, loading, refresh, fetchMe } = useAuthStore();
+  const { accessToken, loading, refresh, fetchMe, user } = useAuthStore();
   const [starting, setStarting] = useState(true);
 
   useEffect(() => {
@@ -73,6 +73,10 @@ const ProtectedRoute = () => {
 
   if (!accessToken) {
     return <Navigate to="/signin" replace />;
+  }
+
+  if (user?.role === "admin") {
+    return <Navigate to="/admin" replace />;
   }
 
   return <Outlet />;

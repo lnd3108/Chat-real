@@ -6,6 +6,7 @@ import {
   getDashboardStats,
   getUsers,
   getUserDetail,
+  updateUserStatus,
   updateUserRole,
   getPendingFriendRequests,
   getConversations,
@@ -24,6 +25,7 @@ router.get("/dashboard", getDashboardStats);
 // Users Management
 router.get("/users", getUsers);
 router.get("/users/:id", getUserDetail);
+router.patch("/users/:id/status", updateUserStatus);
 router.patch("/users/:userId/role", updateUserRole);
 
 // Delete User (already existing)

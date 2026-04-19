@@ -4,7 +4,7 @@ export interface User {
   email: string;
   displayName: string;
   role?: "user" | "admin";
-  status?: "active" | "inactive" | "suspended";
+  status?: "active" | "inactive" | "suspended" | "banned";
   avatarUrl?: string;
   authProvider?: "local" | "google";
   emailVerified?: boolean;

@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+
 import User from "../models/User.js";
 
 const createSocketAuthError = (message, code) => {
@@ -11,30 +12,43 @@ export const socketAuthMiddleWare = async (socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
     if (!token) {
-      return next(createSocketAuthError("Chưa có token xác thực", "TOKEN_MISSING"));
+      return next(
+        createSocketAuthError("Chưa có token xác thực", "TOKEN_MISSING"),
+      );
     }
 
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
     if (!decoded) {
-      return next(createSocketAuthError("Token xác thực không hợp lệ", "TOKEN_INVALID"));
+      return next(
+        createSocketAuthError("Token xác thực không hợp lệ", "TOKEN_INVALID"),
+      );
     }
 
-    const user = await User.findById(decoded.userId).select("-_hashedPassword");
-
+    const user = await User.findById(decoded.userId).select("-hashedPassword");
     if (!user) {
-      return next(createSocketAuthError("Không tìm thấy người dùng", "USER_NOT_FOUND"));
+      return next(
+        createSocketAuthError("Không tìm thấy người dùng", "USER_NOT_FOUND"),
+      );
+    }
+
+    if (user.status === "banned") {
+      return next(
+        createSocketAuthError("Tài khoản đã bị khóa", "ACCOUNT_BANNED"),
+      );
     }
 
     socket.user = user;
-
-    next();
+    return next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
-      return next(createSocketAuthError("Access token đã hết hạn", "TOKEN_EXPIRED"));
+      return next(
+        createSocketAuthError("Access token đã hết hạn", "TOKEN_EXPIRED"),
+      );
     }
 
-    console.error("Loi khi verify JWT trong socketMiddleWare", error);
-    next(createSocketAuthError("Không thể xác thực socket", "TOKEN_INVALID"));
+    console.error("Lỗi verify JWT trong socketMiddleWare", error);
+    return next(
+      createSocketAuthError("Không thể xác thực socket", "TOKEN_INVALID"),
+    );
   }
 };

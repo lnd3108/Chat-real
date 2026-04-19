@@ -10,12 +10,13 @@ import {
   Users,
 } from "lucide-react";
 
+import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
 
-type UserStatus = "active" | "inactive" | "suspended";
+type UserStatus = "active" | "inactive" | "suspended" | "banned";
 type UserRole = "user" | "admin";
 
 interface AdminUserDetailData {
@@ -38,21 +39,22 @@ interface AdminUserStats {
   messagesCount: number;
 }
 
-const statusConfig: Record<
-  UserStatus,
-  { label: string; className: string }
-> = {
+const statusConfig: Record<UserStatus, { label: string; className: string }> = {
   active: {
-    label: "Hoat dong",
+    label: "Hoạt động",
     className: "bg-emerald-500/10 text-emerald-700",
   },
+  banned: {
+    label: "Bị khóa",
+    className: "bg-rose-500/10 text-rose-700",
+  },
   inactive: {
-    label: "Khong hoat dong",
+    label: "Không hoạt động",
     className: "bg-slate-500/10 text-slate-700",
   },
   suspended: {
-    label: "Tam khoa",
-    className: "bg-rose-500/10 text-rose-700",
+    label: "Tạm khóa",
+    className: "bg-amber-500/10 text-amber-700",
   },
 };
 
@@ -67,6 +69,23 @@ const roleConfig: Record<UserRole, { label: string; className: string }> = {
   },
 };
 
+const metricCards: Array<{
+  key: keyof AdminUserStats;
+  label: string;
+  icon: typeof Users;
+}> = [
+  { key: "friendsCount", label: "Bạn bè", icon: Users },
+  {
+    key: "directConversationsCount",
+    label: "Cuộc trò chuyện direct",
+    icon: MessageSquare,
+  },
+  { key: "groupConversationsCount", label: "Nhóm chat", icon: Users },
+  { key: "messagesCount", label: "Tin nhắn", icon: MessageSquare },
+  { key: "blockingCount", label: "Đang chặn", icon: Slash },
+  { key: "blockedByCount", label: "Bị chặn", icon: Shield },
+];
+
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString("vi-VN", {
     year: "numeric",
@@ -75,27 +94,6 @@ const formatDateTime = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-
-const metricCards: Array<{
-  key: keyof AdminUserStats;
-  label: string;
-  icon: typeof Users;
-}> = [
-  { key: "friendsCount", label: "Ban be", icon: Users },
-  {
-    key: "directConversationsCount",
-    label: "Cuoc tro chuyen direct",
-    icon: MessageSquare,
-  },
-  {
-    key: "groupConversationsCount",
-    label: "Nhom chat",
-    icon: Users,
-  },
-  { key: "messagesCount", label: "Tin nhan", icon: MessageSquare },
-  { key: "blockingCount", label: "Dang chan", icon: Slash },
-  { key: "blockedByCount", label: "Bi chan", icon: Shield },
-];
 
 const AdminUserDetail = () => {
   const { id } = useParams();
@@ -119,7 +117,7 @@ const AdminUserDetail = () => {
     } catch (err: any) {
       const statusCode = err?.response?.status;
       const message =
-        err?.response?.data?.message ?? "Khong the tai thong tin nguoi dung.";
+        err?.response?.data?.message ?? "Không thể tải thông tin người dùng.";
 
       if (statusCode === 404) {
         setNotFound(true);
@@ -143,6 +141,17 @@ const AdminUserDetail = () => {
     void fetchUserDetail(id);
   }, [id]);
 
+  const updateUserStatusLocally = (status: "active" | "banned") => {
+    setUser((currentUser) =>
+      currentUser
+        ? {
+            ...currentUser,
+            status,
+          }
+        : currentUser,
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex h-80 items-center justify-center">
@@ -159,15 +168,17 @@ const AdminUserDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">User Detail</h1>
-            <p className="text-sm text-muted-foreground">Khong tim thay nguoi dung.</p>
+            <h1 className="text-2xl font-semibold text-foreground">Chi tiết người dùng</h1>
+            <p className="text-sm text-muted-foreground">Không tìm thấy người dùng.</p>
           </div>
         </div>
 
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-8 text-center">
-          <p className="text-base font-medium text-foreground">User khong ton tai hoac da bi xoa.</p>
+          <p className="text-base font-medium text-foreground">
+            Người dùng không tồn tại hoặc đã bị xóa.
+          </p>
           <Button className="mt-4" variant="outline" onClick={() => navigate("/admin/users")}>
-            Quay lai danh sach user
+            Quay lại danh sách user
           </Button>
         </div>
       </div>
@@ -182,18 +193,20 @@ const AdminUserDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">User Detail</h1>
-            <p className="text-sm text-muted-foreground">Khong the tai du lieu chi tiet.</p>
+            <h1 className="text-2xl font-semibold text-foreground">Chi tiết người dùng</h1>
+            <p className="text-sm text-muted-foreground">Không thể tải dữ liệu chi tiết.</p>
           </div>
         </div>
 
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6">
-          <p className="text-sm font-medium text-rose-700">{error ?? "Da xay ra loi khong xac dinh."}</p>
+          <p className="text-sm font-medium text-rose-700">
+            {error ?? "Đã xảy ra lỗi không xác định."}
+          </p>
           <div className="mt-4 flex gap-3">
             <Button variant="outline" onClick={() => navigate("/admin/users")}>
-              Ve danh sach
+              Về danh sách
             </Button>
-            <Button onClick={() => id && void fetchUserDetail(id)}>Thu lai</Button>
+            <Button onClick={() => id && void fetchUserDetail(id)}>Thử lại</Button>
           </div>
         </div>
       </div>
@@ -211,9 +224,9 @@ const AdminUserDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">User Detail</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Chi tiết người dùng</h1>
             <p className="text-sm text-muted-foreground">
-              Xem thong tin co ban va thong ke nhanh cua tai khoan.
+              Xem thông tin cơ bản, thống kê và thao tác khóa hoặc mở khóa tài khoản.
             </p>
           </div>
         </div>
@@ -252,7 +265,7 @@ const AdminUserDetail = () => {
 
               <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  User ID
+                  Mã người dùng
                 </p>
                 <p className="mt-2 break-all font-mono text-xs text-foreground">{user._id}</p>
               </div>
@@ -276,9 +289,11 @@ const AdminUserDetail = () => {
                   <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                      Created At
+                      Ngày tạo
                     </p>
-                    <p className="mt-1 text-sm text-foreground">{formatDateTime(user.createdAt)}</p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {formatDateTime(user.createdAt)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -287,9 +302,9 @@ const AdminUserDetail = () => {
 
           <div className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Thong ke nhanh</h3>
+              <h3 className="text-lg font-semibold text-foreground">Thống kê nhanh</h3>
               <p className="text-sm text-muted-foreground">
-                Cac so lieu tong quan de admin danh gia muc do hoat dong cua user.
+                Các số liệu tổng quan để admin đánh giá mức độ hoạt động của user.
               </p>
             </div>
 
@@ -322,37 +337,26 @@ const AdminUserDetail = () => {
 
         <aside className="space-y-6">
           <div className="rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">Admin Actions</h3>
+            <h3 className="text-lg font-semibold text-foreground">Hành động quản trị</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Khu vuc de san cho ban, unban, xoa tai khoan hoac cap role sau nay.
+              Khóa hoặc mở khóa tài khoản mà không ảnh hưởng đến dữ liệu cũ.
             </p>
 
             <div className="mt-5 space-y-3">
-              <Button variant="outline" className="w-full justify-start" disabled>
-                Ban user
-              </Button>
-              <Button variant="outline" className="w-full justify-start" disabled>
-                Unban user
-              </Button>
-              <Button variant="outline" className="w-full justify-start" disabled>
-                Cap / go role admin
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-destructive hover:text-destructive"
-                disabled
-              >
-                Xoa tai khoan
-              </Button>
+              <AdminUserStatusDialog
+                userId={user._id}
+                userName={user.username}
+                displayName={user.displayName}
+                currentStatus={user.status}
+                fullWidth
+                onSuccess={updateUserStatusLocally}
+              />
             </div>
-          </div>
 
-          <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-5">
-            <p className="text-sm font-medium text-foreground">Goi y mo rong</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Action panel da tach rieng khoi khu vuc thong tin, nen sau nay co the gan
-              dialog, mutation hook va audit log ma khong can sua lai layout tong the.
-            </p>
+            <div className="mt-4 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground">
+              Khi bị khóa, user sẽ không đăng nhập được, refresh token thất bại và
+              các socket đang online sẽ bị ngắt ngay.
+            </div>
           </div>
         </aside>
       </div>

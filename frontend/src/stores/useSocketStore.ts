@@ -97,6 +97,21 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     set({ socket });
 
     let isRefreshingSocketAuth = false;
+    const forceLogoutForBannedAccount = (message?: string) => {
+      const { clearState } = useAuthStore.getState();
+      const { reset } = useChatStore.getState();
+
+      clearState();
+      reset();
+      socket.io.opts.reconnection = false;
+      socket.disconnect();
+      set({ socket: null, onlineUsers: [] });
+
+      if (typeof window !== "undefined") {
+        toast.error(message || "Tài khoản của bạn đã bị khóa.");
+        window.location.href = "/signin";
+      }
+    };
 
     socket.on("connect", () => {
       isRefreshingSocketAuth = false;
@@ -111,6 +126,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on("connect_error", async (error: SocketConnectError) => {
       if (error?.message) {
         console.warn("Lỗi kết nối socket:", error.message);
+      }
+
+      if (error?.data?.code === "ACCOUNT_BANNED") {
+        forceLogoutForBannedAccount(error.message);
+        return;
       }
 
       if (error?.data?.code !== "TOKEN_EXPIRED" || isRefreshingSocketAuth) {
@@ -572,6 +592,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       reset();
       get().disconnectSocket();
     });
+    socket.on("account:banned", ({ message } = { message: undefined }) => {
+      forceLogoutForBannedAccount(message);
+    });
     socket.on("direct:block-status", ({ conversationId, blockerId, blockedUserId, isBlocked }) => {
       if (!conversationId || !blockerId || !blockedUserId) {
         return;
@@ -656,5 +679,3 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     }
   },
 }));
-
-

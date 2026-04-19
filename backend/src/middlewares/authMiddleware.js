@@ -1,14 +1,19 @@
 import jwt from "jsonwebtoken";
+
 import User from "../models/User.js";
+
+const bannedResponse = {
+  code: "ACCOUNT_BANNED",
+  message: "Tài khoản của bạn đã bị khóa.",
+};
 
 export const protectedRoute = (req, res, next) => {
   try {
-    // lấy token từ header
-    const authHeader = req.headers["authorization"];
+    const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ message: "Không tìm thấy access Token" });
+      return res.status(401).json({ message: "Không tìm thấy access token." });
     }
 
     jwt.verify(
@@ -17,27 +22,28 @@ export const protectedRoute = (req, res, next) => {
       async (err, decodedUser) => {
         if (err) {
           console.error(err);
-
           return res
             .status(403)
-            .json({ message: "access Token Hết hạn hoặc không đúng" });
+            .json({ message: "Access token hết hạn hoặc không hợp lệ." });
         }
 
-        const user = await User.findById(decodedUser.userId).select(
-          "-hashedPassword"
-        );
+        const user = await User.findById(decodedUser.userId).select("-hashedPassword");
 
         if (!user) {
-          return res.status(404).json({ message: "Người dùng không tồn tại" });
+          return res.status(404).json({ message: "Người dùng không tồn tại." });
+        }
+
+        if (user.status === "banned") {
+          return res.status(403).json(bannedResponse);
         }
 
         req.user = user;
-        next();
-      }
+        return next();
+      },
     );
   } catch (error) {
-    console.error("Lỗi Khi xác minh jwt trong authMiddleware", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lỗi xác minh jwt trong authMiddleware", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
 

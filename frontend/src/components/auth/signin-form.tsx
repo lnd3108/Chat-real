@@ -49,7 +49,15 @@ export function SignInForm({
     setValue("userName", "");
     setValue("password", "");
 
-    navigate(result === "verify_email" ? "/verify-email" : "/");
+    const currentUser = useAuthStore.getState().user;
+    const nextPath =
+      result === "verify_email"
+        ? "/verify-email"
+        : currentUser?.role === "admin"
+          ? "/admin"
+          : "/";
+
+    navigate(nextPath, { replace: true });
   };
 
   const onGoogleSignIn = () => {

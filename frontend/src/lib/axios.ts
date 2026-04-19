@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
+import { toast } from "sonner";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -9,6 +10,20 @@ const api = axios.create({
 // Global AbortController for cancelling requests on account deletion
 let globalAbortController = new AbortController();
 let isAccountDeleted = false;
+
+const handleForcedSignOut = (message?: string) => {
+  useAuthStore.getState().clearState();
+
+  if (typeof window !== "undefined") {
+    if (message) {
+      toast.error(message);
+    }
+
+    if (window.location.pathname !== "/signin") {
+      window.location.href = "/signin";
+    }
+  }
+};
 
 // Export function to abort all pending requests
 export const abortAllRequests = () => {
@@ -38,14 +53,26 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const originalRequest = error.config;
+    const originalRequest = error.config ?? {};
     const { accessToken } = useAuthStore.getState();
+    const errorCode = error.response?.data?.code;
+    const errorMessage = error.response?.data?.message;
 
     if (
-      originalRequest.url.includes("/auth/signin") ||
-      originalRequest.url.includes("/auth/signup") ||
-      originalRequest.url.includes("/auth/refresh") ||
-      (originalRequest.url.includes("/users/me") && originalRequest.method === "delete")
+      errorCode === "ACCOUNT_BANNED" &&
+      !String(originalRequest.url).includes("/auth/signin") &&
+      !String(originalRequest.url).includes("/auth/google/callback")
+    ) {
+      handleForcedSignOut(errorMessage || "Tài khoản của bạn đã bị khóa.");
+      return Promise.reject(error);
+    }
+
+    if (
+      String(originalRequest.url).includes("/auth/signin") ||
+      String(originalRequest.url).includes("/auth/signup") ||
+      String(originalRequest.url).includes("/auth/refresh") ||
+      (String(originalRequest.url).includes("/users/me") &&
+        originalRequest.method === "delete")
     ) {
       return Promise.reject(error);
     }

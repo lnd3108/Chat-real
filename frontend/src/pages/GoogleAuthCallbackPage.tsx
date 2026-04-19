@@ -18,7 +18,14 @@ export const GoogleAuthCallbackPage = () => {
 
     const run = async () => {
       const ok = await completeGoogleSignIn(code);
-      navigate(ok ? "/" : "/verify-email", { replace: true });
+      const currentUser = useAuthStore.getState().user;
+      const nextPath = ok
+        ? currentUser?.role === "admin"
+          ? "/admin"
+          : "/"
+        : "/verify-email";
+
+      navigate(nextPath, { replace: true });
     };
 
     run();

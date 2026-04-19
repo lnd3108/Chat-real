@@ -1,19 +1,23 @@
-import { Plus, Eye, Edit, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { ChevronLeft, ChevronRight, Eye, Search } from "lucide-react";
+
+import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
+import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
-import { axiosInstance } from "@/lib/axios";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import UserAvatar from "@/components/chat/UserAvatar";
-import { useNavigate } from "react-router";
+import { axiosInstance } from "@/lib/axios";
 
-interface User {
+type UserStatus = "active" | "inactive" | "suspended" | "banned";
+
+interface UserRow {
   _id: string;
   displayName: string;
   userName: string;
   email: string;
   role: "user" | "admin";
-  status: "active" | "inactive" | "suspended";
+  status: UserStatus;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -25,9 +29,32 @@ interface PaginationData {
   pages: number;
 }
 
+const statusConfig: Record<
+  UserStatus,
+  { label: string; className: string }
+> = {
+  active: {
+    label: "Hoạt động",
+    className: "bg-emerald-500/10 text-emerald-700",
+  },
+  banned: {
+    label: "Bị khóa",
+    className: "bg-rose-500/10 text-rose-700",
+  },
+  inactive: {
+    label: "Không hoạt động",
+    className: "bg-slate-500/10 text-slate-700",
+  },
+  suspended: {
+    label: "Tạm khóa",
+    className: "bg-amber-500/10 text-amber-700",
+  },
+};
+
 const AdminUsers = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
+
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -42,13 +69,14 @@ const AdminUsers = () => {
   });
 
   useEffect(() => {
-    fetchUsers();
+    void fetchUsers();
   }, [page, searchQuery, statusFilter, sortBy]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
+
       const response = await axiosInstance.get("/admin/users", {
         params: {
           page,
@@ -58,11 +86,12 @@ const AdminUsers = () => {
           sort: sortBy,
         },
       });
+
       setUsers(response.data.data.users);
       setPagination(response.data.data.pagination);
-    } catch (err: any) {
-      setError("Không thể tải danh sách người dùng");
+    } catch (err) {
       console.error(err);
+      setError("Không thể tải danh sách người dùng.");
     } finally {
       setLoading(false);
     }
@@ -83,44 +112,31 @@ const AdminUsers = () => {
     setPage(1);
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: {
-        bg: "bg-green-500/10",
-        text: "text-green-700",
-        label: "Hoạt động",
-      },
-      inactive: {
-        bg: "bg-gray-500/10",
-        text: "text-gray-700",
-        label: "Không hoạt động",
-      },
-      suspended: {
-        bg: "bg-red-500/10",
-        text: "text-red-700",
-        label: "Bị tạm khóa",
-      },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
-
-    return (
-      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${config.bg} ${config.text}`}>
-        {config.label}
-      </span>
-    );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     });
-  };
 
   const goToUserDetail = (userId: string) => {
     navigate(`/admin/users/${userId}`);
+  };
+
+  const updateUserStatusLocally = (
+    userId: string,
+    status: "active" | "banned",
+  ) => {
+    setUsers((currentUsers) =>
+      currentUsers.map((user) =>
+        user._id === userId
+          ? {
+              ...user,
+              status,
+            }
+          : user,
+      ),
+    );
   };
 
   if (error && !loading) {
@@ -128,7 +144,9 @@ const AdminUsers = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
-          <p className="mt-2 text-muted-foreground">Quản lý tất cả người dùng trên hệ thống</p>
+          <p className="mt-2 text-muted-foreground">
+            Xem danh sách user và cập nhật trạng thái tài khoản.
+          </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
           {error}
@@ -139,75 +157,60 @@ const AdminUsers = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
-          <p className="mt-2 text-muted-foreground">
-            Tổng cộng {pagination.total} người dùng
-          </p>
+          <p className="mt-2 text-muted-foreground">Tổng cộng {pagination.total} người dùng</p>
         </div>
-        <Button className="gap-2 bg-gradient-chat text-white">
-          <Plus className="h-4 w-4" />
-          Thêm người dùng
-        </Button>
       </div>
 
-      {/* Filters */}
-      <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-4">
+      <div className="space-y-4 rounded-xl border border-border/50 bg-card/50 p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Tìm theo tên, email..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="bg-muted/50 border-border/50 pl-10 focus:border-primary/50"
+              className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
             />
           </div>
 
-          {/* Status Filter */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border/50 bg-muted/50 text-sm focus:border-primary/50 focus:outline-none transition-colors"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="active">Hoạt động</option>
-              <option value="inactive">Không hoạt động</option>
-              <option value="suspended">Bị tạm khóa</option>
-            </select>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Hoạt động</option>
+            <option value="banned">Bị khóa</option>
+            <option value="inactive">Không hoạt động</option>
+            <option value="suspended">Tạm khóa</option>
+          </select>
 
-          {/* Sort */}
-          <div>
-            <select
-              value={sortBy}
-              onChange={(e) => handleSortChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border/50 bg-muted/50 text-sm focus:border-primary/50 focus:outline-none transition-colors"
-            >
-              <option value="createdAt">Mới nhất</option>
-              <option value="username">Username (A→Z)</option>
-              <option value="displayName">Tên hiển thị (A→Z)</option>
-            </select>
-          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
+          >
+            <option value="createdAt">Mới nhất</option>
+            <option value="username">Username (A-Z)</option>
+            <option value="displayName">Tên hiển thị (A-Z)</option>
+          </select>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-card/50">
         {loading ? (
-          <div className="flex items-center justify-center h-96">
+          <div className="flex h-96 items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </div>
         ) : users.length === 0 ? (
-          <div className="flex items-center justify-center h-96">
+          <div className="flex h-96 items-center justify-center">
             <div className="text-center">
               <p className="text-muted-foreground">Không tìm thấy người dùng nào</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Thử thay đổi bộ lọc hoặc tìm kiếm
+              <p className="mt-1 text-sm text-muted-foreground">
+                Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
               </p>
             </div>
           </div>
@@ -265,13 +268,19 @@ const AdminUsers = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{user.email}</td>
-                    <td className="px-6 py-4">{getStatusBadge(user.status)}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[user.status]?.className ?? statusConfig.active.className}`}
+                      >
+                        {statusConfig[user.status]?.label ?? user.status}
+                      </span>
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
                           user.role === "admin"
-                            ? "bg-purple-500/10 text-purple-700"
-                            : "bg-blue-500/10 text-blue-700"
+                            ? "bg-amber-500/10 text-amber-700"
+                            : "bg-sky-500/10 text-sky-700"
                         }`}
                       >
                         {user.role === "admin" ? "Admin" : "User"}
@@ -280,22 +289,23 @@ const AdminUsers = () => {
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {formatDate(user.createdAt)}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           className="rounded-lg p-2 transition-colors hover:bg-muted/50"
                           onClick={() => goToUserDetail(user._id)}
-                          aria-label={`Xem chi tiet ${user.displayName}`}
+                          aria-label={`Xem chi tiết ${user.displayName}`}
                         >
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </button>
-                        <button className="p-2 hover:bg-muted/50 rounded-lg transition-colors">
-                          <Edit className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                        <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </button>
+                        <AdminUserStatusDialog
+                          userId={user._id}
+                          userName={user.userName}
+                          displayName={user.displayName}
+                          currentStatus={user.status}
+                          onSuccess={(status) => updateUserStatusLocally(user._id, status)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -303,7 +313,6 @@ const AdminUsers = () => {
               </tbody>
             </table>
 
-            {/* Pagination */}
             {pagination.pages > 1 && (
               <div className="flex items-center justify-between border-t border-border/50 px-6 py-4">
                 <div className="text-sm text-muted-foreground">
