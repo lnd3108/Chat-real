@@ -4,6 +4,7 @@ import {
 } from "../middlewares/uploadMiddleWare.js";
 import Friend from "../models/Friend.js";
 import FriendRequest from "../models/FriendRequest.js";
+import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import User from "../models/User.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
@@ -522,23 +523,47 @@ export const blockUser = async (req, res) => {
       return res.status(404).json({ message: "Nguoi dung khong ton tai" });
     }
 
+    const blockedAt = new Date();
+
     await User.findByIdAndUpdate(actorId, {
       $pull: { blockedUsers: { userId: targetUserId } },
     });
 
-    const updatedUser = await User.findByIdAndUpdate(
-      actorId,
-      {
-        $push: {
-          blockedUsers: {
-            userId: targetUserId,
-            reason: reason?.trim() || null,
-            createdAt: new Date(),
+    const [updatedUser] = await Promise.all([
+      User.findByIdAndUpdate(
+        actorId,
+        {
+          $push: {
+            blockedUsers: {
+              userId: targetUserId,
+              reason: reason?.trim() || null,
+              createdAt: blockedAt,
+            },
           },
         },
-      },
-      { new: true },
-    ).select("blockedUsers");
+        { new: true },
+      ).select("blockedUsers"),
+      Blocking.findOneAndUpdate(
+        {
+          userId: actorId,
+          blockedUserId: targetUserId,
+        },
+        {
+          $set: {
+            reason: reason?.trim() || null,
+            isActive: true,
+            unblockedAt: null,
+            type: BLOCKING_TYPE_DIRECT_ONLY,
+            createdAt: blockedAt,
+          },
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        },
+      ),
+    ]);
 
     await emitDirectBlockStatusChanged({
       actorUser: req.user,
@@ -565,13 +590,33 @@ export const unblockUser = async (req, res) => {
       return res.status(400).json({ message: "Thieu nguoi dung can bo chan" });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      actorId,
-      {
-        $pull: { blockedUsers: { userId: targetUserId } },
-      },
-      { new: true },
-    ).select("blockedUsers");
+    const unblockedAt = new Date();
+
+    const [updatedUser] = await Promise.all([
+      User.findByIdAndUpdate(
+        actorId,
+        {
+          $pull: { blockedUsers: { userId: targetUserId } },
+        },
+        { new: true },
+      ).select("blockedUsers"),
+      Blocking.findOneAndUpdate(
+        {
+          userId: actorId,
+          blockedUserId: targetUserId,
+        },
+        {
+          $set: {
+            isActive: false,
+            unblockedAt,
+            type: BLOCKING_TYPE_DIRECT_ONLY,
+          },
+        },
+        {
+          new: true,
+        },
+      ),
+    ]);
 
     await emitDirectBlockStatusChanged({
       actorUser: req.user,

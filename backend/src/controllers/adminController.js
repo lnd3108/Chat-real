@@ -3,11 +3,140 @@ import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import FriendRequest from "../models/FriendRequest.js";
 import Friend from "../models/Friend.js";
-import Blocking from "../models/Blocking.js";
+import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import Session from "../models/Session.js";
 import { disconnectUserSockets, emitToUser } from "../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { sendAccountDeletedEmail } from "../utils/mail.js";
+import { emitDirectBlockStatusChanged } from "./conversationController.js";
+
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const mapAdminUserSummary = (user) => {
+  if (!user) return null;
+
+  return {
+    _id: user._id,
+    displayName: user.displayName,
+    userName: user.userName,
+    email: user.email ?? null,
+    avatarUrl: user.avatarUrl ?? null,
+  };
+};
+
+const mapAdminBlockRelation = (block) => ({
+  _id: block._id,
+  blocker: mapAdminUserSummary(block.userId),
+  blockedUser: mapAdminUserSummary(block.blockedUserId),
+  isActive: block.isActive !== false,
+  createdAt: block.createdAt,
+  unblockedAt: block.unblockedAt ?? null,
+  type: block.type ?? BLOCKING_TYPE_DIRECT_ONLY,
+  reason: block.reason ?? null,
+});
+
+const getAdminBlockSort = (sort = "createdAt-desc") => {
+  switch (sort) {
+    case "createdAt-asc":
+      return { createdAt: 1 };
+    case "blocker-asc":
+      return { userId: 1, createdAt: -1 };
+    case "blocked-asc":
+      return { blockedUserId: 1, createdAt: -1 };
+    case "status":
+      return { isActive: -1, createdAt: -1 };
+    case "createdAt-desc":
+    default:
+      return { createdAt: -1 };
+  }
+};
+
+const syncBlockingDocumentsFromEmbeddedState = async () => {
+  const usersWithBlocks = await User.find({
+    "blockedUsers.0": { $exists: true },
+  })
+    .select("_id blockedUsers")
+    .lean();
+
+  if (!usersWithBlocks.length) {
+    return;
+  }
+
+  const operations = [];
+
+  usersWithBlocks.forEach((user) => {
+    (user.blockedUsers ?? []).forEach((entry) => {
+      if (!entry?.userId) {
+        return;
+      }
+
+      operations.push({
+        updateOne: {
+          filter: {
+            userId: user._id,
+            blockedUserId: entry.userId,
+          },
+          update: {
+            $set: {
+              reason: entry.reason ?? null,
+              isActive: true,
+              unblockedAt: null,
+              type: BLOCKING_TYPE_DIRECT_ONLY,
+              createdAt: entry.createdAt ?? new Date(),
+            },
+          },
+          upsert: true,
+        },
+      });
+    });
+  });
+
+  if (!operations.length) {
+    return;
+  }
+
+  await Blocking.bulkWrite(operations, { ordered: false });
+};
+
+const buildAdminBlockFilter = async ({ q = "", status = "" }) => {
+  const filter = {};
+
+  if (status === "active") {
+    filter.isActive = { $ne: false };
+  } else if (status === "inactive") {
+    filter.isActive = false;
+  }
+
+  const trimmedQuery = String(q || "").trim();
+  if (!trimmedQuery) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
+  const matchedUsers = await User.find({
+    $or: [
+      { userName: regex },
+      { displayName: regex },
+      { email: regex },
+    ],
+  })
+    .select("_id")
+    .lean();
+
+  const matchedUserIds = matchedUsers.map((user) => user._id);
+
+  if (!matchedUserIds.length) {
+    filter._id = null;
+    return filter;
+  }
+
+  filter.$or = [
+    { userId: { $in: matchedUserIds } },
+    { blockedUserId: { $in: matchedUserIds } },
+  ];
+
+  return filter;
+};
 
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
@@ -136,8 +265,14 @@ export const getUserDetail = async (req, res) => {
       type: "group",
     });
 
-    const blockingCount = await Blocking.countDocuments({ userId: id });
-    const blockedByCount = await Blocking.countDocuments({ blockedUserId: id });
+    const blockingCount = await Blocking.countDocuments({
+      userId: id,
+      isActive: { $ne: false },
+    });
+    const blockedByCount = await Blocking.countDocuments({
+      blockedUserId: id,
+      isActive: { $ne: false },
+    });
     const messagesCount = await Message.countDocuments({ senderId: id });
 
     return res.status(200).json({
@@ -470,6 +605,147 @@ export const getBlockedUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể lấy danh sách khối người dùng",
+    });
+  }
+};
+
+export const getBlocks = async (req, res) => {
+  try {
+    await syncBlockingDocumentsFromEmbeddedState();
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || "createdAt-desc";
+    const q = req.query.q || "";
+    const status = req.query.status || "";
+    const filter = await buildAdminBlockFilter({ q, status });
+
+    const blocks = await Blocking.find(filter)
+      .populate("userId", "displayName userName email avatarUrl")
+      .populate("blockedUserId", "displayName userName email avatarUrl")
+      .limit(limit)
+      .skip(skip)
+      .sort(getAdminBlockSort(sort));
+
+    const total = await Blocking.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        blocks: blocks.map(mapAdminBlockRelation),
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+        auditNote:
+          "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay danh sach quan he chan:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay danh sach quan he chan",
+    });
+  }
+};
+
+export const getBlockDetail = async (req, res) => {
+  try {
+    await syncBlockingDocumentsFromEmbeddedState();
+
+    const { id } = req.params;
+    const block = await Blocking.findById(id)
+      .populate("userId", "displayName userName email avatarUrl")
+      .populate("blockedUserId", "displayName userName email avatarUrl");
+
+    if (!block) {
+      return res.status(404).json({
+        success: false,
+        message: "Quan he chan khong ton tai.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        block: mapAdminBlockRelation(block),
+        auditNote:
+          "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay chi tiet quan he chan:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay chi tiet quan he chan.",
+    });
+  }
+};
+
+export const unblockBlockRelationAsAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentBlock = await Blocking.findById(id).select(
+      "userId blockedUserId isActive"
+    );
+
+    if (!currentBlock) {
+      return res.status(404).json({
+        success: false,
+        message: "Quan he chan khong ton tai.",
+      });
+    }
+
+    if (currentBlock.isActive === false) {
+      return res.status(400).json({
+        success: false,
+        message: "Quan he chan nay da o trang thai inactive.",
+      });
+    }
+
+    const unblockedAt = new Date();
+
+    const [updatedBlock] = await Promise.all([
+      Blocking.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isActive: false,
+            unblockedAt,
+            type: BLOCKING_TYPE_DIRECT_ONLY,
+          },
+        },
+        { new: true }
+      )
+        .populate("userId", "displayName userName email avatarUrl")
+        .populate("blockedUserId", "displayName userName email avatarUrl"),
+      User.findByIdAndUpdate(currentBlock.userId, {
+        $pull: { blockedUsers: { userId: currentBlock.blockedUserId } },
+      }),
+    ]);
+
+    await emitDirectBlockStatusChanged({
+      blockerUserId: currentBlock.userId,
+      blockedUserId: currentBlock.blockedUserId,
+      isBlocked: false,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin da go block relation thanh cong.",
+      data: {
+        block: mapAdminBlockRelation(updatedBlock),
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi admin go block relation:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the go block relation.",
     });
   }
 };

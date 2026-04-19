@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+const BLOCKING_TYPE_DIRECT_ONLY = "direct-only";
+
 const blockingSchema = new mongoose.Schema(
   {
     userId: {
@@ -17,6 +19,20 @@ const blockingSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    unblockedAt: {
+      type: Date,
+      default: null,
+    },
+    type: {
+      type: String,
+      enum: [BLOCKING_TYPE_DIRECT_ONLY],
+      default: BLOCKING_TYPE_DIRECT_ONLY,
+    },
   },
   {
     timestamps: true,
@@ -24,7 +40,9 @@ const blockingSchema = new mongoose.Schema(
 );
 
 blockingSchema.index({ userId: 1, blockedUserId: 1 }, { unique: true });
+blockingSchema.index({ isActive: 1, createdAt: -1 });
 
 const Blocking = mongoose.model("Blocking", blockingSchema);
 
+export { BLOCKING_TYPE_DIRECT_ONLY };
 export default Blocking;

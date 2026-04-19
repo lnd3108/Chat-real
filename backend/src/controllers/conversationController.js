@@ -906,21 +906,33 @@ export const updateGroupName = async (req, res) => {
 };
 export const emitDirectBlockStatusChanged = async ({
   actorUser,
+  blockerUserId,
   targetUserId,
+  blockedUserId,
   isBlocked,
 }) => {
   const io = getIo();
-  const conversation = await findDirectConversationBetweenUsers(actorUser._id, targetUserId);
+  const resolvedBlockerId = blockerUserId ?? actorUser?._id;
+  const resolvedBlockedUserId = blockedUserId ?? targetUserId;
+
+  if (!resolvedBlockerId || !resolvedBlockedUserId) {
+    return;
+  }
+
+  const conversation = await findDirectConversationBetweenUsers(
+    resolvedBlockerId,
+    resolvedBlockedUserId
+  );
 
   const payload = {
-    blockerId: actorUser._id.toString(),
-    blockedUserId: targetUserId.toString(),
+    blockerId: resolvedBlockerId.toString(),
+    blockedUserId: resolvedBlockedUserId.toString(),
     isBlocked,
     conversationId: conversation?._id?.toString() ?? null,
   };
 
-  io.to(actorUser._id.toString()).emit("direct:block-status", payload);
-  io.to(targetUserId.toString()).emit("direct:block-status", payload);
+  io.to(resolvedBlockerId.toString()).emit("direct:block-status", payload);
+  io.to(resolvedBlockedUserId.toString()).emit("direct:block-status", payload);
 };
 
 export const getGroupDetails = async (req, res) => {
