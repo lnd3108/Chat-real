@@ -17,6 +17,10 @@ import {
   unblockBlockRelationAsAdmin,
   updateUserRole,
   updateUserStatus,
+  getReports,
+  getReportDetail,
+  updateReportStatus,
+  resolveReportWithAction,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -40,5 +44,11 @@ router.get("/blocks", getBlocks);
 router.get("/blocks/:id", getBlockDetail);
 router.patch("/blocks/:id/unblock", unblockBlockRelationAsAdmin);
 router.get("/blocked-users", getBlockedUsers);
+
+// Reports
+router.get("/reports", getReports);
+router.get("/reports/:id", getReportDetail);
+router.patch("/reports/:id/status", updateReportStatus);
+router.patch("/reports/:id/resolve-with-action", resolveReportWithAction);
 
 export default router;

@@ -16,6 +16,8 @@ import AdminFriends from "./pages/admin/AdminFriends";
 import AdminFriendRequests from "./pages/admin/AdminFriendRequests";
 import AdminConversations from "./pages/admin/AdminConversations";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminReportDetail from "./pages/admin/AdminReportDetail";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -97,6 +99,8 @@ function App() {
               <Route path="/admin/friend-requests" element={<AdminFriendRequests />} />
               <Route path="/admin/conversations" element={<AdminConversations />} />
               <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/reports/:id" element={<AdminReportDetail />} />
             </Route>
           </Route>
         </Routes>

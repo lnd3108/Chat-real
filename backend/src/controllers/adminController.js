@@ -5,6 +5,7 @@ import FriendRequest from "../models/FriendRequest.js";
 import Friend from "../models/Friend.js";
 import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import Session from "../models/Session.js";
+import Report from "../models/Report.js";
 import { disconnectUserSockets, emitToUser } from "../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { sendAccountDeletedEmail } from "../utils/mail.js";
@@ -1128,5 +1129,211 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
       success: false,
       message: "Khong the go block relation.",
     });
+  }
+};
+
+// ========== REPORT MANAGEMENT ==========
+
+export const getReports = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, targetType, q, sort = "createdAt-desc" } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = {};
+
+    // Filter by status
+    if (status && ["pending", "reviewing", "resolved", "rejected"].includes(status)) {
+      query.status = status;
+    }
+
+    // Filter by targetType
+    if (targetType && ["user", "message", "conversation"].includes(targetType)) {
+      query.targetType = targetType;
+    }
+
+    // Search by reason
+    if (q && q.trim().length > 0) {
+      const searchRegex = new RegExp(escapeRegex(q.trim()), "i");
+      query.$or = [
+        { reason: searchRegex },
+        { description: searchRegex },
+        { "reporterSnapshot.displayName": searchRegex },
+        { "reporterSnapshot.userName": searchRegex },
+        { "targetUserSnapshot.displayName": searchRegex },
+        { "targetUserSnapshot.userName": searchRegex },
+      ];
+    }
+
+    // Sort logic
+    let sortObj = { createdAt: -1 };
+    if (sort === "createdAt-asc") {
+      sortObj = { createdAt: 1 };
+    } else if (sort === "status") {
+      sortObj = { status: 1, createdAt: -1 };
+    } else if (sort === "updated") {
+      sortObj = { updatedAt: -1 };
+    }
+
+    const reports = await Report.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum)
+      .populate("reporterId", "displayName userName avatarUrl")
+      .populate("targetUserId", "displayName userName avatarUrl")
+      .populate("reviewedByAdminId", "displayName userName")
+      .lean();
+
+    const total = await Report.countDocuments(query);
+
+    res.json({
+      message: "Reports retrieved successfully",
+      data: {
+        reports,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+    res.status(500).json({ message: "Failed to fetch reports" });
+  }
+};
+
+export const getReportDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await Report.findById(id)
+      .populate("reporterId", "displayName userName email avatarUrl")
+      .populate("targetUserId", "displayName userName email avatarUrl status")
+      .populate("targetMessageId", "content imgUrl senderId senderDisplayName createdAt")
+      .populate("targetConversationId", "type groupName members createdAt")
+      .populate("reviewedByAdminId", "displayName userName email")
+      .lean();
+
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    res.json({
+      message: "Report retrieved successfully",
+      data: { report },
+    });
+  } catch (error) {
+    console.error("Error fetching report detail:", error);
+    res.status(500).json({ message: "Failed to fetch report detail" });
+  }
+};
+
+export const updateReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, resolutionNote } = req.body;
+    const adminId = req.user._id;
+
+    // Validate status
+    if (!status || !["pending", "reviewing", "resolved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    if (resolutionNote && resolutionNote.length > 2000) {
+      return res.status(400).json({ message: "Resolution note must be less than 2000 characters" });
+    }
+
+    const updateData = {
+      status,
+      reviewedByAdminId: adminId,
+      reviewedAt: new Date(),
+    };
+
+    if (resolutionNote) {
+      updateData.resolutionNote = resolutionNote.trim();
+    }
+
+    const report = await Report.findByIdAndUpdate(id, updateData, { new: true })
+      .populate("reporterId", "displayName userName avatarUrl")
+      .populate("targetUserId", "displayName userName avatarUrl")
+      .populate("reviewedByAdminId", "displayName userName")
+      .lean();
+
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    res.json({
+      message: "Report status updated successfully",
+      data: { report },
+    });
+  } catch (error) {
+    console.error("Error updating report status:", error);
+    res.status(500).json({ message: "Failed to update report status" });
+  }
+};
+
+export const resolveReportWithAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, resolutionNote } = req.body;
+    const adminId = req.user._id;
+
+    const report = await Report.findById(id);
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    let actionResult = null;
+
+    // Handle different actions
+    if (action === "ban-user" && report.targetUserId) {
+      await User.findByIdAndUpdate(report.targetUserId, { status: "banned" });
+      actionResult = "User banned";
+    } else if (action === "unban-user" && report.targetUserId) {
+      await User.findByIdAndUpdate(report.targetUserId, { status: "active" });
+      actionResult = "User unbanned";
+    } else if (action === "delete-account" && report.targetUserId) {
+      // Note: You may want to call permanentlyDeleteUserAccount service here
+      await User.findByIdAndUpdate(report.targetUserId, { status: "inactive" });
+      actionResult = "Account marked for deletion";
+    } else if (action === "delete-message" && report.targetMessageId) {
+      await Message.findByIdAndUpdate(report.targetMessageId, { isDeletedForEveryone: true });
+      actionResult = "Message deleted";
+    }
+
+    // Update report status
+    const updateData = {
+      status: "resolved",
+      reviewedByAdminId: adminId,
+      reviewedAt: new Date(),
+    };
+
+    if (resolutionNote) {
+      updateData.resolutionNote = `[${action}] ${resolutionNote.trim()}`;
+    } else {
+      updateData.resolutionNote = `[${action}] Resolved with action`;
+    }
+
+    const updatedReport = await Report.findByIdAndUpdate(id, updateData, { new: true })
+      .populate("reporterId", "displayName userName avatarUrl")
+      .populate("targetUserId", "displayName userName avatarUrl")
+      .populate("reviewedByAdminId", "displayName userName")
+      .lean();
+
+    res.json({
+      message: "Report resolved with action successfully",
+      data: {
+        report: updatedReport,
+        action: actionResult,
+      },
+    });
+  } catch (error) {
+    console.error("Error resolving report with action:", error);
+    res.status(500).json({ message: "Failed to resolve report with action" });
   }
 };

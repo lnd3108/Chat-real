@@ -8,6 +8,7 @@ import {
   Heart,
   Mail,
   MessageSquare,
+  Flag,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -61,6 +62,12 @@ const AdminSidebar = () => {
       label: "Tin nhắn",
       icon: MessageSquare,
       path: "/admin/messages",
+    },
+    {
+      id: "reports",
+      label: "Báo cáo",
+      icon: Flag,
+      path: "/admin/reports",
     },
   ];
 
