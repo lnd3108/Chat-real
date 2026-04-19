@@ -6,9 +6,26 @@ import User from "../models/User.js";
 
 let io;
 
-const socketsByUser = new Map(); // { userId: Set(socketId) }
-const visibleByUser = new Map(); // { userId: boolean }
-const activeConversationBySocket = new Map(); // { socketId: conversationId | null }
+const socketsByUser = new Map();
+const visibleByUser = new Map();
+const activeConversationBySocket = new Map();
+
+const emitOnlineUsers = () => {
+  if (!io) {
+    return;
+  }
+
+  const onlineVisibleUsers = [];
+
+  for (const [userId, socketIds] of socketsByUser.entries()) {
+    const visible = visibleByUser.get(userId) ?? true;
+    if (socketIds.size > 0 && visible) {
+      onlineVisibleUsers.push(userId);
+    }
+  }
+
+  io.emit("online-users", onlineVisibleUsers);
+};
 
 export const initSocket = (server) => {
   io = new Server(server, {
@@ -16,19 +33,6 @@ export const initSocket = (server) => {
   });
 
   io.use(socketAuthMiddleWare);
-
-  const emitOnlineUsers = () => {
-    const onlineVisibleUsers = [];
-
-    for (const [userId, socketIds] of socketsByUser.entries()) {
-      const visible = visibleByUser.get(userId) ?? true;
-      if (socketIds.size > 0 && visible) {
-        onlineVisibleUsers.push(userId);
-      }
-    }
-
-    io.emit("online-users", onlineVisibleUsers);
-  };
 
   io.on("connection", async (socket) => {
     const user = socket.user;
@@ -67,6 +71,7 @@ export const initSocket = (server) => {
 
         if (socketIds.size === 0) {
           socketsByUser.delete(userId);
+          visibleByUser.delete(userId);
         }
       }
 
@@ -117,6 +122,33 @@ export const emitToUser = (userId, eventName, payload) => {
   }
 
   io.to(userId.toString()).emit(eventName, payload);
+};
+
+export const disconnectUserSockets = (userId) => {
+  if (!io || !userId) {
+    return;
+  }
+
+  const normalizedUserId = userId.toString();
+  const socketIds = socketsByUser.get(normalizedUserId);
+
+  if (!socketIds || socketIds.size === 0) {
+    return;
+  }
+
+  [...socketIds].forEach((socketId) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      activeConversationBySocket.delete(socketId);
+      return;
+    }
+
+    socket.disconnect(true);
+  });
+
+  socketsByUser.delete(normalizedUserId);
+  visibleByUser.delete(normalizedUserId);
+  emitOnlineUsers();
 };
 
 export const isConversationActiveForUser = (userId, conversationId) => {

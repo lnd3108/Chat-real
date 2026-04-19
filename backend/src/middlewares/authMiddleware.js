@@ -40,3 +40,13 @@ export const protectedRoute = (req, res, next) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
+export const requireAdmin = (req, res, next) => {
+  if (req.user?.role === "admin") {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: "Báº¡n khÃ´ng cÃ³ quyá»n admin Ä‘á»ƒ thá»±c hiá»‡n thao tÃ¡c nÃ y.",
+  });
+};

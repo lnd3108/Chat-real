@@ -162,7 +162,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       const hasConversation = conversations.some(
         (item) => item._id === targetConversationId,
       );
-      const isOwnMessage = message.senderId === user?._id;
+      const isOwnMessage = !!message.senderId && message.senderId === user?._id;
       const isCurrentConversation = activeConversationId === message.conversationId;
       const isCurrentConversationVisible = isCurrentConversation && isDocumentVisible();
       const senderParticipant = conversation?.participants?.find(
@@ -184,7 +184,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         message?.senderId;
 
       const lastMessage =
-        payloadLastMessage?._id && senderId
+        payloadLastMessage?._id
           ? {
               _id: payloadLastMessage._id,
               content: payloadLastMessage.content ?? null,
@@ -197,6 +197,18 @@ export const useSocketStore = create<SocketState>((set, get) => ({
                 payloadLastMessage.createdAt ??
                 conversation?.lastMessageAt ??
                 message?.createdAt,
+              senderDeleted:
+                payloadLastMessage.senderDeleted ??
+                message?.senderDeleted ??
+                !senderId,
+              senderDisplayName:
+                payloadLastMessage.senderDisplayName ??
+                message?.senderDisplayName ??
+                null,
+              senderAvatar:
+                payloadLastMessage.senderAvatar ??
+                message?.senderAvatar ??
+                null,
               sender: payloadLastMessage.sender
                 ? {
                     _id: payloadLastMessage.sender._id,
@@ -532,8 +544,33 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         _id: conversation._id,
         group: conversation.group,
         participants: conversation.participants,
+        unreadCounts: conversation.unreadCounts,
+        seenBy: conversation.seenBy,
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
         moveToTop: false,
       });
+    });
+    socket.on("message:bulk-updated", ({ conversationId }) => {
+      useChatStore.setState((state) => ({
+        messages: {
+          ...state.messages,
+          [conversationId]: {
+            items: [],
+            hasMore: true,
+            nextCursor: undefined,
+          },
+        },
+      }));
+      void useChatStore.getState().fetchMessages(conversationId);
+    });
+    socket.on("account:deleted", () => {
+      const { clearState } = useAuthStore.getState();
+      const { reset } = useChatStore.getState();
+
+      clearState();
+      reset();
+      get().disconnectSocket();
     });
     socket.on("direct:block-status", ({ conversationId, blockerId, blockedUserId, isBlocked }) => {
       if (!conversationId || !blockerId || !blockedUserId) {

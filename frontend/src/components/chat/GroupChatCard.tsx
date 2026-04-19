@@ -4,6 +4,7 @@ import { Bell, BellOff, Info, LogOut, MoreHorizontal, Trash2 } from "lucide-reac
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import {
+  DELETED_USER_LABEL,
   getLastMessageSenderId,
   getParticipantId,
   getParticipantProfile,
@@ -62,7 +63,9 @@ const GroupChatCard = ({ convo }: { convo: Conversation }) => {
   const senderName =
     lastMessageSenderId === user._id
       ? "Bạn"
-      : getParticipantProfile(senderParticipant)?.displayName ?? "Thành viên";
+      : convo.lastMessage?.senderDeleted || !lastMessageSenderId
+        ? convo.lastMessage?.senderDisplayName ?? DELETED_USER_LABEL
+        : getParticipantProfile(senderParticipant)?.displayName ?? "Thành viên";
   const lastMessagePreview = convo.lastMessage?.isDeletedForEveryone
     ? `${senderName} đã xóa một tin nhắn`
     : convo.lastMessage?.content?.trim() ||

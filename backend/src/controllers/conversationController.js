@@ -114,6 +114,10 @@ const normalizeMessageForUser = (message, userId) => {
   const currentUserId = userId?.toString();
   return {
     ...message.toObject(),
+    senderId: message.senderId?.toString?.() ?? message.senderId ?? null,
+    senderDeleted: Boolean(message.senderDeleted || !message.senderId),
+    senderDisplayName: message.senderDisplayName ?? null,
+    senderAvatar: message.senderAvatar ?? null,
     deletedFor: (message.deletedFor || []).map((item) => item.toString()),
     reactions: (message.reactions || []).map((reaction) => ({
       emoji: reaction.emoji,
@@ -410,7 +414,7 @@ export const markasSeen = async (req, res) => {
         .json({ message: "Không có tin nhắn đẻ mark as seen" });
     }
 
-    if (last.senderId.toString() === userId) {
+    if (!last.senderId || last.senderId.toString() === userId) {
       return res.status(200).json({ message: "Sender không cần mark as seen" });
     }
 

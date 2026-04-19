@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSocketStore } from "@/stores/useSocketStore";
 
 type Props = {
   open: boolean;
@@ -64,6 +65,7 @@ const readDeleteSession = (): DeleteSessionState => {
 const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const navigate = useNavigate();
   const clearState = useAuthStore((s) => s.clearState);
+  const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
 
   const initialSession = useMemo(() => readDeleteSession(), []);
 
@@ -210,17 +212,18 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
 
     try {
       setLoading(true);
-      const result = await authService.confirmAccountDeletion(confirmText, code);
+      await authService.confirmAccountDeletion(confirmText, code);
 
       window.sessionStorage.setItem(
         AUTH_REDIRECT_TOAST_KEY,
         JSON.stringify({
           type: "success",
-          message: result.message,
+          message: "Đã xóa tài khoản thành công.",
         }),
       );
 
       resetDialog();
+      disconnectSocket();
       clearState();
       setOpen(false);
       navigate("/signin", { replace: true });

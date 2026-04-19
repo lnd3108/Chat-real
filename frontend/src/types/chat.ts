@@ -36,12 +36,15 @@ export interface LastMessage {
   imgUrl?: string | null;
   isDeletedForEveryone?: boolean;
   createdAt?: string;
+  senderDeleted?: boolean;
+  senderDisplayName?: string | null;
+  senderAvatar?: string | null;
   sender?: {
     _id: string;
     displayName: string;
     avatarUrl?: string | null;
   };
-  senderId?: string | { _id?: string };
+  senderId?: string | { _id?: string } | null;
 }
 
 export interface DirectBlockInfo {
@@ -54,7 +57,10 @@ export interface DirectBlockInfo {
 
 export interface MessageReply {
   messageId: string;
-  senderId: string;
+  senderId: string | null;
+  senderDeleted?: boolean;
+  senderDisplayName?: string | null;
+  senderAvatar?: string | null;
   content: string | null;
   imgUrl?: string | null;
   isDeletedForEveryone?: boolean;
@@ -87,7 +93,10 @@ export interface ConversationResponse {
 export interface Message {
   _id: string;
   conversationId: string;
-  senderId: string;
+  senderId: string | null;
+  senderDeleted?: boolean;
+  senderDisplayName?: string | null;
+  senderAvatar?: string | null;
   type?: "user" | "system";
   content: string | null;
   imgUrl?: string | null;

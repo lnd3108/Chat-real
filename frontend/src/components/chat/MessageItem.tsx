@@ -1,4 +1,5 @@
-﻿import { cn, formatMessageTime } from "@/lib/utils";
+import { cn, formatMessageTime } from "@/lib/utils";
+import { DELETED_USER_LABEL, getDeletedAwareSenderName } from "@/lib/chatParticipants";
 import type { Conversation, Message, Participant } from "@/types/chat";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -90,6 +91,25 @@ const MessageItem = ({
   const replySender = selectedConvo.participants.find(
     (p: Participant) => p._id?.toString() === message.replyTo?.senderId?.toString(),
   );
+  const senderName =
+    participant?.displayName ??
+    getDeletedAwareSenderName({
+      senderDeleted: message.senderDeleted,
+      senderDisplayName: message.senderDisplayName,
+      senderId: message.senderId,
+      fallback: "Người dùng",
+    });
+  const senderAvatarUrl = participant?.avatarUrl ?? message.senderAvatar ?? undefined;
+  const replySenderName =
+    message.replyTo?.senderId === user?._id
+      ? "Bạn"
+      : replySender?.displayName ??
+        getDeletedAwareSenderName({
+          senderDeleted: message.replyTo?.senderDeleted,
+          senderDisplayName: message.replyTo?.senderDisplayName,
+          senderId: message.replyTo?.senderId,
+          fallback: "Người gửi",
+        });
   const canEdit =
     message.isOwn && !message.isDeletedForEveryone && message.type !== "system";
   const canRecallForEveryone =
@@ -99,7 +119,8 @@ const MessageItem = ({
   );
   const deletedMessageLabel = message.isOwn
     ? "Bạn đã xóa một tin nhắn"
-    : `${participant?.displayName ?? "Người dùng"} đã xóa một tin nhắn`;
+    : `${senderName} đã xóa một tin nhắn`;
+  const deletedAccountMessageLabel = "Người dùng đã xóa tài khoản";
   const isBusy = pendingAction !== null;
   const isDeletingImage =
     !!message.imgUrl &&
@@ -109,6 +130,9 @@ const MessageItem = ({
   const replyPreviewLabel = message.replyTo?.isDeletedForEveryone
     ? "Tin nhắn này đã bị thu hồi"
     : message.replyTo?.content || (message.replyTo?.imgUrl ? "Hình ảnh" : "Tin nhắn");
+
+  const shouldHideDeletedSenderContent =
+    !message.isOwn && (message.senderDeleted || !message.senderId);
 
   const handleJumpToReplyMessage = () => {
     const replyMessageId = message.replyTo?.messageId;
@@ -205,8 +229,8 @@ const MessageItem = ({
             {isGroupBreak && (
               <UserAvatar
                 type="chat"
-                name={participant?.displayName ?? "ChatRealTime"}
-                avatarUrl={participant?.avatarUrl ?? undefined}
+                name={senderName || DELETED_USER_LABEL}
+                avatarUrl={senderAvatarUrl}
               />
             )}
           </div>
@@ -238,9 +262,7 @@ const MessageItem = ({
                     className="w-full rounded-lg border border-border/50 bg-background/40 px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/55"
                   >
                     <p className="font-medium text-primary">
-                      {message.replyTo.senderId === user?._id
-                        ? "Bạn"
-                        : replySender?.displayName ?? "Người gửi"}
+                      {replySenderName}
                     </p>
                     <p className="truncate text-muted-foreground">
                       {replyPreviewLabel}
@@ -296,11 +318,15 @@ const MessageItem = ({
                         </DialogContent>
                       </Dialog>
                     )}
-                    {message.content && (
+                    {shouldHideDeletedSenderContent ? (
+                      <p className="break-words text-sm italic leading-relaxed text-muted-foreground">
+                        {deletedAccountMessageLabel}
+                      </p>
+                    ) : message.content ? (
                       <p className="break-words text-sm leading-relaxed">
                         {message.content}
                       </p>
-                    )}
+                    ) : null}
                     {message.editedAt && (
                       <p className="text-[11px] italic text-muted-foreground">
                         Đã chỉnh sửa

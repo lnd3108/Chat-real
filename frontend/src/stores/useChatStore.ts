@@ -18,7 +18,7 @@ const inflightMessageFetches = new Map<string, Promise<void>>();
 
 const normalizeIncomingMessage = (message: Message, userId?: string) => ({
   ...message,
-  isOwn: message.senderId === userId,
+  isOwn: !!message.senderId && message.senderId === userId,
 });
 
 const getConversationSortTime = (conversation: Conversation) =>
@@ -60,18 +60,26 @@ export const useChatStore = create<ChatState>()(
       loading: false,
 
       reset: () =>
-        set({
-          conversations: [],
-          messages: {},
-          activeConversationId: null,
-          replyingTo: null,
-          editingMessage: null,
-          convoLoading: false,
-          messageLoading: false,
-        }),
+        {
+          inflightMessageFetches.clear();
+          set({
+            conversations: [],
+            messages: {},
+            activeConversationId: null,
+            replyingTo: null,
+            editingMessage: null,
+            convoLoading: false,
+            messageLoading: false,
+          });
+        },
       setActiveConversation: (id) => set({ activeConversationId: id }),
 
       fetchConversations: async () => {
+        const { accessToken } = useAuthStore.getState();
+        if (!accessToken) {
+          return;
+        }
+
         try {
           set({ convoLoading: true });
           const { conversations } = await chatServices.fetchConversations();
@@ -92,10 +100,10 @@ export const useChatStore = create<ChatState>()(
 
       fetchMessages: async (conversationId?: string) => {
         const { activeConversationId, messages } = get();
-        const { user } = useAuthStore.getState();
+        const { user, accessToken } = useAuthStore.getState();
         const convoId = conversationId ?? activeConversationId;
 
-        if (!convoId) return;
+        if (!convoId || !accessToken) return;
 
         const current = messages?.[convoId];
         const nextCursor = current?.nextCursor ?? undefined;
@@ -140,7 +148,9 @@ export const useChatStore = create<ChatState>()(
               };
             });
           } catch (error) {
-            console.error("Failed to fetch messages:", error);
+            if (useAuthStore.getState().accessToken) {
+              console.error("Failed to fetch messages:", error);
+            }
           } finally {
             inflightMessageFetches.delete(requestKey);
             set({ messageLoading: false });

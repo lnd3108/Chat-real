@@ -1,5 +1,7 @@
 import { emitToUser } from "../socket/index.js";
 
+export const DELETED_USER_DISPLAY_NAME = "Người dùng đã xóa";
+
 const getParticipantUserId = (participant) => {
   if (!participant) return null;
 
@@ -16,8 +18,33 @@ const getParticipantUserId = (participant) => {
   return typeof rawUserId === "string" ? rawUserId : null;
 };
 
+export const buildDeletedSenderSnapshot = () => ({
+  senderId: null,
+  senderDeleted: true,
+  senderDisplayName: DELETED_USER_DISPLAY_NAME,
+  senderAvatar: null,
+});
+
+const buildSenderSnapshot = (message, senderIdOverride) => {
+  if (message?.senderDeleted || !message?.senderId) {
+    return {
+      senderId: null,
+      senderDeleted: true,
+      senderDisplayName:
+        message?.senderDisplayName ?? DELETED_USER_DISPLAY_NAME,
+      senderAvatar: message?.senderAvatar ?? null,
+    };
+  }
+
+  return {
+    senderId: senderIdOverride ?? message.senderId,
+    senderDeleted: false,
+    senderDisplayName: message?.senderDisplayName ?? null,
+    senderAvatar: message?.senderAvatar ?? null,
+  };
+};
+
 export const buildLastMessagePayload = (message, senderIdOverride) => {
-  const senderId = senderIdOverride ?? message.senderId;
   const lastMessageContent = message.isDeletedForEveryone
     ? "Bạn đã xóa một tin nhắn"
     : message.content?.trim() || (message.imgUrl ? "[Hình ảnh]" : null);
@@ -27,7 +54,7 @@ export const buildLastMessagePayload = (message, senderIdOverride) => {
     content: lastMessageContent,
     imgUrl: message.isDeletedForEveryone ? null : (message.imgUrl ?? null),
     isDeletedForEveryone: Boolean(message.isDeletedForEveryone),
-    senderId,
+    ...buildSenderSnapshot(message, senderIdOverride),
     createdAt: message.createdAt,
   };
 };

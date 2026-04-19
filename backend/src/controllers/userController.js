@@ -5,6 +5,7 @@ import {
 import Friend from "../models/Friend.js";
 import FriendRequest from "../models/FriendRequest.js";
 import User from "../models/User.js";
+import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
 
 const formatBlockedUsers = async (blockedUsers = []) => {
@@ -585,5 +586,87 @@ export const unblockUser = async (req, res) => {
   } catch (error) {
     console.error("Loi unblockUser:", error);
     return res.status(500).json({ message: "Loi he thong" });
+  }
+};
+
+export const deleteMyAccount = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { code, confirmationText } = req.body || {};
+
+    if (String(confirmationText || "").trim().toUpperCase() !== "DELETE") {
+      return res.status(400).json({
+        message: 'Vui lòng nhập đúng "DELETE" để xác nhận xóa tài khoản.',
+      });
+    }
+
+    if (!code) {
+      return res.status(400).json({ message: "Vui lòng nhập mã xác minh." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    if (!user.accountDeletionCodeHash || !user.accountDeletionExpiresAt) {
+      return res.status(400).json({
+        message: "Không tìm thấy yêu cầu xóa tài khoản đang hoạt động.",
+      });
+    }
+
+    if (user.accountDeletionExpiresAt < new Date()) {
+      user.accountDeletionCodeHash = undefined;
+      user.accountDeletionExpiresAt = undefined;
+      user.accountDeletionLastSentAt = undefined;
+      await user.save();
+
+      return res.status(400).json({
+        message:
+          "Yêu cầu xóa tài khoản đã hết hạn sau 5 phút. Vui lòng tạo lại yêu cầu mới.",
+      });
+    }
+
+    const crypto = await import("crypto");
+    const providedCodeHash = crypto
+      .createHash("sha256")
+      .update(String(code).trim())
+      .digest("hex");
+
+    if (providedCodeHash !== user.accountDeletionCodeHash) {
+      return res.status(400).json({ message: "Mã xác minh không đúng." });
+    }
+
+    const { sendAccountDeletedEmail } = await import("../utils/mail.js");
+    const accountEmail = user.email;
+    const displayName = user.displayName;
+
+    const { summary } = await permanentlyDeleteUserAccount({
+      targetUserId: user._id,
+      actorUserId: user._id,
+      initiatedBy: "self",
+    });
+
+    res.clearCookie("refreshToken");
+
+    try {
+      await sendAccountDeletedEmail({
+        email: accountEmail,
+        displayName,
+      });
+    } catch (mailError) {
+      console.error("Loi sendAccountDeletedEmail", mailError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Tài khoản đã được xóa.",
+      data: summary,
+    });
+  } catch (error) {
+    console.error("Loi deleteMyAccount:", error);
+    return res.status(error.status || 500).json({
+      message: error.message || "Không thể xóa tài khoản. Vui lòng thử lại.",
+    });
   }
 };

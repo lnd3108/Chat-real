@@ -137,14 +137,20 @@ export const authService = {
   },
 
   confirmAccountDeletion: async (confirmationText: string, code: string) => {
-    const res = await api.post(
-      "/auth/delete-account/confirm",
-      { confirmationText, code },
-      { withCredentials: true },
-    );
+    const res = await api.delete("/users/me", {
+      data: { confirmationText, code },
+      withCredentials: true,
+    });
 
     return res.data as {
+      success: boolean;
       message: string;
+      data: {
+        deletedDirectConversationsCount: number;
+        deletedDirectMessagesCount: number;
+        affectedGroupsCount: number;
+        anonymizedGroupMessagesCount: number;
+      };
     };
   },
 

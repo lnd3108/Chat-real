@@ -6,6 +6,7 @@ import {
   getUserSuggestions,
   searchUserByUserName,
   test,
+  deleteMyAccount,
   unblockUser,
   updateMe,
   updatePreferences,
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.get("/me", authMe);
 router.patch("/me", updateMe);
+router.delete("/me", deleteMyAccount);
 
 router.get("/test", test);
 

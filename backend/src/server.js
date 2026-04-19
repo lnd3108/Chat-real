@@ -10,6 +10,7 @@ import userRoute from "./routes/userRoute.js";
 import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
+import adminRoute from "./routes/adminRoute.js";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import { initSocket } from "./socket/index.js";
 import { getMailConfigStatus } from "./utils/mail.js";
@@ -37,6 +38,7 @@ app.use("/api/users", userRoute);
 app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
+app.use("/api/admin", adminRoute);
 
 connectDB()
   .then(() => {

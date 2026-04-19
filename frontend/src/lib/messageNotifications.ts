@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
 import type { AppNotification } from "@/types/store";
-import { getParticipantId } from "./chatParticipants";
+import { DELETED_USER_LABEL, getParticipantId } from "./chatParticipants";
 import { isDirectNotificationEnabled } from "./directChatPreferences";
 import { isGroupNotificationEnabled } from "./groupNotificationSettings";
 
@@ -213,7 +213,11 @@ const getSenderName = (
         (participant) => getParticipantId(participant) === message.senderId,
       ) ?? null;
 
-    return sender?.displayName ?? "Thành viên";
+    return (
+      sender?.displayName ??
+      message.senderDisplayName ??
+      (message.senderDeleted || !message.senderId ? DELETED_USER_LABEL : "Thành viên")
+    );
   }
 
   const otherParticipant =

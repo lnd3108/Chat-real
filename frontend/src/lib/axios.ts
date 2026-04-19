@@ -20,6 +20,7 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
+    const { accessToken } = useAuthStore.getState();
 
     if (
       originalRequest.url.includes("/auth/signin") ||
@@ -30,6 +31,10 @@ api.interceptors.response.use(
     }
 
     originalRequest._retryCount = originalRequest._retryCount || 0;
+
+    if (error.response?.status === 403 && !accessToken) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 403 && originalRequest._retryCount < 4) {
       originalRequest._retryCount += 1;

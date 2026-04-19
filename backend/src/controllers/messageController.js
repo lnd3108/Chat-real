@@ -2,6 +2,7 @@ import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
 import {
+  buildDeletedSenderSnapshot,
   emitMessageUpdated,
   emitNewMessage,
   syncConversationLastMessage,
@@ -28,6 +29,10 @@ const normalizeMessageForClient = (message, viewerId) => {
 
   return {
     ...normalized,
+    senderId: normalized.senderId ?? null,
+    senderDeleted: Boolean(normalized.senderDeleted || !normalized.senderId),
+    senderDisplayName: normalized.senderDisplayName ?? null,
+    senderAvatar: normalized.senderAvatar ?? null,
     deletedFor,
     isHiddenForMe: currentUserId ? deletedFor.includes(currentUserId) : false,
     reactions: (normalized.reactions || []).map((reaction) => ({
@@ -51,7 +56,16 @@ const buildReplySnapshot = async (conversationId, replyToMessageId) => {
 
   return {
     messageId: replyMessage._id,
-    senderId: replyMessage.senderId,
+    senderId: replyMessage.senderId ?? null,
+    senderDeleted: Boolean(replyMessage.senderDeleted || !replyMessage.senderId),
+    senderDisplayName:
+      replyMessage.senderDeleted || !replyMessage.senderId
+        ? replyMessage.senderDisplayName ?? buildDeletedSenderSnapshot().senderDisplayName
+        : (replyMessage.senderDisplayName ?? null),
+    senderAvatar:
+      replyMessage.senderDeleted || !replyMessage.senderId
+        ? replyMessage.senderAvatar ?? null
+        : (replyMessage.senderAvatar ?? null),
     isDeletedForEveryone: !!replyMessage.isDeletedForEveryone,
     content: replyMessage.isDeletedForEveryone
       ? RECALL_PLACEHOLDER
@@ -93,9 +107,7 @@ const findLatestVisibleMessage = async (conversationId) =>
   }).sort({ createdAt: -1 });
 
 const syncConversationAndEmitUpdate = async (conversation, message) => {
-  const latestMessage =
-    message ??
-    (await findLatestVisibleMessage(conversation._id));
+  const latestMessage = message ?? (await findLatestVisibleMessage(conversation._id));
 
   syncConversationLastMessage(conversation, latestMessage);
   await conversation.save();
@@ -134,6 +146,8 @@ const createAndEmitMessage = async ({
   conversation,
   conversationId,
   senderId,
+  senderDisplayName,
+  senderAvatar,
   content,
   file,
   replyToMessageId,
@@ -157,6 +171,9 @@ const createAndEmitMessage = async ({
   const message = await Message.create({
     conversationId,
     senderId,
+    senderDeleted: false,
+    senderDisplayName: senderDisplayName ?? null,
+    senderAvatar: senderAvatar ?? null,
     content: normalizedContent,
     imgUrl,
     imgPublicId,
@@ -225,7 +242,6 @@ export const sendDirectMessage = async (req, res) => {
     }
 
     let conversation = null;
-    let isNewConversation = false;
     const recipientUser = await User.findById(recipientId).select("blockedUsers");
 
     if (!recipientUser) {
@@ -253,7 +269,9 @@ export const sendDirectMessage = async (req, res) => {
       }
 
       if (conversation.type !== "direct") {
-        return res.status(400).json({ message: "Chỉ hỗ trợ gửi direct vào cuộc trò chuyện 1-1" });
+        return res.status(400).json({
+          message: "Chỉ hỗ trợ gửi direct vào cuộc trò chuyện 1-1",
+        });
       }
 
       const memberIds = conversation.participants.map((participant) =>
@@ -280,25 +298,24 @@ export const sendDirectMessage = async (req, res) => {
         ],
         lastMessageAt: new Date(),
       });
-      isNewConversation = true;
     }
 
     const { message, conversationPayload } = await createAndEmitMessage({
       conversation,
       conversationId: conversation._id,
       senderId,
+      senderDisplayName: req.user.displayName ?? null,
+      senderAvatar: req.user.avatarUrl ?? null,
       content,
       file,
       replyToMessageId,
       includeConversationPayload: true,
     });
 
-    return res
-      .status(201)
-      .json({
-        message: normalizeMessageForClient(message, senderId),
-        conversation: conversationPayload,
-      });
+    return res.status(201).json({
+      message: normalizeMessageForClient(message, senderId),
+      conversation: conversationPayload,
+    });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -320,14 +337,14 @@ export const sendGroupMessage = async (req, res) => {
       conversation,
       conversationId,
       senderId,
+      senderDisplayName: req.user.displayName ?? null,
+      senderAvatar: req.user.avatarUrl ?? null,
       content,
       file,
       replyToMessageId,
     });
 
-    return res
-      .status(201)
-      .json({ message: normalizeMessageForClient(message, senderId) });
+    return res.status(201).json({ message: normalizeMessageForClient(message, senderId) });
   } catch (error) {
     console.error("Lỗi xảy ra khi gửi tin nhắn nhóm", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -344,10 +361,7 @@ export const editMessage = async (req, res) => {
       return res.status(400).json({ message: "Nội dung không được để trống" });
     }
 
-    const { message, conversation, error } = await loadMessageContext(
-      messageId,
-      userId,
-    );
+    const { message, conversation, error } = await loadMessageContext(messageId, userId);
     if (error) {
       return res.status(error.status).json({ message: error.message });
     }
@@ -356,7 +370,7 @@ export const editMessage = async (req, res) => {
       return res.status(400).json({ message: "Không thể sửa tin nhắn hệ thống" });
     }
 
-    if (message.senderId.toString() !== userId.toString()) {
+    if (!message.senderId || message.senderId.toString() !== userId.toString()) {
       return res.status(403).json({ message: "Bạn không thể sửa tin nhắn này" });
     }
 
@@ -374,9 +388,7 @@ export const editMessage = async (req, res) => {
 
     emitMessageUpdated(getIo(), conversation, message);
 
-    return res
-      .status(200)
-      .json({ message: normalizeMessageForClient(message, userId) });
+    return res.status(200).json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
     console.error("Lỗi khi sửa tin nhắn", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -409,7 +421,7 @@ export const deleteMessageForMe = async (req, res) => {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Lỗi khi thu hồi tin nhắn phía mình", error);
+    console.error("Lỗi khi xóa tin nhắn ở phía mình", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -419,10 +431,7 @@ export const deleteMessageForEveryone = async (req, res) => {
     const { messageId } = req.params;
     const userId = req.user._id;
 
-    const { message, conversation, error } = await loadMessageContext(
-      messageId,
-      userId,
-    );
+    const { message, conversation, error } = await loadMessageContext(messageId, userId);
     if (error) {
       return res.status(error.status).json({ message: error.message });
     }
@@ -431,7 +440,7 @@ export const deleteMessageForEveryone = async (req, res) => {
       return res.status(400).json({ message: "Không thể thu hồi tin nhắn hệ thống" });
     }
 
-    if (message.senderId.toString() !== userId.toString()) {
+    if (!message.senderId || message.senderId.toString() !== userId.toString()) {
       return res.status(403).json({ message: "Bạn không thể thu hồi tin nhắn này" });
     }
 
@@ -444,7 +453,7 @@ export const deleteMessageForEveryone = async (req, res) => {
         : deleteImageFromCloudinaryUrl(currentImgUrl);
 
       await deleteImagePromise.catch((deleteError) => {
-        console.error("KhÃ´ng thá»ƒ xÃ³a áº£nh tin nháº¯n trÃªn Cloudinary:", deleteError);
+        console.error("Không thể xóa ảnh tin nhắn trên Cloudinary:", deleteError);
       });
     }
 
@@ -465,9 +474,7 @@ export const deleteMessageForEveryone = async (req, res) => {
 
     emitMessageUpdated(getIo(), conversation, message);
 
-    return res
-      .status(200)
-      .json({ message: normalizeMessageForClient(message, userId) });
+    return res.status(200).json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
     console.error("Lỗi khi thu hồi tin nhắn cho tất cả", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -484,16 +491,15 @@ export const toggleReaction = async (req, res) => {
       return res.status(400).json({ message: "Emoji là bắt buộc" });
     }
 
-    const { message, conversation, error } = await loadMessageContext(
-      messageId,
-      userId,
-    );
+    const { message, conversation, error } = await loadMessageContext(messageId, userId);
     if (error) {
       return res.status(error.status).json({ message: error.message });
     }
 
     if (message.isDeletedForEveryone) {
-      return res.status(400).json({ message: "Không thể thả biểu cảm vào tin nhắn đã thu hồi" });
+      return res.status(400).json({
+        message: "Không thể thả biểu cảm vào tin nhắn đã thu hồi",
+      });
     }
 
     const reaction = message.reactions.find((item) => item.emoji === emoji);
@@ -508,17 +514,13 @@ export const toggleReaction = async (req, res) => {
         ? reaction.userIds.filter((item) => item.toString() !== userId.toString())
         : [...reaction.userIds, userId];
 
-      message.reactions = message.reactions.filter(
-        (item) => item.userIds.length > 0,
-      );
+      message.reactions = message.reactions.filter((item) => item.userIds.length > 0);
     }
 
     await message.save();
     emitMessageUpdated(getIo(), conversation, message);
 
-    return res
-      .status(200)
-      .json({ message: normalizeMessageForClient(message, userId) });
+    return res.status(200).json({ message: normalizeMessageForClient(message, userId) });
   } catch (error) {
     console.error("Lỗi khi thả biểu cảm vào tin nhắn", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -526,5 +528,3 @@ export const toggleReaction = async (req, res) => {
 };
 
 export const sendMessageWithImage = sendGroupMessage;
-
-

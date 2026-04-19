@@ -1,5 +1,7 @@
 import type { LastMessage, Participant, SeenUser } from "@/types/chat";
 
+export const DELETED_USER_LABEL = "Người dùng đã xóa";
+
 export const getParticipantId = (participant?: Participant | null): string => {
   if (!participant) return "";
 
@@ -29,6 +31,19 @@ export const getLastMessageSenderId = (
   }
 
   return "";
+};
+
+export const getDeletedAwareSenderName = (options: {
+  senderDeleted?: boolean;
+  senderDisplayName?: string | null;
+  senderId?: string | { _id?: string } | null;
+  fallback?: string;
+}) => {
+  if (options.senderDeleted || !options.senderId) {
+    return options.senderDisplayName ?? DELETED_USER_LABEL;
+  }
+
+  return options.fallback ?? "";
 };
 
 export const normalizeSeenUser = (

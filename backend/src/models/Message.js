@@ -10,6 +10,18 @@ const replyToSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    senderDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    senderDisplayName: {
+      type: String,
+      default: null,
+    },
+    senderAvatar: {
+      type: String,
+      default: null,
+    },
     content: {
       type: String,
       default: null,
@@ -60,7 +72,19 @@ const messageSchema = new mongoose.Schema(
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
+    },
+    senderDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    senderDisplayName: {
+      type: String,
+      default: null,
+    },
+    senderAvatar: {
+      type: String,
+      default: null,
     },
     type: {
       type: String,

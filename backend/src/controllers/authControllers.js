@@ -849,6 +849,9 @@ export const requestAccountDeletion = async (req, res) => {
 };
 
 export const confirmAccountDeletion = async (req, res) => {
+  const { deleteMyAccount } = await import("./userController.js");
+  return deleteMyAccount(req, res);
+
   try {
     const userId = req.user?._id;
     const { code, confirmationText } = req.body || {};
