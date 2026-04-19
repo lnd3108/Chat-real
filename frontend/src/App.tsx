@@ -10,6 +10,7 @@ import AdminProtectedRoute from "./components/auth/AdminProtectedRoute";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminBlocks from "./pages/admin/AdminBlocks";
 import AdminFriends from "./pages/admin/AdminFriends";
 import AdminFriendRequests from "./pages/admin/AdminFriendRequests";
@@ -90,6 +91,7 @@ function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
               <Route path="/admin/blocks" element={<AdminBlocks />} />
               <Route path="/admin/friends" element={<AdminFriends />} />
               <Route path="/admin/friend-requests" element={<AdminFriendRequests />} />

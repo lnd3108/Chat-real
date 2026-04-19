@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { axiosInstance } from "@/lib/axios";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import UserAvatar from "@/components/chat/UserAvatar";
+import { useNavigate } from "react-router";
 
 interface User {
   _id: string;
@@ -25,6 +26,7 @@ interface PaginationData {
 }
 
 const AdminUsers = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +117,10 @@ const AdminUsers = () => {
       month: "2-digit",
       day: "2-digit",
     });
+  };
+
+  const goToUserDetail = (userId: string) => {
+    navigate(`/admin/users/${userId}`);
   };
 
   if (error && !loading) {
@@ -234,7 +240,7 @@ const AdminUsers = () => {
                 {users.map((user) => (
                   <tr
                     key={user._id}
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                    className="border-b border-border/50 transition-colors hover:bg-muted/30"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -245,8 +251,16 @@ const AdminUsers = () => {
                           className="size-10"
                         />
                         <div>
-                          <p className="font-medium text-foreground">{user.displayName}</p>
-                          <p className="text-sm text-muted-foreground">@{user.userName}</p>
+                          <button
+                            type="button"
+                            onClick={() => goToUserDetail(user._id)}
+                            className="text-left"
+                          >
+                            <p className="font-medium text-foreground hover:underline">
+                              {user.displayName}
+                            </p>
+                            <p className="text-sm text-muted-foreground">@{user.userName}</p>
+                          </button>
                         </div>
                       </div>
                     </td>
@@ -268,7 +282,12 @@ const AdminUsers = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 transition-colors hover:bg-muted/50"
+                          onClick={() => goToUserDetail(user._id)}
+                          aria-label={`Xem chi tiet ${user.displayName}`}
+                        >
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </button>
                         <button className="p-2 hover:bg-muted/50 rounded-lg transition-colors">

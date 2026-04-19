@@ -13,7 +13,7 @@ export const getDashboardStats = async (req, res) => {
     const totalConversations = await Conversation.countDocuments();
     const totalMessages = await Message.countDocuments();
     const totalFriendRequests = await FriendRequest.countDocuments();
-    const totalBlocks = await blockingModel.countDocuments();
+    const totalBlocks = await Blocking.countDocuments();
 
     return res.status(200).json({
       success: true,
@@ -105,8 +105,8 @@ export const getUsers = async (req, res) => {
 // Lấy thông tin người dùng
 export const getUserDetail = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const user = await User.findById(userId).select(
+    const { id } = req.params;
+    const user = await User.findById(id).select(
       "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash"
     );
 
@@ -117,9 +117,47 @@ export const getUserDetail = async (req, res) => {
       });
     }
 
+    // Get statistics
+    const friendsCount = await Friend.countDocuments({
+      $or: [{ userA: id }, { userB: id }],
+    });
+
+    const directConversationsCount = await Conversation.countDocuments({
+      "participants.userId": id,
+      type: "direct",
+    });
+
+    const groupConversationsCount = await Conversation.countDocuments({
+      "participants.userId": id,
+      type: "group",
+    });
+
+    const blockingCount = await Blocking.countDocuments({ userId: id });
+    const blockedByCount = await Blocking.countDocuments({ blockedUserId: id });
+    const messagesCount = await Message.countDocuments({ senderId: id });
+
     return res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        user: {
+          _id: user._id,
+          avatar: user.avatarUrl ?? null,
+          username: user.userName,
+          displayName: user.displayName,
+          email: user.email,
+          status: user.status,
+          createdAt: user.createdAt,
+          role: user.role,
+        },
+        stats: {
+          friendsCount,
+          directConversationsCount,
+          groupConversationsCount,
+          blockingCount,
+          blockedByCount,
+          messagesCount,
+        },
+      },
     });
   } catch (error) {
     console.error("Lỗi khi lấy thông tin người dùng:", error);

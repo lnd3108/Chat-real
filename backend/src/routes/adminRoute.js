@@ -23,7 +23,7 @@ router.get("/dashboard", getDashboardStats);
 
 // Users Management
 router.get("/users", getUsers);
-router.get("/users/:userId", getUserDetail);
+router.get("/users/:id", getUserDetail);
 router.patch("/users/:userId/role", updateUserRole);
 
 // Delete User (already existing)

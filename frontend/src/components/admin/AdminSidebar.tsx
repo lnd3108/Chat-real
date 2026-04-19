@@ -17,7 +17,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { logout } = useAuthStore();
+  const { signOut } = useAuthStore();
 
   const menuItems = [
     {
@@ -65,7 +65,7 @@ const AdminSidebar = () => {
   ];
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     window.location.href = "/signin";
   };
 
