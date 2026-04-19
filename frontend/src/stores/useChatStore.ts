@@ -138,7 +138,7 @@ export const useChatStore = create<ChatState>()(
             return;
           }
 
-          await chatServices.sendDirectMessage(
+          const message = await chatServices.sendDirectMessage(
             finalRecipientId,
             content,
             imgUrl,
@@ -146,9 +146,28 @@ export const useChatStore = create<ChatState>()(
             replyingTo?._id,
           );
 
+          const targetConversationId = message.conversationId;
+
+          if (targetConversationId) {
+            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
+            get().setActiveConversation(targetConversationId);
+
+            const hasConversation = get().conversations.some(
+              (conversation) => conversation._id === targetConversationId,
+            );
+
+            if (!hasConversation) {
+              await get().fetchConversations();
+            }
+
+            if (!get().messages[targetConversationId]) {
+              await get().fetchMessages(targetConversationId);
+            }
+          }
+
           set((state) => ({
             conversations: state.conversations.map((conversation) =>
-              conversation._id === activeConversationId
+              conversation._id === (targetConversationId ?? activeConversationId)
                 ? { ...conversation, seenBy: [] }
                 : conversation,
             ),
@@ -186,7 +205,7 @@ export const useChatStore = create<ChatState>()(
             return;
           }
 
-          await chatServices.sendDirectMessageWithImage(
+          const message = await chatServices.sendDirectMessageWithImage(
             finalRecipientId,
             image,
             content,
@@ -195,9 +214,28 @@ export const useChatStore = create<ChatState>()(
             options?.onUploadProgress,
           );
 
+          const targetConversationId = message.conversationId;
+
+          if (targetConversationId) {
+            useSocketStore.getState().socket?.emit("join-conversation", targetConversationId);
+            get().setActiveConversation(targetConversationId);
+
+            const hasConversation = get().conversations.some(
+              (conversation) => conversation._id === targetConversationId,
+            );
+
+            if (!hasConversation) {
+              await get().fetchConversations();
+            }
+
+            if (!get().messages[targetConversationId]) {
+              await get().fetchMessages(targetConversationId);
+            }
+          }
+
           set((state) => ({
             conversations: state.conversations.map((conversation) =>
-              conversation._id === activeConversationId
+              conversation._id === (targetConversationId ?? activeConversationId)
                 ? { ...conversation, seenBy: [] }
                 : conversation,
             ),

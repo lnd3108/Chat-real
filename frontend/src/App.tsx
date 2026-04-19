@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
+import { useChatStore } from "./stores/useChatStore";
 import { useSocketStore } from "./stores/useSocketStore";
 import { requestDesktopNotificationPermission } from "./lib/messageNotifications";
 import { installGlobalUiSoundEffects } from "./lib/sound";
@@ -17,6 +18,7 @@ function App() {
   const { isDark, setTheme } = useThemeStore();
   const { accessToken } = useAuthStore();
   const { connectSocket, disconnectSocket } = useSocketStore();
+  const fetchConversations = useChatStore((state) => state.fetchConversations);
 
   useEffect(() => {
     setTheme(isDark);
@@ -25,11 +27,12 @@ function App() {
   useEffect(() => {
     if (accessToken) {
       connectSocket();
+      void fetchConversations();
       requestDesktopNotificationPermission();
     }
 
     return () => disconnectSocket();
-  }, [accessToken, connectSocket, disconnectSocket]);
+  }, [accessToken, connectSocket, disconnectSocket, fetchConversations]);
 
   useEffect(() => installGlobalUiSoundEffects(), []);
 
