@@ -6,6 +6,17 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Global AbortController for cancelling requests on account deletion
+let globalAbortController = new AbortController();
+let isAccountDeleted = false;
+
+// Export function to abort all pending requests
+export const abortAllRequests = () => {
+  isAccountDeleted = true;
+  globalAbortController.abort();
+  globalAbortController = new AbortController();
+};
+
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
 
@@ -13,19 +24,28 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
 
+  // Add global abort signal to all requests
+  config.signal = globalAbortController.signal;
+
   return config;
 });
 
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    // Don't retry if account was deleted
+    if (isAccountDeleted) {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
     const { accessToken } = useAuthStore.getState();
 
     if (
       originalRequest.url.includes("/auth/signin") ||
       originalRequest.url.includes("/auth/signup") ||
-      originalRequest.url.includes("/auth/refresh")
+      originalRequest.url.includes("/auth/refresh") ||
+      (originalRequest.url.includes("/users/me") && originalRequest.method === "delete")
     ) {
       return Promise.reject(error);
     }
@@ -52,6 +72,7 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
+        // If refresh fails, clear state and reject
         useAuthStore.getState().clearState();
         return Promise.reject(refreshError);
       }

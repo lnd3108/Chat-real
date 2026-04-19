@@ -649,6 +649,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     const socket = get().socket;
 
     if (socket) {
+      // Disable auto-reconnect to prevent reconnection attempts after account deletion
+      socket.io.opts.reconnection = false;
       socket.disconnect();
       set({ socket: null });
     }

@@ -93,7 +93,10 @@ export const useChatStore = create<ChatState>()(
             };
           });
         } catch (error) {
-          console.error("Failed to fetch conversations:", error);
+          // Only log error if user still has access token
+          if (useAuthStore.getState().accessToken) {
+            console.error("Failed to fetch conversations:", error);
+          }
           set({ convoLoading: false });
         }
       },

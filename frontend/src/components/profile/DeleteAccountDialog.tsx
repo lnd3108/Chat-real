@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { authService } from "@/services/authService";
+import { abortAllRequests } from "@/lib/axios";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSocketStore } from "@/stores/useSocketStore";
 
@@ -73,7 +74,9 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const [confirmText, setConfirmText] = useState(initialSession.confirmText);
   const [code, setCode] = useState(initialSession.code);
   const [email, setEmail] = useState<string | null>(initialSession.email);
-  const [expiresAt, setExpiresAt] = useState<number | null>(initialSession.expiresAt);
+  const [expiresAt, setExpiresAt] = useState<number | null>(
+    initialSession.expiresAt,
+  );
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(
     initialSession.resendAvailableAt,
   );
@@ -151,7 +154,9 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
     if (!isExpired) return;
 
     resetDialog();
-    toast.error("Yêu cầu xóa tài khoản đã hết hạn sau 5 phút. Vui lòng tạo lại yêu cầu mới.");
+    toast.error(
+      "Yêu cầu xóa tài khoản đã hết hạn sau 5 phút. Vui lòng tạo lại yêu cầu mới.",
+    );
   }, [isExpired]);
 
   const getAxiosMessage = (error: unknown, fallback: string) => {
@@ -212,21 +217,36 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
 
     try {
       setLoading(true);
+      const successMessage =
+        "Đã xóa tài khoản thành công. Hẹn gặp lại bạn trong tương lai!";
+
       await authService.confirmAccountDeletion(confirmText, code);
+
+      // Disconnect socket first to prevent any more socket events
+      disconnectSocket();
+
+      // Abort all pending requests
+      abortAllRequests();
+
+      // Show immediate success toast before navigation
+      toast.success(successMessage);
 
       window.sessionStorage.setItem(
         AUTH_REDIRECT_TOAST_KEY,
         JSON.stringify({
           type: "success",
-          message: "Đã xóa tài khoản thành công.",
+          message: "Tài khoản của bạn đã được xóa vĩnh viễn.",
         }),
       );
 
       resetDialog();
-      disconnectSocket();
       clearState();
       setOpen(false);
-      navigate("/signin", { replace: true });
+
+      // Small delay to ensure toast is visible before navigation
+      setTimeout(() => {
+        navigate("/signin", { replace: true });
+      }, 500);
     } catch (error) {
       const message = getAxiosMessage(
         error,
@@ -257,10 +277,10 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
           </DialogTitle>
           <DialogDescription>
             Hành động này không thể hoàn tác. Bạn cần nhập{" "}
-            <strong>{DELETE_CONFIRM_WORD}</strong> và xác minh mã được gửi về email
-            trong vòng 5 phút trước khi tài khoản bị xóa vĩnh viễn. Nếu chỉ đóng
-            cửa sổ, phiên xác minh vẫn được giữ nguyên cho đến khi hết hạn hoặc bạn
-            bấm <strong>Hủy</strong>.
+            <strong>{DELETE_CONFIRM_WORD}</strong> và xác minh mã được gửi về
+            email trong vòng 5 phút trước khi tài khoản bị xóa vĩnh viễn. Nếu
+            chỉ đóng cửa sổ, phiên xác minh vẫn được giữ nguyên cho đến khi hết
+            hạn hoặc bạn bấm <strong>Hủy</strong>.
           </DialogDescription>
         </DialogHeader>
 
@@ -281,7 +301,8 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
               <div>
                 <p className="text-sm font-medium">Bước 1: Gửi mã xác minh</p>
                 <p className="text-sm text-muted-foreground">
-                  Mã xác minh xóa tài khoản sẽ được gửi tới email đăng nhập của bạn.
+                  Mã xác minh xóa tài khoản sẽ được gửi tới email đăng nhập của
+                  bạn.
                 </p>
               </div>
 
@@ -289,28 +310,34 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
                 type="button"
                 variant="outline"
                 className="shrink-0"
-                disabled={!isDeleteWordValid || loading || (hasRequestedCode && !canResend)}
+                disabled={
+                  !isDeleteWordValid ||
+                  loading ||
+                  (hasRequestedCode && !canResend)
+                }
                 onClick={() => void handleRequestCode()}
               >
-                {loading
-                  ? (
-                    <>
-                      <LoadingSpinner className="mr-2 size-4" />
-                      Đang gửi...
-                    </>
+                {loading ? (
+                  <>
+                    <LoadingSpinner className="mr-2 size-4" />
+                    Đang gửi...
+                  </>
+                ) : hasRequestedCode ? (
+                  canResend ? (
+                    "Gửi lại mã"
+                  ) : (
+                    `Gửi lại sau ${secondsToResend}s`
                   )
-                  : hasRequestedCode
-                    ? canResend
-                      ? "Gửi lại mã"
-                      : `Gửi lại sau ${secondsToResend}s`
-                    : "Gửi mã"}
+                ) : (
+                  "Gửi mã"
+                )}
               </Button>
             </div>
 
             {hasRequestedCode && (
               <p className="text-sm text-muted-foreground">
-                Mã đã được gửi tới <strong>{email}</strong>. Phiên xác minh còn hiệu
-                lực <strong>{secondsToExpire}s</strong>.
+                Mã đã được gửi tới <strong>{email}</strong>. Phiên xác minh còn
+                hiệu lực <strong>{secondsToExpire}s</strong>.
               </p>
             )}
           </div>
@@ -322,7 +349,9 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
               inputMode="numeric"
               maxLength={6}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) =>
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
               className="glass-light border-border/30"
               placeholder="Nhập mã 6 chữ số"
             />
@@ -341,7 +370,12 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
             <Button
               variant="destructive"
               className="flex-1"
-              disabled={!isDeleteWordValid || !isCodeValid || !hasRequestedCode || loading}
+              disabled={
+                !isDeleteWordValid ||
+                !isCodeValid ||
+                !hasRequestedCode ||
+                loading
+              }
               onClick={() => void handleConfirmDelete()}
             >
               {loading ? (
