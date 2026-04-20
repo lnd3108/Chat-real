@@ -302,7 +302,9 @@ const getAdminConversationSort = (sort = "updatedAt-desc") => {
 };
 
 const buildAdminConversationFilter = async ({ type = "", q = "" }) => {
-  const filter = {};
+  const filter = {
+    type: { $in: ["direct", "group"] },
+  };
   const trimmedType = String(type || "").trim();
   const trimmedQuery = String(q || "").trim();
 

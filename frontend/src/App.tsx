@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPasge";
 import ChatAppPage from "./pages/ChatAppPage";
@@ -18,6 +18,8 @@ import AdminConversations from "./pages/admin/AdminConversations";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminReportDetail from "./pages/admin/AdminReportDetail";
+import AdminSupport from "./pages/admin/AdminSupport";
+import AdminSupportDetail from "./pages/admin/AdminSupportDetail";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -91,7 +93,8 @@ function App() {
           {/* Protected routes - Admin */}
           <Route element={<AdminProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/users/:id" element={<AdminUserDetail />} />
               <Route path="/admin/blocks" element={<AdminBlocks />} />
@@ -99,6 +102,8 @@ function App() {
               <Route path="/admin/friend-requests" element={<AdminFriendRequests />} />
               <Route path="/admin/conversations" element={<AdminConversations />} />
               <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/support" element={<AdminSupport />} />
+              <Route path="/admin/support/:id" element={<AdminSupportDetail />} />
               <Route path="/admin/reports" element={<AdminReports />} />
               <Route path="/admin/reports/:id" element={<AdminReportDetail />} />
             </Route>

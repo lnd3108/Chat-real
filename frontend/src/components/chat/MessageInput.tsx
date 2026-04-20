@@ -26,6 +26,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
     sendDirectMessageWithImage,
     sendGroupMessage,
     sendGroupMessageWithImage,
+    sendSupportMessage,
     setEditingMessage,
     setReplyingTo,
   } = useChatStore();
@@ -214,7 +215,14 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
         return;
       }
 
-      if (selectedConvo.type === "direct") {
+      if (selectedConvo.type === "support") {
+        if (image) {
+          toast.error("Phiên bản hiện tại chưa hỗ trợ gửi ảnh trong hỗ trợ.");
+          return;
+        }
+
+        await sendSupportMessage(selectedConvo._id, currValue);
+      } else if (selectedConvo.type === "direct") {
         const participants = selectedConvo.participants;
         const otherUser = participants.find((p) => p._id !== user._id);
 
@@ -432,7 +440,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
           size="icon"
           className="transition-smooth hover:bg-primary/10"
           asChild
-          disabled={sending || isComposerBlocked}
+          disabled={sending || isComposerBlocked || selectedConvo.type === "support"}
         >
           <label
             className={
@@ -449,7 +457,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
               accept="image/*"
               className="hidden"
               onChange={handleSelectImage}
-              disabled={sending || isComposerBlocked}
+              disabled={sending || isComposerBlocked || selectedConvo.type === "support"}
             />
             <ImagePlus className="size-4" />
           </label>
@@ -467,7 +475,11 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             }}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Soạn tin nhắn..."
+            placeholder={
+              selectedConvo.type === "support"
+                ? "Nhập nội dung cần hỗ trợ..."
+                : "Soạn tin nhắn..."
+            }
             className="h-9 resize-none border-border/50 bg-white pr-20 transition-smooth focus:border-primary/50"
             disabled={sending || isComposerBlocked}
           />

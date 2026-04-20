@@ -30,6 +30,17 @@ export interface Group {
   avatarUrl?: string | null;
 }
 
+export type SupportStatus = "open" | "in_progress" | "resolved" | "closed";
+
+export interface SupportProfile {
+  _id: string;
+  userName?: string;
+  displayName?: string;
+  avatarUrl?: string | null;
+  email?: string;
+  role?: string;
+}
+
 export interface LastMessage {
   _id: string;
   content: string | null;
@@ -74,10 +85,15 @@ export interface MessageReaction {
 
 export interface Conversation {
   _id: string;
-  type: "direct" | "group";
-  group: Group;
+  type: "direct" | "group" | "support";
+  group?: Group | null;
   participants: Participant[];
   blockInfo?: DirectBlockInfo;
+  supportStatus?: SupportStatus;
+  supportCreatedByUserId?: string;
+  supportCreatedByUser?: SupportProfile | null;
+  assignedAdminId?: string | null;
+  assignedAdmin?: SupportProfile | null;
   lastMessageAt: string;
   seenBy: SeenUser[];
   lastMessage: LastMessage | null;

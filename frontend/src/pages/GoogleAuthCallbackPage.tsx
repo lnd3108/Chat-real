@@ -21,7 +21,7 @@ export const GoogleAuthCallbackPage = () => {
       const currentUser = useAuthStore.getState().user;
       const nextPath = ok
         ? currentUser?.role === "admin"
-          ? "/admin"
+          ? "/admin/dashboard"
           : "/"
         : "/verify-email";
 

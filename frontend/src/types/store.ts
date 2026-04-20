@@ -102,6 +102,7 @@ export interface ChatState {
     content: string,
     imgUrl?: string,
   ) => Promise<void>;
+  sendSupportMessage: (conversationId: string, content: string) => Promise<void>;
   sendGroupMessageWithImage: (
     conversationId: string,
     image: File,
@@ -127,6 +128,7 @@ export interface ChatState {
   markasSeen: (conversationId?: string | null) => Promise<void>;
 
   addConvo: (convo: Conversation, options?: { activate?: boolean }) => void;
+  getOrCreateSupportConversation: () => Promise<Conversation | undefined>;
   createConversation: (
     type: "direct" | "group",
     name: string,

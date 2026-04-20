@@ -11,6 +11,8 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import reportRoute from "./routes/reportRoute.js";
+import supportRoute from "./routes/supportRoute.js";
+import supportAdminRoute from "./routes/supportAdminRoute.js";
 import adminRoute from "./routes/adminRoute.js";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import { initSocket } from "./socket/index.js";
@@ -40,6 +42,8 @@ app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/reports", reportRoute);
+app.use("/api/support", supportRoute);
+app.use("/api/admin/support", supportAdminRoute);
 app.use("/api/admin", adminRoute);
 
 connectDB()

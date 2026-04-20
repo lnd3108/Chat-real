@@ -54,7 +54,7 @@ export function SignInForm({
       result === "verify_email"
         ? "/verify-email"
         : currentUser?.role === "admin"
-          ? "/admin"
+          ? "/admin/dashboard"
           : "/";
 
     navigate(nextPath, { replace: true });

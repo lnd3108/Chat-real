@@ -24,6 +24,7 @@ import GroupChatList from "../chat/GroupChatList";
 import AddFriendModal from "../chat/AddFriendModal";
 import FriendManagementDialog from "../chat/FriendManagementDialog";
 import DirrectMessageList from "../chat/DirrectMessageList";
+import SupportConversationList from "../chat/SupportConversationList";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -138,6 +139,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupAction>
           <SidebarGroupContent>
             {convoLoading ? <ConversationSkeleton /> : <DirrectMessageList />}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="uppercase">Hỗ trợ</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {convoLoading ? <ConversationSkeleton /> : <SupportConversationList />}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

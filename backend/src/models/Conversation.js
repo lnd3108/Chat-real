@@ -100,7 +100,7 @@ const conversationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["direct", "group"],
+      enum: ["direct", "group", "support"],
       required: true,
     },
 
@@ -134,6 +134,26 @@ const conversationSchema = new mongoose.Schema(
       type: [clearedStateSchema],
       default: [],
     },
+
+    // Support-specific fields
+    supportStatus: {
+      type: String,
+      enum: ["open", "in_progress", "resolved", "closed"],
+      default: "open",
+      sparse: true,
+    },
+    supportCreatedByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      sparse: true,
+    },
+    assignedAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      sparse: true,
+    },
   },
   {
     timestamps: true,
@@ -143,6 +163,23 @@ const conversationSchema = new mongoose.Schema(
 conversationSchema.index({
   "participants.userId": 1,
   lastMessageAt: -1,
+});
+
+// Support conversation indexes
+conversationSchema.index({
+  type: 1,
+  supportStatus: 1,
+  lastMessageAt: -1,
+});
+
+conversationSchema.index({
+  supportCreatedByUserId: 1,
+  type: 1,
+});
+
+conversationSchema.index({
+  assignedAdminId: 1,
+  supportStatus: 1,
 });
 
 const Conversation = mongoose.model("Conversation", conversationSchema);

@@ -121,7 +121,6 @@ const AdminReportDetail = () => {
   const [updating, setUpdating] = useState(false);
 
   const [resolutionNote, setResolutionNote] = useState("");
-  const [reviewingDialogOpen, setReviewingDialogOpen] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 

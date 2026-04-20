@@ -15,7 +15,10 @@ import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { toast } from "sonner";
 
-const baseURL = import.meta.env.VITE_SOCKET_URL;
+const baseURL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
+  window.location.origin;
 const SHOW_ONLINE_STATUS_KEY = "pref:showOnlineStatus";
 type SocketConnectError = Error & { data?: { code?: string } };
 
@@ -90,7 +93,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     const socket: Socket = io(baseURL, {
       auth: { token: accessToken },
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       autoConnect: true,
     });
 

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
 
-type ConversationType = "direct" | "group";
+type ConversationType = "direct" | "group" | "support";
 
 interface LastMessage {
   _id: string | null;
@@ -83,6 +83,10 @@ const typeConfig: Record<ConversationType, { label: string; className: string }>
     label: "Group",
     className: "bg-amber-500/10 text-amber-700",
   },
+  support: {
+    label: "Support",
+    className: "bg-emerald-500/10 text-emerald-700",
+  },
 };
 
 const formatDate = (dateString?: string | null) => {
@@ -148,7 +152,7 @@ const AdminConversations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [typeFilter, setTypeFilter] = useState<"" | ConversationType>("");
+  const [typeFilter, setTypeFilter] = useState<"" | "direct" | "group">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("updatedAt-desc");
   const [pagination, setPagination] = useState<PaginationData>({
@@ -217,7 +221,7 @@ const AdminConversations = () => {
     setPage(1);
   };
 
-  const handleTypeChange = (value: "" | ConversationType) => {
+  const handleTypeChange = (value: "" | "direct" | "group") => {
     setTypeFilter(value);
     setPage(1);
   };
@@ -285,7 +289,7 @@ const AdminConversations = () => {
 
           <select
             value={typeFilter}
-            onChange={(event) => handleTypeChange(event.target.value as "" | ConversationType)}
+            onChange={(event) => handleTypeChange(event.target.value as "" | "direct" | "group")}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả loại</option>
@@ -356,10 +360,10 @@ const AdminConversations = () => {
                         <div className="space-y-2">
                           <span
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                              typeConfig[conversation.type].className
+                              (typeConfig[conversation.type] ?? typeConfig.support).className
                             }`}
                           >
-                            {typeConfig[conversation.type].label}
+                            {(typeConfig[conversation.type] ?? typeConfig.support).label}
                           </span>
                           <p className="font-medium text-foreground">
                             {conversation.type === "group"
@@ -437,10 +441,10 @@ const AdminConversations = () => {
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                    typeConfig[selectedConversation.type].className
+                    (typeConfig[selectedConversation.type] ?? typeConfig.support).className
                   }`}
                 >
-                  {typeConfig[selectedConversation.type].label}
+                  {(typeConfig[selectedConversation.type] ?? typeConfig.support).label}
                 </span>
                 {selectedConversation.type === "group" && (
                   <span className="text-sm font-medium text-foreground">

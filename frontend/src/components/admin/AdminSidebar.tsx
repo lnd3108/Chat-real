@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { NavLink } from "react-router";
-import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
   Ban,
-  Heart,
-  Mail,
-  MessageSquare,
-  Flag,
-  Settings,
   ChevronLeft,
   ChevronRight,
+  Flag,
+  Heart,
+  LayoutDashboard,
+  LifeBuoy,
   LogOut,
+  Mail,
+  MessageSquare,
+  Users,
 } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const AdminSidebar = () => {
@@ -25,7 +26,7 @@ const AdminSidebar = () => {
       id: "dashboard",
       label: "Dashboard",
       icon: LayoutDashboard,
-      path: "/admin",
+      path: "/admin/dashboard",
     },
     {
       id: "users",
@@ -64,6 +65,12 @@ const AdminSidebar = () => {
       path: "/admin/messages",
     },
     {
+      id: "support",
+      label: "Hỗ trợ",
+      icon: LifeBuoy,
+      path: "/admin/support",
+    },
+    {
       id: "reports",
       label: "Báo cáo",
       icon: Flag,
@@ -79,15 +86,14 @@ const AdminSidebar = () => {
   return (
     <aside
       className={cn(
-        "border-r border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 ease-in-out flex flex-col",
-        isCollapsed ? "w-20" : "w-64"
+        "flex flex-col border-r border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-20" : "w-64",
       )}
     >
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border/50 px-4 py-6">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-chat text-white font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-chat font-bold text-white">
               A
             </div>
             <span className="text-lg font-bold">Admin</span>
@@ -95,7 +101,7 @@ const AdminSidebar = () => {
         )}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="rounded-lg p-2 hover:bg-muted/50 transition-colors"
+          className="rounded-lg p-2 transition-colors hover:bg-muted/50"
           title={isCollapsed ? "Mở rộng" : "Thu gọn"}
         >
           {isCollapsed ? (
@@ -106,10 +112,10 @@ const AdminSidebar = () => {
         </button>
       </div>
 
-      {/* Menu Items */}
       <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-6">
         {menuItems.map((item) => {
           const Icon = item.icon;
+
           return (
             <NavLink
               key={item.id}
@@ -119,7 +125,7 @@ const AdminSidebar = () => {
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                 )
               }
               title={isCollapsed ? item.label : undefined}
@@ -131,27 +137,10 @@ const AdminSidebar = () => {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="space-y-2 border-t border-border/50 px-3 py-4">
-        <NavLink
-          to="/admin/settings"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-            )
-          }
-          title={isCollapsed ? "Cài đặt" : undefined}
-        >
-          <Settings className="h-5 w-5 shrink-0" />
-          {!isCollapsed && <span>Cài đặt</span>}
-        </NavLink>
-
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           title={isCollapsed ? "Đăng xuất" : undefined}
         >
           <LogOut className="h-5 w-5 shrink-0" />

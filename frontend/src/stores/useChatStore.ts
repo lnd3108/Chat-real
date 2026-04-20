@@ -314,6 +314,27 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
+      sendSupportMessage: async (conversationId, content) => {
+        try {
+          const { message, conversation } = await chatServices.sendSupportMessage(
+            conversationId,
+            content,
+          );
+
+          get().addConvo(conversation, { activate: false });
+          await get().addMessage(message);
+          set((state) => ({
+            conversations: state.conversations.map((item) =>
+              item._id === conversationId ? { ...item, unreadCounts: conversation.unreadCounts } : item,
+            ),
+            replyingTo: null,
+          }));
+        } catch (error) {
+          console.error("Failed to send support message", error);
+          throw error;
+        }
+      },
+
       sendGroupMessageWithImage: async (
         conversationId,
         image,
@@ -615,6 +636,26 @@ export const useChatStore = create<ChatState>()(
               : state.activeConversationId,
           };
         });
+      },
+
+      getOrCreateSupportConversation: async () => {
+        try {
+          set({ loading: true });
+          const conversation = await chatServices.getOrCreateSupportConversation();
+          get().addConvo(conversation);
+          useSocketStore.getState().socket?.emit("join-conversation", conversation._id);
+
+          if (!get().messages[conversation._id]) {
+            await get().fetchMessages(conversation._id);
+          }
+
+          return conversation;
+        } catch (error) {
+          console.error("Failed to get or create support conversation:", error);
+          throw error;
+        } finally {
+          set({ loading: false });
+        }
       },
 
       createConversation: async (type, name, memberIds) => {

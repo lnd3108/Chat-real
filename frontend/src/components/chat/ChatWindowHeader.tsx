@@ -49,6 +49,42 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     return null;
   }
 
+  if (activeChat.type === "support") {
+    const statusLabelMap: Record<string, string> = {
+      open: "Mở",
+      in_progress: "Đang xử lý",
+      resolved: "Đã giải quyết",
+      closed: "Đã đóng",
+    };
+
+    return (
+      <header className="sticky top-0 z-10 flex items-center bg-background px-4 py-2">
+        <div className="flex w-full items-center gap-2">
+          <SidebarTrigger className="-ml-1 text-foreground" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+
+          <div className="flex w-full items-center gap-3 p-2">
+            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700">
+              <Settings className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-semibold text-foreground">Liên hệ hỗ trợ</h2>
+              <p className="truncate text-xs text-muted-foreground">
+                {statusLabelMap[activeChat.supportStatus ?? "open"] ?? "Mở"}
+                {activeChat.assignedAdmin?.displayName
+                  ? ` • ${activeChat.assignedAdmin.displayName}`
+                  : " • Chưa phân công admin"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-10 flex items-center bg-background px-4 py-2">
       <div className="flex w-full items-center gap-2">

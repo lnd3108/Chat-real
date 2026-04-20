@@ -135,6 +135,21 @@ export const chatServices = {
     return res.data.conversation;
   },
 
+  async getOrCreateSupportConversation() {
+    const res = await api.post("/support/conversations");
+    return res.data.data.conversation as Conversation;
+  },
+
+  async fetchMySupportConversations() {
+    const res = await api.get("/support/conversations/me");
+    return res.data.data.conversations as Conversation[];
+  },
+
+  async sendSupportMessage(conversationId: string, content: string) {
+    const res = await api.post("/support/messages", { conversationId, content });
+    return res.data.data as { message: Message; conversation: Conversation };
+  },
+
   async deleteOrLeaveGroupConversation(conversationId: string) {
     const res = await api.delete(`/conversations/${conversationId}`);
     return res.data;
