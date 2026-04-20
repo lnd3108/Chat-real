@@ -30,10 +30,19 @@ const buildBaseMatch = (excludedIds = []) => {
 
 export const findRandomDiscoverableUsers = async ({ excludedIds = [], limit = 5 }) => {
   const normalizedLimit = Math.max(1, Math.min(limit, 5));
+  const objectIds = toObjectIds(excludedIds);
+  const match = {
+    ...getFriendshipDiscoveryUserFilter(),
+  };
 
-  return User.aggregate([
+  if (objectIds.length > 0) {
+    match._id = { $nin: objectIds };
+  }
+
+  // First, try to get random samples
+  let results = await User.aggregate([
     {
-      $match: buildBaseMatch(excludedIds),
+      $match: match,
     },
     {
       $sample: { size: normalizedLimit },
@@ -49,6 +58,28 @@ export const findRandomDiscoverableUsers = async ({ excludedIds = [], limit = 5 
       },
     },
   ]);
+
+  // If we don't get enough results, try fetching more without sampling
+  // This can happen when there are fewer eligible users than the limit
+  if (results.length < normalizedLimit) {
+    const additionalLimit = normalizedLimit - results.length;
+    const excludeIds = [
+      ...objectIds,
+      ...results.map((r) => new mongoose.Types.ObjectId(r._id)),
+    ];
+
+    const additional = await User.find({
+      ...match,
+      _id: { $nin: excludeIds },
+    })
+      .select("_id displayName userName avatarUrl role status")
+      .limit(additionalLimit)
+      .lean();
+
+    results = [...results, ...additional];
+  }
+
+  return results;
 };
 
 export const searchDiscoverableUsers = async ({

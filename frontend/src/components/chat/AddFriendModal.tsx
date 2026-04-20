@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { playClickSound } from "@/lib/sound";
@@ -27,10 +27,18 @@ const AddFriendModal = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DiscoverUser[]>([]);
+  const modalLoadedRef = useRef(false);
   const { searchUsers, getSuggestions, suggestions, searchLoading, suggestionsLoading } =
     useFriendStore();
 
   const trimmedQuery = query.trim();
+
+  // Reset modal state when modal closes
+  useEffect(() => {
+    if (!open) {
+      modalLoadedRef.current = false;
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || !currentUserId) {
@@ -38,16 +46,23 @@ const AddFriendModal = () => {
     }
 
     if (!trimmedQuery) {
-      void getSuggestions(5);
+      // Load suggestions when search is cleared or no query
+      if (!suggestionsLoading) {
+        modalLoadedRef.current = true;
+        void getSuggestions(5);
+      }
       return;
     }
+
+    // Reset flag when user starts searching - will reload suggestions when query is cleared
+    modalLoadedRef.current = false;
 
     const timeoutId = window.setTimeout(() => {
       void searchUsers(trimmedQuery, 10).then(setSearchResults);
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [currentUserId, open, trimmedQuery, searchUsers, getSuggestions]);
+  }, [open, trimmedQuery]);
 
   const displayedUsers = useMemo(
     () => (trimmedQuery ? searchResults : suggestions),
@@ -59,9 +74,9 @@ const AddFriendModal = () => {
     ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
     : "Chưa có gợi ý phù hợp.";
 
-  const handleRefreshSuggestions = async () => {
+  const handleRefreshSuggestions = useCallback(async () => {
     await getSuggestions(5);
-  };
+  }, []);
 
   return (
     <Dialog

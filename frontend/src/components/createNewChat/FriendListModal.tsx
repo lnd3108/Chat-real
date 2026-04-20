@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { MessageCircle, Users } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -42,27 +42,39 @@ const FriendListModal = ({
     getSuggestions,
   } = useFriendStore();
   const { createConversation } = useChatStore();
+  const modalLoadedRef = useRef(false);
 
   const friends = friendsProp ?? friendsStore;
   const loading = loadingProp ?? loadingStore;
   const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
 
+  // Reset modal state when modal closes
   useEffect(() => {
-    if (!open || !currentUserId || !shouldShowSuggestions || suggestionsLoading) {
+    if (!open) {
+      modalLoadedRef.current = false;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !currentUserId || !shouldShowSuggestions) {
       return;
     }
 
-    void getSuggestions(5);
-  }, [currentUserId, getSuggestions, open, shouldShowSuggestions, suggestionsLoading]);
+    // Load suggestions only once per modal open
+    if (!modalLoadedRef.current) {
+      modalLoadedRef.current = true;
+      void getSuggestions(5);
+    }
+  }, [open]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
     onPick?.();
   };
 
-  const handleRefreshSuggestions = async () => {
+  const handleRefreshSuggestions = useCallback(async () => {
     await getSuggestions(5);
-  };
+  }, []);
 
   return (
     <DialogContent className="glass max-w-2xl">

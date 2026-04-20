@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { RotateCw, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,8 @@ const UserSuggestionsList = ({
   const { addFriend, cancelSentRequest, friends, sentList, receivedList } = useFriendStore();
   const [submittingIds, setSubmittingIds] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastRefreshTimeRef = useRef<number>(0);
+  const REFRESH_DEBOUNCE_MS = 500;
 
   const friendIds = useMemo(
     () => new Set(friends.map((friend) => friend._id)),
@@ -72,7 +74,7 @@ const UserSuggestionsList = ({
 
   const mergedUsers = useMemo<SuggestionListUser[]>(
     () =>
-      users.slice(0, 5).map((user) => {
+      users.map((user) => {
         const isFriend = user.isFriend || friendIds.has(user._id);
         const requestSent = user.requestSent || sentRequestIds.has(user._id);
         const requestReceived = !requestSent && (user.requestReceived || receivedRequestIds.has(user._id));
@@ -137,8 +139,15 @@ const UserSuggestionsList = ({
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     if (isRefreshing || !onRefresh) return;
+
+    // Debounce: prevent rapid successive clicks
+    const now = Date.now();
+    if (now - lastRefreshTimeRef.current < REFRESH_DEBOUNCE_MS) {
+      return;
+    }
+    lastRefreshTimeRef.current = now;
 
     setIsRefreshing(true);
     try {
@@ -150,7 +159,7 @@ const UserSuggestionsList = ({
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [isRefreshing, onRefresh]);
 
   return (
     <div className="space-y-3">

@@ -27,11 +27,19 @@ export const isEligibleForFriendship = (user) =>
   !isProtectedAccount(user) &&
   String(user.status ?? "").toLowerCase() === ACTIVE_USER_STATUS;
 
-export const getFriendshipDiscoveryUserFilter = () => ({
-  role: { $ne: "admin" },
-  status: ACTIVE_USER_STATUS,
-  userName: { $nin: Array.from(PROTECTED_ACCOUNT_USERNAMES) },
-});
+export const getFriendshipDiscoveryUserFilter = () => {
+  const protectedUserNames = Array.from(PROTECTED_ACCOUNT_USERNAMES).join("|");
+  return {
+    role: { $ne: "admin" },
+    status: ACTIVE_USER_STATUS,
+    userName: {
+      $not: {
+        $regex: `^(${protectedUserNames})$`,
+        $options: "i",
+      },
+    },
+  };
+};
 
 export const getProtectedFriendshipMessage = () =>
   "Không thể kết bạn với tài khoản quản trị.";

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { SidebarInset, SidebarTrigger } from "../ui/sidebar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -9,18 +9,23 @@ const ChatWelcomeScreen = () => {
   const currentUserId = useAuthStore((state) => state.user?._id);
   const conversations = useChatStore((state) => state.conversations);
   const { suggestions, getSuggestions, suggestionsLoading } = useFriendStore();
+  const componentMountedRef = useRef(false);
 
   useEffect(() => {
-    if (!currentUserId || conversations.length > 0 || suggestionsLoading) {
+    if (!currentUserId || conversations.length > 0) {
       return;
     }
 
-    void getSuggestions(5);
-  }, [currentUserId, conversations.length, getSuggestions, suggestionsLoading]);
+    // Load suggestions only once on component mount or when conversations change
+    if (!componentMountedRef.current && suggestions.length === 0) {
+      componentMountedRef.current = true;
+      void getSuggestions(5);
+    }
+  }, [currentUserId, conversations.length]);
 
-  const handleRefreshSuggestions = async () => {
+  const handleRefreshSuggestions = useCallback(async () => {
     await getSuggestions(5);
-  };
+  }, []);
 
   return (
     <SidebarInset className="flex h-full w-full bg-transparent">
