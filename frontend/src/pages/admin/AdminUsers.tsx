@@ -129,8 +129,8 @@ const AdminUsers = () => {
               ...user,
               status,
             }
-          : user
-      )
+          : user,
+      ),
     );
   };
 
@@ -155,7 +155,9 @@ const AdminUsers = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
-          <p className="mt-2 text-muted-foreground">Tổng cộng {pagination.total} người dùng</p>
+          <p className="mt-2 text-muted-foreground">
+            Tổng cộng {pagination.total} người dùng
+          </p>
         </div>
       </div>
 
@@ -224,7 +226,7 @@ const AdminUsers = () => {
                     Trạng thái
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                    Role
+                    Vai trò
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
                     Ngày tạo
@@ -280,7 +282,7 @@ const AdminUsers = () => {
                             : "bg-sky-500/10 text-sky-700"
                         }`}
                       >
-                        {user.role === "admin" ? "Admin" : "User"}
+                        {user.role === "admin" ? "Admin" : "Người dùng"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">

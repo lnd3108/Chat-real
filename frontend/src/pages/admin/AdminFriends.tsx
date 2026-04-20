@@ -32,7 +32,7 @@ interface PaginationData {
 
 const statusConfig = {
   accepted: {
-    label: "Accepted",
+    label: "Đã chấp nhận",
     className: "bg-emerald-500/10 text-emerald-700",
   },
 };
@@ -127,9 +127,9 @@ const AdminFriends = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Friends Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quan hệ bạn bè</h1>
           <p className="mt-2 text-muted-foreground">
-            Xem danh sách các quan hệ bạn bè đã accepted.
+            Xem danh sách các quan hệ bạn bè đã chấp nhận.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -142,9 +142,9 @@ const AdminFriends = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Friends Management</h1>
+        <h1 className="text-3xl font-bold text-foreground">Quan hệ bạn bè</h1>
         <p className="mt-2 text-muted-foreground">
-          Tổng cộng {pagination.total} quan hệ bạn bè đã accepted.
+          Tổng cộng {pagination.total} quan hệ bạn bè đã chấp nhận.
         </p>
       </div>
 
@@ -192,16 +192,16 @@ const AdminFriends = () => {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      User A
+                      Người dùng A
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      User B
+                      Người dùng B
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Created at
+                      Tạo lúc
                     </th>
                   </tr>
                 </thead>
@@ -212,10 +212,10 @@ const AdminFriends = () => {
                       className="border-b border-border/50 transition-colors hover:bg-muted/30"
                     >
                       <td className="px-6 py-4">
-                        <UserCell user={friendship.userA} fallback="User A đã bị xóa" />
+                        <UserCell user={friendship.userA} fallback="Người dùng A đã bị xóa" />
                       </td>
                       <td className="px-6 py-4">
-                        <UserCell user={friendship.userB} fallback="User B đã bị xóa" />
+                        <UserCell user={friendship.userB} fallback="Người dùng B đã bị xóa" />
                       </td>
                       <td className="px-6 py-4">
                         <span

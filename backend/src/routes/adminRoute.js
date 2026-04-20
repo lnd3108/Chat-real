@@ -5,6 +5,7 @@ import {
   deleteUserAsAdmin,
   getBlockDetail,
   getBlocks,
+  getDashboardOverview,
   getBlockedUsers,
   getConversationDetail,
   getConversations,
@@ -27,6 +28,7 @@ const router = express.Router();
 
 router.use(protectedRoute, requireAdmin);
 
+router.get("/dashboard/overview", getDashboardOverview);
 router.get("/dashboard", getDashboardStats);
 
 router.get("/users", getUsers);

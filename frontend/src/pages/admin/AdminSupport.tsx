@@ -97,9 +97,7 @@ const AdminSupport = () => {
   const socket = useSocketStore((state) => state.socket);
 
   useEffect(() => {
-    if (!socket) {
-      return;
-    }
+    if (!socket) return;
 
     const refresh = () => {
       void fetchSupportConversations();
@@ -189,7 +187,8 @@ const AdminSupport = () => {
           <div className="space-y-1">
             <p className="font-medium text-foreground">Hướng dẫn xử lý</p>
             <p className="text-sm text-muted-foreground">
-              Nhấn vào yêu cầu để xem chi tiết và trả lời người dùng. Cập nhật trạng thái khi hoàn thành.
+              Nhấn vào yêu cầu để xem chi tiết và trả lời người dùng. Cập nhật
+              trạng thái khi hoàn thành.
             </p>
           </div>
         </div>
@@ -282,7 +281,7 @@ const AdminSupport = () => {
                         <div className="flex items-center gap-3">
                           <UserAvatar
                             type="chat"
-                            name={conversation.supportCreatedByUser?.displayName ?? "User"}
+                            name={conversation.supportCreatedByUser?.displayName ?? "Người dùng"}
                             avatarUrl={conversation.supportCreatedByUser?.avatarUrl}
                             className="size-9"
                           />

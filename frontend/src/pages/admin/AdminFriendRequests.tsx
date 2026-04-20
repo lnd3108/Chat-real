@@ -36,19 +36,19 @@ interface PaginationData {
 
 const statusConfig: Record<FriendRequestStatus, { label: string; className: string }> = {
   pending: {
-    label: "Pending",
+    label: "Chờ xử lý",
     className: "bg-amber-500/10 text-amber-700",
   },
   accepted: {
-    label: "Accepted",
+    label: "Đã chấp nhận",
     className: "bg-emerald-500/10 text-emerald-700",
   },
   rejected: {
-    label: "Rejected",
+    label: "Từ chối",
     className: "bg-rose-500/10 text-rose-700",
   },
   cancelled: {
-    label: "Cancelled",
+    label: "Đã hủy",
     className: "bg-slate-500/10 text-slate-700",
   },
 };
@@ -150,7 +150,7 @@ const AdminFriendRequests = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Friend Requests</h1>
+          <h1 className="text-3xl font-bold text-foreground">Lời mời kết bạn</h1>
           <p className="mt-2 text-muted-foreground">
             Xem danh sách lời mời kết bạn và trạng thái của chúng.
           </p>
@@ -165,7 +165,7 @@ const AdminFriendRequests = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Friend Requests</h1>
+        <h1 className="text-3xl font-bold text-foreground">Lời mời kết bạn</h1>
         <p className="mt-2 text-muted-foreground">
           Tổng cộng {pagination.total} lời mời kết bạn trong hệ thống.
         </p>
@@ -189,10 +189,10 @@ const AdminFriendRequests = () => {
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="accepted">Đã chấp nhận</option>
+            <option value="rejected">Từ chối</option>
+            <option value="cancelled">Đã hủy</option>
           </select>
 
           <select
@@ -229,19 +229,19 @@ const AdminFriendRequests = () => {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      From
+                      Người gửi
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      To
+                      Người nhận
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Message
+                      Lời nhắn
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Created at
+                      Tạo lúc
                     </th>
                   </tr>
                 </thead>
@@ -252,10 +252,10 @@ const AdminFriendRequests = () => {
                       className="border-b border-border/50 transition-colors hover:bg-muted/30"
                     >
                       <td className="px-6 py-4">
-                        <UserCell user={request.fromUser} fallback="From user đã bị xóa" />
+                        <UserCell user={request.fromUser} fallback="Người gửi đã bị xóa" />
                       </td>
                       <td className="px-6 py-4">
-                        <UserCell user={request.toUser} fallback="To user đã bị xóa" />
+                        <UserCell user={request.toUser} fallback="Người nhận đã bị xóa" />
                       </td>
                       <td className="max-w-[280px] px-6 py-4 text-sm text-muted-foreground">
                         <span className="line-clamp-2">

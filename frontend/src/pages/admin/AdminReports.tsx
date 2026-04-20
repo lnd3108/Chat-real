@@ -73,40 +73,40 @@ interface PaginationData {
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending: {
-    label: "Pending",
+    label: "Chờ xử lý",
     className: "bg-yellow-500/10 text-yellow-700",
   },
   reviewing: {
-    label: "Reviewing",
+    label: "Đang xem xét",
     className: "bg-blue-500/10 text-blue-700",
   },
   resolved: {
-    label: "Resolved",
+    label: "Đã xử lý",
     className: "bg-emerald-500/10 text-emerald-700",
   },
   rejected: {
-    label: "Rejected",
+    label: "Từ chối",
     className: "bg-red-500/10 text-red-700",
   },
 };
 
 const typeConfig: Record<string, { label: string; className: string }> = {
   user: {
-    label: "User Report",
+    label: "Báo cáo người dùng",
     className: "bg-purple-500/10 text-purple-700",
   },
   message: {
-    label: "Message Report",
+    label: "Báo cáo tin nhắn",
     className: "bg-blue-500/10 text-blue-700",
   },
   conversation: {
-    label: "Conversation Report",
+    label: "Báo cáo cuộc trò chuyện",
     className: "bg-amber-500/10 text-amber-700",
   },
 };
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "No date";
+  if (!dateString) return "Không có ngày";
 
   return new Date(dateString).toLocaleString("vi-VN", {
     year: "numeric",
@@ -142,10 +142,7 @@ const AdminReports = () => {
   }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
 
   useEffect(() => {
-    if (!detailOpen || !selectedReportId) {
-      return;
-    }
-
+    if (!detailOpen || !selectedReportId) return;
     void fetchReportDetail(selectedReportId);
   }, [detailOpen, selectedReportId]);
 
@@ -169,7 +166,7 @@ const AdminReports = () => {
       setPagination(response.data.data.pagination);
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch reports.");
+      setError("Không thể tải danh sách báo cáo.");
     } finally {
       setLoading(false);
     }
@@ -218,9 +215,9 @@ const AdminReports = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Reports</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage and review user reports for moderation.
+            Quản lý và xem xét báo cáo từ người dùng để kiểm duyệt nội dung.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -233,9 +230,9 @@ const AdminReports = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Reports</h1>
+        <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
         <p className="mt-2 text-muted-foreground">
-          Total {pagination.total} reports to manage and review.
+          Tổng cộng {pagination.total} báo cáo cần theo dõi và xử lý.
         </p>
       </div>
 
@@ -243,9 +240,10 @@ const AdminReports = () => {
         <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground">Privacy Notice</p>
+            <p className="font-medium text-foreground">Lưu ý quyền riêng tư</p>
             <p className="text-sm text-muted-foreground">
-              Admin can only view content related to specific reports. No mass browsing of user messages is allowed.
+              Admin chỉ được xem nội dung liên quan đến báo cáo cụ thể. Không
+              được duyệt hàng loạt tin nhắn người dùng ngoài phạm vi báo cáo.
             </p>
           </div>
         </div>
@@ -256,7 +254,7 @@ const AdminReports = () => {
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by reason or reporter..."
+              placeholder="Tìm theo lý do hoặc người báo cáo..."
               value={searchQuery}
               onChange={(event) => handleSearch(event.target.value)}
               className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
@@ -268,11 +266,11 @@ const AdminReports = () => {
             onChange={(event) => handleStatusChange(event.target.value as any)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="reviewing">Reviewing</option>
-            <option value="resolved">Resolved</option>
-            <option value="rejected">Rejected</option>
+            <option value="">Tất cả trạng thái</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="reviewing">Đang xem xét</option>
+            <option value="resolved">Đã xử lý</option>
+            <option value="rejected">Từ chối</option>
           </select>
 
           <select
@@ -280,10 +278,10 @@ const AdminReports = () => {
             onChange={(event) => handleTypeChange(event.target.value as any)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">All Types</option>
-            <option value="user">User</option>
-            <option value="message">Message</option>
-            <option value="conversation">Conversation</option>
+            <option value="">Tất cả loại</option>
+            <option value="user">Người dùng</option>
+            <option value="message">Tin nhắn</option>
+            <option value="conversation">Cuộc trò chuyện</option>
           </select>
 
           <select
@@ -291,10 +289,10 @@ const AdminReports = () => {
             onChange={(event) => handleSortChange(event.target.value)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="createdAt-desc">Newest First</option>
-            <option value="createdAt-asc">Oldest First</option>
-            <option value="updated">Recently Updated</option>
-            <option value="status">By Status</option>
+            <option value="createdAt-desc">Mới nhất</option>
+            <option value="createdAt-asc">Cũ nhất</option>
+            <option value="updated">Cập nhật gần đây</option>
+            <option value="status">Theo trạng thái</option>
           </select>
         </div>
       </div>
@@ -308,9 +306,9 @@ const AdminReports = () => {
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
               <Flag className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-4 text-muted-foreground">No reports found.</p>
+              <p className="mt-4 text-muted-foreground">Không tìm thấy báo cáo nào.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Try adjusting your filters or search query.
+                Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.
               </p>
             </div>
           </div>
@@ -321,22 +319,22 @@ const AdminReports = () => {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Reporter
+                      Người báo cáo
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Type
+                      Loại
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Reason
+                      Lý do
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Created
+                      Tạo lúc
                     </th>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
-                      Action
+                      Hành động
                     </th>
                   </tr>
                 </thead>
@@ -396,7 +394,7 @@ const AdminReports = () => {
                           onClick={() => handleOpenDetail(report._id)}
                         >
                           <Eye className="mr-2 h-4 w-4" />
-                          View
+                          Xem
                         </Button>
                       </td>
                     </tr>
@@ -427,10 +425,8 @@ const AdminReports = () => {
       >
         <DialogContent className="border-border/40 bg-card/95 sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Report Details</DialogTitle>
-            <DialogDescription>
-              Review and manage this report
-            </DialogDescription>
+            <DialogTitle>Chi tiết báo cáo</DialogTitle>
+            <DialogDescription>Xem và đánh giá báo cáo này</DialogDescription>
           </DialogHeader>
 
           {detailLoading || !selectedReport ? (
@@ -459,7 +455,7 @@ const AdminReports = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Report ID
+                    Mã báo cáo
                   </p>
                   <p className="mt-2 break-all font-mono text-sm text-foreground">
                     {selectedReport._id}
@@ -467,7 +463,7 @@ const AdminReports = () => {
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Created At
+                    Tạo lúc
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {formatDate(selectedReport.createdAt)}
@@ -475,9 +471,8 @@ const AdminReports = () => {
                 </div>
               </div>
 
-              {/* Reporter Info */}
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Reporter</p>
+                <p className="text-sm font-medium text-foreground">Người báo cáo</p>
                 <div className="mt-3 flex items-center gap-3">
                   <UserAvatar
                     type="chat"
@@ -496,23 +491,21 @@ const AdminReports = () => {
                 </div>
               </div>
 
-              {/* Reason and Description */}
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Reason</p>
+                <p className="text-sm font-medium text-foreground">Lý do</p>
                 <p className="mt-2 text-sm text-muted-foreground">{selectedReport.reason}</p>
 
                 {selectedReport.description && (
                   <>
-                    <p className="mt-4 text-sm font-medium text-foreground">Description</p>
+                    <p className="mt-4 text-sm font-medium text-foreground">Mô tả</p>
                     <p className="mt-2 text-sm text-muted-foreground">{selectedReport.description}</p>
                   </>
                 )}
               </div>
 
-              {/* Target Info - User Report */}
               {selectedReport.targetType === "user" && selectedReport.targetUserSnapshot && (
                 <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Reported User</p>
+                  <p className="text-sm font-medium text-foreground">Người dùng bị báo cáo</p>
                   <div className="mt-3 flex items-center gap-3">
                     <UserAvatar
                       type="chat"
@@ -535,10 +528,9 @@ const AdminReports = () => {
                 </div>
               )}
 
-              {/* Target Info - Message Report */}
               {selectedReport.targetType === "message" && selectedReport.targetMessagePreview && (
                 <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Reported Message</p>
+                  <p className="text-sm font-medium text-foreground">Tin nhắn bị báo cáo</p>
                   <div className="mt-3 space-y-2">
                     {selectedReport.targetMessagePreview.content && (
                       <div className="rounded-lg bg-background/50 p-3">
@@ -549,11 +541,11 @@ const AdminReports = () => {
                     )}
                     {selectedReport.targetMessagePreview.imgUrl && (
                       <div className="rounded-lg bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground">Image attached</p>
+                        <p className="text-xs text-muted-foreground">Có hình ảnh đính kèm</p>
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Sent by {selectedReport.targetMessagePreview.senderDisplayName}
+                      Gửi bởi {selectedReport.targetMessagePreview.senderDisplayName}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(selectedReport.targetMessagePreview.createdAt)}
@@ -562,43 +554,38 @@ const AdminReports = () => {
                 </div>
               )}
 
-              {/* Target Info - Conversation Report */}
               {selectedReport.targetType === "conversation" && selectedReport.targetConversationSnapshot && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Reported Conversation</p>
+                  <p className="text-sm font-medium text-foreground">Cuộc trò chuyện bị báo cáo</p>
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      Type: {selectedReport.targetConversationSnapshot.type}
+                      Loại: {selectedReport.targetConversationSnapshot.type}
                     </p>
                     {selectedReport.targetConversationSnapshot.groupName && (
                       <p className="text-sm text-muted-foreground">
-                        Name: {selectedReport.targetConversationSnapshot.groupName}
+                        Tên: {selectedReport.targetConversationSnapshot.groupName}
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Members: {selectedReport.targetConversationSnapshot.membersCount}
+                      Số thành viên: {selectedReport.targetConversationSnapshot.membersCount}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Resolution Note */}
               {selectedReport.resolutionNote && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Resolution Note</p>
+                  <p className="text-sm font-medium text-foreground">Ghi chú xử lý</p>
                   <p className="mt-2 text-sm text-muted-foreground">{selectedReport.resolutionNote}</p>
                 </div>
               )}
 
-              {/* Reviewed Info */}
               {selectedReport.reviewedByAdminId && (
                 <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Reviewed By
+                    Đã được xem bởi
                   </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    Admin
-                  </p>
+                  <p className="mt-2 text-sm font-medium text-foreground">Admin</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(selectedReport.reviewedAt)}
                   </p>

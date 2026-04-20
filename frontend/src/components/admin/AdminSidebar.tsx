@@ -24,7 +24,7 @@ const AdminSidebar = () => {
   const menuItems = [
     {
       id: "dashboard",
-      label: "Dashboard",
+      label: "Tổng quan",
       icon: LayoutDashboard,
       path: "/admin/dashboard",
     },
@@ -57,12 +57,6 @@ const AdminSidebar = () => {
       label: "Cuộc trò chuyện",
       icon: MessageSquare,
       path: "/admin/conversations",
-    },
-    {
-      id: "messages",
-      label: "Tin nhắn",
-      icon: MessageSquare,
-      path: "/admin/messages",
     },
     {
       id: "support",

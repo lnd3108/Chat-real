@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Ban,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Info,
   Search,
@@ -10,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import AdminPagination from "@/components/admin/AdminPagination";
 import UserAvatar from "@/components/chat/UserAvatar";
 import {
   AlertDialog,
@@ -138,7 +137,7 @@ const AdminBlocks = () => {
     pages: 1,
   });
   const [auditNote, setAuditNote] = useState(
-    "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng."
+    "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
   );
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<BlockRelation | null>(null);
@@ -178,7 +177,7 @@ const AdminBlocks = () => {
       setAuditNote(response.data.data.auditNote ?? auditNote);
     } catch (err) {
       console.error(err);
-      setError("Không thể tải danh sách block relation.");
+      setError("Không thể tải danh sách quan hệ chặn.");
     } finally {
       setLoading(false);
     }
@@ -193,7 +192,7 @@ const AdminBlocks = () => {
       setAuditNote(response.data.data.auditNote ?? auditNote);
     } catch (err) {
       console.error(err);
-      toast.error("Không thể tải chi tiết block relation.");
+      toast.error("Không thể tải chi tiết quan hệ chặn.");
     } finally {
       setDetailLoading(false);
     }
@@ -228,17 +227,17 @@ const AdminBlocks = () => {
       const updatedBlock: BlockRelation = response.data.data.block;
 
       setBlocks((currentBlocks) =>
-        currentBlocks.map((block) => (block._id === blockId ? updatedBlock : block))
+        currentBlocks.map((block) => (block._id === blockId ? updatedBlock : block)),
       );
       setSelectedBlock((currentBlock) =>
-        currentBlock?._id === blockId ? updatedBlock : currentBlock
+        currentBlock?._id === blockId ? updatedBlock : currentBlock,
       );
 
       await fetchBlocks();
-      toast.success("Đã gỡ block thủ công.");
+      toast.success("Đã gỡ chặn thủ công.");
     } catch (err) {
       console.error(err);
-      toast.error("Không thể gỡ block relation.");
+      toast.error("Không thể gỡ quan hệ chặn.");
     } finally {
       setUnblockingId(null);
     }
@@ -248,9 +247,9 @@ const AdminBlocks = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Block Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quản lý khối chặn</h1>
           <p className="mt-2 text-muted-foreground">
-            Theo dõi và audit các block relation direct 1-1.
+            Theo dõi và kiểm tra các quan hệ chặn direct 1-1.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -264,9 +263,9 @@ const AdminBlocks = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Block Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quản lý khối chặn</h1>
           <p className="mt-2 text-muted-foreground">
-            Tổng cộng {pagination.total} block relation để kiểm tra và audit.
+            Tổng cộng {pagination.total} quan hệ chặn để kiểm tra và audit.
           </p>
         </div>
       </div>
@@ -277,9 +276,7 @@ const AdminBlocks = () => {
             <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-700" />
             <div className="space-y-1">
               <p className="font-medium text-foreground">Phạm vi block</p>
-              <p className="text-sm text-muted-foreground">
-                {auditNote}
-              </p>
+              <p className="text-sm text-muted-foreground">{auditNote}</p>
             </div>
           </div>
         </div>
@@ -288,10 +285,10 @@ const AdminBlocks = () => {
           <div className="flex items-start gap-3">
             <Info className="mt-0.5 h-5 w-5 text-sky-700" />
             <div className="space-y-1">
-              <p className="font-medium text-foreground">Audit note</p>
+              <p className="font-medium text-foreground">Ghi chú kiểm tra</p>
               <p className="text-sm text-muted-foreground">
-                Dữ liệu hiển thị theo từng relation, gồm trạng thái hiện tại, thời điểm tạo và thời
-                điểm gỡ chặn nếu có.
+                Dữ liệu hiển thị theo từng quan hệ, gồm trạng thái hiện tại,
+                thời điểm tạo và thời điểm gỡ chặn nếu có.
               </p>
             </div>
           </div>
@@ -303,7 +300,7 @@ const AdminBlocks = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm blocker hoặc blocked user..."
+              placeholder="Tìm người chặn hoặc người bị chặn..."
               value={searchQuery}
               onChange={(event) => handleSearch(event.target.value)}
               className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
@@ -340,7 +337,7 @@ const AdminBlocks = () => {
         ) : blocks.length === 0 ? (
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
-              <p className="text-muted-foreground">Không tìm thấy block relation nào.</p>
+              <p className="text-muted-foreground">Không tìm thấy quan hệ chặn nào.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Kiểm tra lại bộ lọc hoặc từ khóa tìm kiếm.
               </p>
@@ -353,22 +350,22 @@ const AdminBlocks = () => {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Blocker
+                      Người chặn
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Blocked user
+                      Người bị chặn
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Created at
+                      Tạo lúc
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Unblocked at
+                      Gỡ lúc
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Type
+                      Loại
                     </th>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
                       Hành động
@@ -385,10 +382,13 @@ const AdminBlocks = () => {
                         className="border-b border-border/50 transition-colors hover:bg-muted/30"
                       >
                         <td className="px-6 py-4">
-                          <UserCell user={block.blocker} fallback="Blocker đã bị xóa" />
+                          <UserCell user={block.blocker} fallback="Người chặn đã bị xóa" />
                         </td>
                         <td className="px-6 py-4">
-                          <UserCell user={block.blockedUser} fallback="Blocked user đã bị xóa" />
+                          <UserCell
+                            user={block.blockedUser}
+                            fallback="Người bị chặn đã bị xóa"
+                          />
                         </td>
                         <td className="px-6 py-4">
                           <span
@@ -430,15 +430,15 @@ const AdminBlocks = () => {
                                     disabled={unblockingId === block._id}
                                   >
                                     <Ban className="mr-2 h-4 w-4" />
-                                    Gỡ block
+                                    Gỡ chặn
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent size="sm">
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Gỡ block relation?</AlertDialogTitle>
+                                    <AlertDialogTitle>Gỡ quan hệ chặn?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Thao tác này sẽ bỏ chặn direct 1-1 giữa hai người dùng. Group
-                                      chat chung vẫn không bị ảnh hưởng.
+                                      Thao tác này sẽ bỏ chặn direct 1-1 giữa hai
+                                      người dùng. Group chat chung vẫn không bị ảnh hưởng.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -449,7 +449,9 @@ const AdminBlocks = () => {
                                       disabled={unblockingId === block._id}
                                       onClick={() => void handleAdminUnblock(block._id)}
                                     >
-                                      {unblockingId === block._id ? "Đang xử lý..." : "Xác nhận gỡ"}
+                                      {unblockingId === block._id
+                                        ? "Đang xử lý..."
+                                        : "Xác nhận gỡ"}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -464,35 +466,12 @@ const AdminBlocks = () => {
               </table>
             </div>
 
-            {pagination.pages > 1 && (
-              <div className="flex items-center justify-between border-t border-border/50 px-6 py-4">
-                <div className="text-sm text-muted-foreground">
-                  Trang {pagination.page} / {pagination.pages}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                    className="gap-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Trước
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === pagination.pages}
-                    onClick={() => setPage(page + 1)}
-                    className="gap-2"
-                  >
-                    Sau
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <AdminPagination
+              page={pagination.page}
+              pages={pagination.pages}
+              onPrevious={() => setPage(page - 1)}
+              onNext={() => setPage(page + 1)}
+            />
           </>
         )}
       </div>
@@ -509,7 +488,7 @@ const AdminBlocks = () => {
       >
         <DialogContent className="border-border/40 bg-card/95 sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Chi tiết block relation</DialogTitle>
+            <DialogTitle>Chi tiết quan hệ chặn</DialogTitle>
             <DialogDescription>{auditNote}</DialogDescription>
           </DialogHeader>
 
@@ -521,9 +500,12 @@ const AdminBlocks = () => {
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-sm font-medium text-foreground">Blocker</p>
+                  <p className="text-sm font-medium text-foreground">Người chặn</p>
                   <div className="mt-3">
-                    <UserCell user={selectedBlock.blocker} fallback="Blocker đã bị xóa" />
+                    <UserCell
+                      user={selectedBlock.blocker}
+                      fallback="Người chặn đã bị xóa"
+                    />
                   </div>
                   {selectedBlock.blocker?.email && (
                     <p className="mt-3 text-sm text-muted-foreground">
@@ -533,9 +515,12 @@ const AdminBlocks = () => {
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-sm font-medium text-foreground">Blocked user</p>
+                  <p className="text-sm font-medium text-foreground">Người bị chặn</p>
                   <div className="mt-3">
-                    <UserCell user={selectedBlock.blockedUser} fallback="Blocked user đã bị xóa" />
+                    <UserCell
+                      user={selectedBlock.blockedUser}
+                      fallback="Người bị chặn đã bị xóa"
+                    />
                   </div>
                   {selectedBlock.blockedUser?.email && (
                     <p className="mt-3 text-sm text-muted-foreground">
@@ -548,7 +533,7 @@ const AdminBlocks = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Relation ID
+                    Mã quan hệ
                   </p>
                   <p className="mt-2 break-all font-mono text-sm text-foreground">
                     {selectedBlock._id}
@@ -557,14 +542,16 @@ const AdminBlocks = () => {
 
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Type
+                    Loại
                   </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">{selectedBlock.type}</p>
+                  <p className="mt-2 text-sm font-medium text-foreground">
+                    {selectedBlock.type}
+                  </p>
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Status
+                    Trạng thái
                   </p>
                   <div className="mt-2">
                     <span
@@ -579,7 +566,7 @@ const AdminBlocks = () => {
 
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Created at
+                    Tạo lúc
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {formatDate(selectedBlock.createdAt)}
@@ -588,7 +575,7 @@ const AdminBlocks = () => {
 
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4 md:col-span-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Unblocked at
+                    Gỡ lúc
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {formatDate(selectedBlock.unblockedAt)}
@@ -597,7 +584,7 @@ const AdminBlocks = () => {
               </div>
 
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Lý do block</p>
+                <p className="text-sm font-medium text-foreground">Lý do chặn</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {selectedBlock.reason?.trim() || "Không có lý do được lưu."}
                 </p>
@@ -614,15 +601,15 @@ const AdminBlocks = () => {
                         disabled={unblockingId === selectedBlock._id}
                       >
                         <Ban className="mr-2 h-4 w-4" />
-                        Gỡ block thủ công
+                        Gỡ chặn thủ công
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent size="sm">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Xác nhận gỡ block?</AlertDialogTitle>
+                        <AlertDialogTitle>Xác nhận gỡ chặn?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Thao tác này chỉ mở lại direct 1-1 giữa hai người dùng. Group chat chung
-                          vẫn hoạt động bình thường.
+                          Thao tác này chỉ mở lại direct 1-1 giữa hai người dùng.
+                          Group chat chung vẫn hoạt động bình thường.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -633,7 +620,9 @@ const AdminBlocks = () => {
                           disabled={unblockingId === selectedBlock._id}
                           onClick={() => void handleAdminUnblock(selectedBlock._id)}
                         >
-                          {unblockingId === selectedBlock._id ? "Đang xử lý..." : "Gỡ block"}
+                          {unblockingId === selectedBlock._id
+                            ? "Đang xử lý..."
+                            : "Gỡ chặn"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

@@ -428,6 +428,86 @@ export const getDashboardStats = async (req, res) => {
 };
 
 // Danh sách người dùng
+export const getDashboardOverview = async (req, res) => {
+  try {
+    const last7Days = new Date();
+    last7Days.setDate(last7Days.getDate() - 7);
+
+    const [
+      totalUsers,
+      activeUsers,
+      bannedUsers,
+      newUsersLast7Days,
+      totalDirectConversations,
+      totalGroupConversations,
+      totalSupportConversations,
+      totalMessages,
+      newGroupsLast7Days,
+      totalAcceptedFriends,
+      totalPendingFriendRequests,
+      totalActiveBlocks,
+      totalPendingReports,
+      totalReviewingReports,
+      totalOpenSupportConversations,
+      totalInProgressSupportConversations,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ status: "active" }),
+      User.countDocuments({ status: "banned" }),
+      User.countDocuments({ createdAt: { $gte: last7Days } }),
+      Conversation.countDocuments({ type: "direct" }),
+      Conversation.countDocuments({ type: "group" }),
+      Conversation.countDocuments({ type: "support" }),
+      Message.countDocuments(),
+      Conversation.countDocuments({
+        type: "group",
+        createdAt: { $gte: last7Days },
+      }),
+      Friend.countDocuments(),
+      FriendRequest.countDocuments({
+        $or: [{ status: "pending" }, { status: { $exists: false } }, { status: null }],
+      }),
+      Blocking.countDocuments({ isActive: { $ne: false } }),
+      Report.countDocuments({ status: "pending" }),
+      Report.countDocuments({ status: "reviewing" }),
+      Conversation.countDocuments({ type: "support", supportStatus: "open" }),
+      Conversation.countDocuments({
+        type: "support",
+        supportStatus: "in_progress",
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        activeUsers,
+        bannedUsers,
+        deletedUsers: 0,
+        newUsersLast7Days,
+        totalDirectConversations,
+        totalGroupConversations,
+        totalSupportConversations,
+        totalMessages,
+        newGroupsLast7Days,
+        totalAcceptedFriends,
+        totalPendingFriendRequests,
+        totalActiveBlocks,
+        totalPendingReports,
+        totalReviewingReports,
+        totalOpenSupportConversations,
+        totalInProgressSupportConversations,
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay dashboard overview:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay du lieu dashboard overview",
+    });
+  }
+};
+
 export const getUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;

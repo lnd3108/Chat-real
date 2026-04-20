@@ -75,7 +75,6 @@ const AdminProtectedRoute = () => {
     return <Navigate to="/signin" replace />;
   }
 
-  // Kiểm tra xem user có phải admin không
   if (user?.role !== "admin") {
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(97,218,251,0.16),_transparent_35%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--background))_100%)] px-6">
@@ -91,7 +90,8 @@ const AdminProtectedRoute = () => {
 
           <h2 className="text-xl font-semibold text-foreground">Truy cập bị từ chối</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Bạn không có quyền truy cập vào khu vực admin. Chỉ những người quản trị viên mới có thể truy cập.
+            Bạn không có quyền truy cập vào khu vực admin. Chỉ những quản trị
+            viên mới có thể truy cập.
           </p>
 
           <div className="mt-6">
