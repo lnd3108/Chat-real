@@ -19,6 +19,8 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminReportDetail from "./pages/admin/AdminReportDetail";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminSupportDetail from "./pages/admin/AdminSupportDetail";
+import AdminMaintenance from "./pages/admin/AdminMaintenance";
+import MaintenanceModeModal from "./components/MaintenanceModeModal";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -51,6 +53,7 @@ function App() {
 
   return (
     <>
+      <MaintenanceModeModal />
       <Toaster
         theme={isDark ? "dark" : "light"}
         position="bottom-right"
@@ -116,6 +119,7 @@ function App() {
                 path="/admin/reports/:id"
                 element={<AdminReportDetail />}
               />
+              <Route path="/admin/maintenance" element={<AdminMaintenance />} />
             </Route>
           </Route>
         </Routes>

@@ -12,6 +12,7 @@ import {
   Mail,
   MessageSquare,
   Users,
+  Zap,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -69,6 +70,12 @@ const AdminSidebar = () => {
       label: "Báo cáo",
       icon: Flag,
       path: "/admin/reports",
+    },
+    {
+      id: "maintenance",
+      label: "Bảo Trì",
+      icon: Zap,
+      path: "/admin/maintenance",
     },
   ];
 
