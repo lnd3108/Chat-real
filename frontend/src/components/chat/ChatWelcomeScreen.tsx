@@ -11,20 +11,15 @@ const ChatWelcomeScreen = () => {
   const { suggestions, getSuggestions, suggestionsLoading } = useFriendStore();
 
   useEffect(() => {
-    if (
-      !currentUserId ||
-      conversations.length > 0 ||
-      suggestionsLoading ||
-      suggestions.length > 0
-    ) {
+    if (!currentUserId || conversations.length > 0 || suggestionsLoading) {
       return;
     }
 
-    void getSuggestions(8);
-  }, [currentUserId, conversations.length, getSuggestions, suggestions.length, suggestionsLoading]);
+    void getSuggestions(5);
+  }, [currentUserId, conversations.length, getSuggestions, suggestionsLoading]);
 
   const handleRefreshSuggestions = async () => {
-    await getSuggestions(8);
+    await getSuggestions(5);
   };
 
   return (

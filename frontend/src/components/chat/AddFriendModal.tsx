@@ -33,19 +33,12 @@ const AddFriendModal = () => {
   const trimmedQuery = query.trim();
 
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setSearchResults([]);
-      return;
-    }
-
-    if (!currentUserId) {
+    if (!open || !currentUserId) {
       return;
     }
 
     if (!trimmedQuery) {
-      void getSuggestions(10);
-      setSearchResults([]);
+      void getSuggestions(5);
       return;
     }
 
@@ -67,7 +60,7 @@ const AddFriendModal = () => {
     : "Chưa có gợi ý phù hợp.";
 
   const handleRefreshSuggestions = async () => {
-    await getSuggestions(10);
+    await getSuggestions(5);
   };
 
   return (
@@ -75,6 +68,10 @@ const AddFriendModal = () => {
       open={open}
       onOpenChange={(nextOpen) => {
         playClickSound();
+        if (!nextOpen) {
+          setQuery("");
+          setSearchResults([]);
+        }
         setOpen(nextOpen);
       }}
     >

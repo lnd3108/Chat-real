@@ -158,6 +158,7 @@ export interface FriendState {
   searchLoading: boolean;
   receivedList: FriendRequest[];
   sentList: FriendRequest[];
+  reset: () => void;
   searchByUserName: (userName: string) => Promise<User | null>;
   searchUsers: (query: string, limit?: number) => Promise<DiscoverUser[]>;
   getSuggestions: (limit?: number) => Promise<DiscoverUser[]>;

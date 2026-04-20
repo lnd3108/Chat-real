@@ -7,6 +7,10 @@ import {
   deleteImageFromCloudinary,
   deleteImageFromCloudinaryUrl,
 } from "../middlewares/uploadMiddleWare.js";
+import {
+  getProtectedFriendshipMessage,
+  isProtectedAccount,
+} from "../services/friendshipPolicyService.js";
 import { getIo } from "../socket/index.js";
 import { findDirectConversationBetweenUsers } from "../utils/blocking.js";
 
@@ -47,12 +51,24 @@ export const sendFriendRequest = async (req, res) => {
     if (from.toString() === to?.toString()) {
       return res
         .status(400)
-        .json({ message: "KhÃ´ng thá»ƒ gá»­i lá»i má»i káº¿t báº¡n cho chÃ­nh mÃ¬nh" });
+        .json({ message: "Không thể gửi lời mời kết bạn cho chính mình" });
     }
 
-    const userExists = await User.exists({ _id: to });
-    if (!userExists) {
-      return res.status(404).json({ message: "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+    const [fromUser, toUser] = await Promise.all([
+      User.findById(from).select("_id role userName status displayName avatarUrl").lean(),
+      User.findById(to).select("_id role userName status displayName avatarUrl").lean(),
+    ]);
+
+    if (!toUser) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    if (isProtectedAccount(fromUser) || isProtectedAccount(toUser)) {
+      return res.status(403).json({ message: getProtectedFriendshipMessage() });
+    }
+
+    if (String(toUser.status ?? "").toLowerCase() !== "active") {
+      return res.status(400).json({ message: "Người dùng không hợp lệ để kết bạn." });
     }
 
     const { userA, userB } = toSortedFriendPair(from, to);
@@ -68,7 +84,7 @@ export const sendFriendRequest = async (req, res) => {
     ]);
 
     if (alreadyFriends) {
-      return res.status(400).json({ message: "Hai ngÆ°á»i Ä‘Ã£ lÃ  báº¡n bÃ¨" });
+      return res.status(400).json({ message: "Hai người đã là bạn bè" });
     }
 
     if (existingRequest) {
@@ -83,10 +99,6 @@ export const sendFriendRequest = async (req, res) => {
           $set: { status: "accepted" },
         });
 
-        const [fromUser, toUser] = await Promise.all([
-          User.findById(from).select("_id userName displayName avatarUrl").lean(),
-          User.findById(to).select("_id userName displayName avatarUrl").lean(),
-        ]);
         const acceptancePayload = {
           requestId: existingRequest._id.toString(),
           userA: mapBasicUser(fromUser),
@@ -97,7 +109,7 @@ export const sendFriendRequest = async (req, res) => {
         io.to(to.toString()).emit("friend:request:accepted", acceptancePayload);
 
         return res.status(200).json({
-          message: "Hai báº¡n Ä‘Ã£ tá»± Ä‘á»™ng trá»Ÿ thÃ nh báº¡n bÃ¨",
+          message: "Hai bạn đã tự động trở thành bạn bè",
           autoAccepted: true,
           matchedRequestId: existingRequest._id,
           newFriend: mapBasicUser(toUser),
@@ -105,7 +117,7 @@ export const sendFriendRequest = async (req, res) => {
       }
 
       if (!isReverseRequest && isPendingRequest) {
-        return res.status(400).json({ message: "ÄÃ£ cÃ³ lá»i má»i káº¿t báº¡n Ä‘ang chá»" });
+        return res.status(400).json({ message: "Đã có lời mời kết bạn đang chờ" });
       }
 
       if (!isReverseRequest) {
@@ -117,12 +129,9 @@ export const sendFriendRequest = async (req, res) => {
               status: "pending",
             },
           },
-          { new: true }
+          { new: true },
         );
-        const [fromUser, toUser] = await Promise.all([
-          User.findById(from).select("_id userName displayName avatarUrl").lean(),
-          User.findById(to).select("_id userName displayName avatarUrl").lean(),
-        ]);
+
         const requestPayload = toFriendRequestSocketPayload({
           request,
           fromUser,
@@ -133,7 +142,7 @@ export const sendFriendRequest = async (req, res) => {
         io.to(from.toString()).emit("friend:request:sent", { request: requestPayload });
 
         return res.status(200).json({
-          message: "Gá»­i láº¡i lá»i má»i káº¿t báº¡n thÃ nh cÃ´ng",
+          message: "Gửi lại lời mời kết bạn thành công",
           autoAccepted: false,
           request: requestPayload,
         });
@@ -141,10 +150,6 @@ export const sendFriendRequest = async (req, res) => {
     }
 
     const request = await FriendRequest.create({ from, to, message, status: "pending" });
-    const [fromUser, toUser] = await Promise.all([
-      User.findById(from).select("_id userName displayName avatarUrl").lean(),
-      User.findById(to).select("_id userName displayName avatarUrl").lean(),
-    ]);
     const requestPayload = toFriendRequestSocketPayload({
       request,
       fromUser,
@@ -155,13 +160,13 @@ export const sendFriendRequest = async (req, res) => {
     io.to(from.toString()).emit("friend:request:sent", { request: requestPayload });
 
     return res.status(201).json({
-      message: "Gá»­i lá»i má»i káº¿t báº¡n thÃ nh cÃ´ng",
+      message: "Gửi lời mời kết bạn thành công",
       autoAccepted: false,
       request: requestPayload,
     });
   } catch (error) {
-    console.error("Lá»—i khi gá»­i yÃªu cáº§u káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi gửi yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -173,17 +178,17 @@ export const acceptFriendRequest = async (req, res) => {
 
     const request = await FriendRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ message: "KhÃ´ng tÃ¬m tháº¥y lá»i má»i káº¿t báº¡n" });
+      return res.status(404).json({ message: "Không tìm thấy lời mời kết bạn" });
     }
 
     if (request.to.toString() !== userId.toString()) {
       return res.status(403).json({
-        message: "Báº¡n khÃ´ng cÃ³ quyá»n cháº¥p nháº­n lá»i má»i káº¿t báº¡n nÃ y",
+        message: "Bạn không có quyền chấp nhận lời mời kết bạn này",
       });
     }
 
     if ((request.status ?? "pending") !== "pending") {
-      return res.status(400).json({ message: "Lá»i má»i nÃ y Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½" });
+      return res.status(400).json({ message: "Lời mời này đã được xử lý" });
     }
 
     const { userA, userB } = toSortedFriendPair(request.from, request.to);
@@ -214,12 +219,12 @@ export const acceptFriendRequest = async (req, res) => {
     io.to(request.to.toString()).emit("friend:request:accepted", acceptancePayload);
 
     return res.status(200).json({
-      message: "Cháº¥p nháº­n lá»i má»i thÃ nh cÃ´ng",
+      message: "Chấp nhận lời mời thành công",
       newFriend: mapBasicUser(fromUser),
     });
   } catch (error) {
-    console.error("Lá»—i khi cháº¥p nháº­n yÃªu cáº§u káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi chấp nhận yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -231,22 +236,23 @@ export const declineFriendRequest = async (req, res) => {
 
     const request = await FriendRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ message: "KhÃ´ng tÃ¬m tháº¥y lá»i má»i káº¿t báº¡n" });
+      return res.status(404).json({ message: "Không tìm thấy lời mời kết bạn" });
     }
 
     if (request.to.toString() !== userId.toString()) {
       return res.status(403).json({
-        message: "Báº¡n khÃ´ng cÃ³ quyá»n tá»« chá»‘i lá»i má»i káº¿t báº¡n nÃ y",
+        message: "Bạn không có quyền từ chối lời mời kết bạn này",
       });
     }
 
     if ((request.status ?? "pending") !== "pending") {
-      return res.status(400).json({ message: "Lá»i má»i nÃ y Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½" });
+      return res.status(400).json({ message: "Lời mời này đã được xử lý" });
     }
 
     await FriendRequest.findByIdAndUpdate(requestId, {
       $set: { status: "rejected" },
     });
+
     io.to(request.from.toString()).emit("friend:request:removed", {
       requestId: requestId.toString(),
       fromUserId: request.from.toString(),
@@ -259,10 +265,11 @@ export const declineFriendRequest = async (req, res) => {
       toUserId: request.to.toString(),
       reason: "declined",
     });
+
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Lá»—i khi tá»« chá»‘i yÃªu cáº§u káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi từ chối yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -270,29 +277,44 @@ export const cancelSentFriendRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
     const userId = req.user._id;
+    const io = getIo();
 
     const request = await FriendRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ message: "KhÃ´ng tÃ¬m tháº¥y lá»i má»i káº¿t báº¡n" });
+      return res.status(404).json({ message: "Không tìm thấy lời mời kết bạn" });
     }
 
     if (request.from.toString() !== userId.toString()) {
       return res.status(403).json({
-        message: "Báº¡n khÃ´ng cÃ³ quyá»n há»§y lá»i má»i káº¿t báº¡n nÃ y",
+        message: "Bạn không có quyền hủy lời mời kết bạn này",
       });
     }
 
     if ((request.status ?? "pending") !== "pending") {
-      return res.status(400).json({ message: "Lá»i má»i nÃ y Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½" });
+      return res.status(400).json({ message: "Lời mời này đã được xử lý" });
     }
 
     await FriendRequest.findByIdAndUpdate(requestId, {
       $set: { status: "cancelled" },
     });
-    return res.status(200).json({ message: "ÄÃ£ há»§y lá»i má»i káº¿t báº¡n" });
+
+    io.to(request.from.toString()).emit("friend:request:removed", {
+      requestId: requestId.toString(),
+      fromUserId: request.from.toString(),
+      toUserId: request.to.toString(),
+      reason: "cancelled",
+    });
+    io.to(request.to.toString()).emit("friend:request:removed", {
+      requestId: requestId.toString(),
+      fromUserId: request.from.toString(),
+      toUserId: request.to.toString(),
+      reason: "cancelled",
+    });
+
+    return res.status(200).json({ message: "Đã hủy lời mời kết bạn" });
   } catch (error) {
-    console.error("Lá»—i khi há»§y yÃªu cáº§u káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi hủy yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -323,8 +345,8 @@ export const getAllFriends = async (req, res) => {
 
     return res.status(200).json({ friends });
   } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch báº¡n bÃ¨", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi lấy danh sách bạn bè", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -340,8 +362,8 @@ export const getFriendRequests = async (req, res) => {
 
     return res.status(200).json({ sent, received });
   } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch yÃªu cáº§u káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi lấy danh sách yêu cầu kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -352,19 +374,19 @@ export const removeFriend = async (req, res) => {
     const io = getIo();
 
     if (userId.toString() === targetUserId.toString()) {
-      return res.status(400).json({ message: "KhÃ´ng thá»ƒ há»§y káº¿t báº¡n vá»›i chÃ­nh mÃ¬nh" });
+      return res.status(400).json({ message: "Không thể hủy kết bạn với chính mình" });
     }
 
     const targetUser = await User.findById(targetUserId).select("_id");
     if (!targetUser) {
-      return res.status(404).json({ message: "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
     }
 
     const { userA, userB } = toSortedFriendPair(userId, targetUserId);
     const friendship = await Friend.findOneAndDelete({ userA, userB });
 
     if (!friendship) {
-      return res.status(404).json({ message: "Hai ngÆ°á»i hiá»‡n khÃ´ng cÃ²n lÃ  báº¡n bÃ¨" });
+      return res.status(404).json({ message: "Hai người hiện không còn là bạn bè" });
     }
 
     await FriendRequest.deleteMany({
@@ -390,17 +412,17 @@ export const removeFriend = async (req, res) => {
         messagesWithImages.map(async (message) => {
           if (message.imgPublicId) {
             await deleteImageFromCloudinary(message.imgPublicId).catch((error) => {
-              console.error("KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a Ã¡ÂºÂ£nh tin nhÃ¡ÂºÂ¯n trÃƒÂªn Cloudinary:", error);
+              console.error("Không thể xóa ảnh tin nhắn trên Cloudinary:", error);
             });
             return;
           }
 
           if (message.imgUrl) {
             await deleteImageFromCloudinaryUrl(message.imgUrl).catch((error) => {
-              console.error("KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a Ã¡ÂºÂ£nh tin nhÃ¡ÂºÂ¯n trÃƒÂªn Cloudinary:", error);
+              console.error("Không thể xóa ảnh tin nhắn trên Cloudinary:", error);
             });
           }
-        })
+        }),
       );
 
       await Message.deleteMany({ conversationId: directConversation._id });
@@ -422,12 +444,12 @@ export const removeFriend = async (req, res) => {
     io.to(targetUserId.toString()).emit("friend:removed", removalPayload);
 
     return res.status(200).json({
-      message: "ÄÃ£ há»§y káº¿t báº¡n thÃ nh cÃ´ng",
+      message: "Đã hủy kết bạn thành công",
       conversationId,
       clearedDirectChat: Boolean(conversationId),
     });
   } catch (error) {
-    console.error("Lá»—i khi há»§y káº¿t báº¡n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi hủy kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

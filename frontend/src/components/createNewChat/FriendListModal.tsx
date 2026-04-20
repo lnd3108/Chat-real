@@ -48,25 +48,12 @@ const FriendListModal = ({
   const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
 
   useEffect(() => {
-    if (
-      !open ||
-      !currentUserId ||
-      !shouldShowSuggestions ||
-      suggestionsLoading ||
-      suggestions.length > 0
-    ) {
+    if (!open || !currentUserId || !shouldShowSuggestions || suggestionsLoading) {
       return;
     }
 
-    void getSuggestions(8);
-  }, [
-    currentUserId,
-    getSuggestions,
-    open,
-    shouldShowSuggestions,
-    suggestions.length,
-    suggestionsLoading,
-  ]);
+    void getSuggestions(5);
+  }, [currentUserId, getSuggestions, open, shouldShowSuggestions, suggestionsLoading]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
@@ -74,7 +61,7 @@ const FriendListModal = ({
   };
 
   const handleRefreshSuggestions = async () => {
-    await getSuggestions(8);
+    await getSuggestions(5);
   };
 
   return (

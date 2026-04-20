@@ -15,6 +15,8 @@ export interface User {
 }
 
 export interface DiscoverUser {
+  id?: string;
+  fullName?: string;
   _id: string;
   username: string;
   userName: string;
@@ -22,9 +24,11 @@ export interface DiscoverUser {
   avatar?: string | null;
   avatarUrl?: string | null;
   mutualFriendsCount: number;
+  reasonText?: string;
   isFriend: boolean;
   requestSent: boolean;
   requestReceived: boolean;
+  canSendFriendRequest?: boolean;
 }
 
 export interface BlockedUser {

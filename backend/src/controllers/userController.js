@@ -2,11 +2,13 @@ import {
   deleteImageFromCloudinary,
   uploadImageFromBuffer,
 } from "../middlewares/uploadMiddleWare.js";
-import Friend from "../models/Friend.js";
-import FriendRequest from "../models/FriendRequest.js";
 import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import User from "../models/User.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
+import {
+  getUserSuggestionsForViewer,
+  searchDiscoverableUsersForViewer,
+} from "../services/userDiscoveryService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
 
 const formatBlockedUsers = async (blockedUsers = []) => {
@@ -41,159 +43,6 @@ const formatBlockedUsers = async (blockedUsers = []) => {
     .filter(Boolean);
 };
 
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const shuffleArray = (items = []) => {
-  const next = [...items];
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-
-  return next;
-};
-
-const getAcceptedFriendIds = async (userId) => {
-  const friendships = await Friend.find({
-    $or: [{ userA: userId }, { userB: userId }],
-  })
-    .select("userA userB")
-    .lean();
-
-  return friendships.map((friendship) => {
-    const userA = friendship.userA.toString();
-    const userB = friendship.userB.toString();
-
-    return userA === userId.toString() ? userB : userA;
-  });
-};
-
-const getIncomingBlockedUserIds = async (userId) => {
-  const blockers = await User.find({
-    "blockedUsers.userId": userId,
-  })
-    .select("_id")
-    .lean();
-
-  return blockers.map((user) => user._id.toString());
-};
-
-const getPendingFriendRequestMaps = async (userId) => {
-  const requests = await FriendRequest.find({
-    $or: [{ from: userId }, { to: userId }],
-  })
-    .select("from to")
-    .lean();
-
-  const sentTo = new Set();
-  const receivedFrom = new Set();
-
-  requests.forEach((request) => {
-    const fromId = request.from.toString();
-    const toId = request.to.toString();
-
-    if (fromId === userId.toString()) {
-      sentTo.add(toId);
-    } else if (toId === userId.toString()) {
-      receivedFrom.add(fromId);
-    }
-  });
-
-  return { sentTo, receivedFrom };
-};
-
-const buildUserConnectionPayload = async (users, options = {}) => {
-  const {
-    viewerFriendIds = [],
-    pendingSentIds = new Set(),
-    pendingReceivedIds = new Set(),
-  } = options;
-
-  if (!users.length) {
-    return [];
-  }
-
-  const viewerFriendSet = new Set(viewerFriendIds.map((id) => id.toString()));
-  const candidateIds = users.map((user) => user._id.toString());
-  const candidateFriendships = await Friend.find({
-    $or: [{ userA: { $in: candidateIds } }, { userB: { $in: candidateIds } }],
-  })
-    .select("userA userB")
-    .lean();
-
-  const candidateFriendMap = new Map(candidateIds.map((id) => [id, new Set()]));
-
-  candidateFriendships.forEach((friendship) => {
-    const userA = friendship.userA.toString();
-    const userB = friendship.userB.toString();
-
-    if (candidateFriendMap.has(userA)) {
-      candidateFriendMap.get(userA).add(userB);
-    }
-
-    if (candidateFriendMap.has(userB)) {
-      candidateFriendMap.get(userB).add(userA);
-    }
-  });
-
-  return users.map((user) => {
-    const userId = user._id.toString();
-    const candidateFriendSet = candidateFriendMap.get(userId) ?? new Set();
-    let mutualFriendsCount = 0;
-
-    viewerFriendSet.forEach((friendId) => {
-      if (candidateFriendSet.has(friendId)) {
-        mutualFriendsCount += 1;
-      }
-    });
-
-    return {
-      _id: user._id,
-      username: user.userName,
-      userName: user.userName,
-      displayName: user.displayName,
-      avatar: user.avatarUrl ?? null,
-      avatarUrl: user.avatarUrl ?? null,
-      mutualFriendsCount,
-      isFriend: viewerFriendSet.has(userId),
-      requestSent: pendingSentIds.has(userId),
-      requestReceived: pendingReceivedIds.has(userId),
-    };
-  });
-};
-
-const getDiscoveryContext = async (userId, includePending = true) => {
-  const [viewer, friendIds, incomingBlockedIds, pendingMaps] = await Promise.all([
-    User.findById(userId).select("blockedUsers").lean(),
-    getAcceptedFriendIds(userId),
-    getIncomingBlockedUserIds(userId),
-    includePending
-      ? getPendingFriendRequestMaps(userId)
-      : Promise.resolve({ sentTo: new Set(), receivedFrom: new Set() }),
-  ]);
-
-  const blockedByViewerIds = (viewer?.blockedUsers ?? [])
-    .map((entry) => entry.userId?.toString())
-    .filter(Boolean);
-
-  const excludedIds = new Set([
-    userId.toString(),
-    ...friendIds.map((id) => id.toString()),
-    ...blockedByViewerIds,
-    ...incomingBlockedIds,
-    ...pendingMaps.sentTo,
-    ...pendingMaps.receivedFrom,
-  ]);
-
-  return {
-    friendIds,
-    pendingSentIds: pendingMaps.sentTo,
-    pendingReceivedIds: pendingMaps.receivedFrom,
-    excludedIds,
-  };
-};
-
 const normalizeString = (value) => {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -226,48 +75,7 @@ export const searchUserByUserName = async (req, res) => {
       return res.status(400).json({ message: "Can cung cap tu khoa tim kiem." });
     }
 
-    const { friendIds, pendingSentIds, pendingReceivedIds, excludedIds } =
-      await getDiscoveryContext(req.user._id, false);
-
-    const regex = new RegExp(escapeRegex(q), "i");
-    const users = await User.find({
-      _id: { $nin: Array.from(excludedIds) },
-      $or: [{ userName: regex }, { displayName: regex }],
-    })
-      .select("_id displayName userName avatarUrl")
-      .limit(limit)
-      .lean();
-
-    const normalizedQuery = q.toLowerCase();
-    users.sort((left, right) => {
-      const leftUserName = left.userName.toLowerCase();
-      const rightUserName = right.userName.toLowerCase();
-      const leftDisplayName = left.displayName.toLowerCase();
-      const rightDisplayName = right.displayName.toLowerCase();
-
-      const leftScore =
-        (leftUserName === normalizedQuery ? 8 : 0) +
-        (leftDisplayName === normalizedQuery ? 6 : 0) +
-        (leftUserName.startsWith(normalizedQuery) ? 4 : 0) +
-        (leftDisplayName.startsWith(normalizedQuery) ? 2 : 0);
-      const rightScore =
-        (rightUserName === normalizedQuery ? 8 : 0) +
-        (rightDisplayName === normalizedQuery ? 6 : 0) +
-        (rightUserName.startsWith(normalizedQuery) ? 4 : 0) +
-        (rightDisplayName.startsWith(normalizedQuery) ? 2 : 0);
-
-      if (rightScore !== leftScore) {
-        return rightScore - leftScore;
-      }
-
-      return left.userName.localeCompare(right.userName);
-    });
-
-    const usersWithMeta = await buildUserConnectionPayload(users, {
-      viewerFriendIds: friendIds,
-      pendingSentIds,
-      pendingReceivedIds,
-    });
+    const usersWithMeta = await searchDiscoverableUsersForViewer(req.user._id, q, limit);
 
     return res.status(200).json({ users: usersWithMeta });
   } catch (error) {
@@ -280,73 +88,12 @@ export const getUserSuggestions = async (req, res) => {
   try {
     const requestedLimit = Number.parseInt(req.query.limit, 10);
     const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 20)
-      : 10;
+      ? Math.min(Math.max(requestedLimit, 1), 5)
+      : 5;
 
-    const { friendIds, pendingSentIds, pendingReceivedIds, excludedIds } =
-      await getDiscoveryContext(req.user._id, true);
+    const users = await getUserSuggestionsForViewer(req.user._id, limit);
 
-    const friendIdSet = new Set(friendIds.map((id) => id.toString()));
-    const suggestionIds = new Set();
-
-    if (friendIds.length > 0) {
-      const friendEdges = await Friend.find({
-        $or: [{ userA: { $in: friendIds } }, { userB: { $in: friendIds } }],
-      })
-        .select("userA userB")
-        .lean();
-
-      friendEdges.forEach((edge) => {
-        const userA = edge.userA.toString();
-        const userB = edge.userB.toString();
-
-        if (friendIdSet.has(userA) && !excludedIds.has(userB)) {
-          suggestionIds.add(userB);
-        }
-
-        if (friendIdSet.has(userB) && !excludedIds.has(userA)) {
-          suggestionIds.add(userA);
-        }
-      });
-    }
-
-    let candidateIds = Array.from(suggestionIds);
-
-    if (candidateIds.length < limit) {
-      const fallbackUsers = await User.find({
-        _id: { $nin: [...Array.from(excludedIds), ...candidateIds] },
-      })
-        .select("_id")
-        .limit(limit * 5)
-        .lean();
-
-      candidateIds = [
-        ...candidateIds,
-        ...shuffleArray(fallbackUsers.map((user) => user._id.toString())),
-      ];
-    }
-
-    const candidateUsers = await User.find({
-      _id: { $in: Array.from(new Set(candidateIds)).slice(0, limit * 3) },
-    })
-      .select("_id displayName userName avatarUrl")
-      .lean();
-
-    const usersWithMeta = await buildUserConnectionPayload(candidateUsers, {
-      viewerFriendIds: friendIds,
-      pendingSentIds,
-      pendingReceivedIds,
-    });
-
-    usersWithMeta.sort((left, right) => {
-      if (right.mutualFriendsCount !== left.mutualFriendsCount) {
-        return right.mutualFriendsCount - left.mutualFriendsCount;
-      }
-
-      return left.username.localeCompare(right.username);
-    });
-
-    return res.status(200).json({ users: usersWithMeta.slice(0, limit) });
+    return res.status(200).json({ users });
   } catch (error) {
     console.error("Loi khi lay user suggestions", error);
     return res.status(500).json({ message: "Loi he thong" });

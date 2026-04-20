@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
-import { UserPlus, Users, RotateCw } from "lucide-react";
+import { RotateCw, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { useFriendStore } from "@/stores/useFriendStore";
 import type { DiscoverUser } from "@/types/user";
 import DirectProfileDialog from "./DirectProfileDialog";
+
+interface SuggestionListUser extends DiscoverUser {
+  sentRequestId?: string;
+  canRenderAction: boolean;
+}
 
 interface UserSuggestionsListProps {
   users: DiscoverUser[];
@@ -17,6 +22,10 @@ interface UserSuggestionsListProps {
 }
 
 const getSubtitle = (user: DiscoverUser) => {
+  if (user.reasonText?.trim()) {
+    return user.reasonText;
+  }
+
   if (user.mutualFriendsCount > 0) {
     return `${user.mutualFriendsCount} bạn chung`;
   }
@@ -35,8 +44,8 @@ const UserSuggestionsList = ({
   loading = false,
   onRefresh,
 }: UserSuggestionsListProps) => {
-  const { addFriend, friends, sentList, receivedList } = useFriendStore();
-  const [pendingIds, setPendingIds] = useState<string[]>([]);
+  const { addFriend, cancelSentRequest, friends, sentList, receivedList } = useFriendStore();
+  const [submittingIds, setSubmittingIds] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const friendIds = useMemo(
@@ -47,35 +56,54 @@ const UserSuggestionsList = ({
     () => new Set(sentList.map((request) => request.to?._id).filter(Boolean)),
     [sentList],
   );
+  const sentRequestMap = useMemo(
+    () =>
+      new Map(
+        sentList
+          .filter((request) => request._id && request.to?._id)
+          .map((request) => [request.to!._id, request._id]),
+      ),
+    [sentList],
+  );
   const receivedRequestIds = useMemo(
     () => new Set(receivedList.map((request) => request.from?._id).filter(Boolean)),
     [receivedList],
   );
 
-  const mergedUsers = useMemo(
+  const mergedUsers = useMemo<SuggestionListUser[]>(
     () =>
-      users.map((user) => {
+      users.slice(0, 5).map((user) => {
         const isFriend = user.isFriend || friendIds.has(user._id);
-        const requestSent =
-          user.requestSent || pendingIds.includes(user._id) || sentRequestIds.has(user._id);
-        const requestReceived = user.requestReceived || receivedRequestIds.has(user._id);
+        const requestSent = user.requestSent || sentRequestIds.has(user._id);
+        const requestReceived = !requestSent && (user.requestReceived || receivedRequestIds.has(user._id));
+        const canSendFriendRequest =
+          typeof user.canSendFriendRequest === "boolean" ? user.canSendFriendRequest : true;
+        const canRenderAction = isFriend || requestSent || canSendFriendRequest;
 
         return {
           ...user,
           isFriend,
           requestSent,
-          requestReceived: requestSent ? false : requestReceived,
+          requestReceived,
+          canSendFriendRequest,
+          canRenderAction,
+          sentRequestId: sentRequestMap.get(user._id),
         };
       }),
-    [friendIds, pendingIds, receivedRequestIds, sentRequestIds, users],
+    [friendIds, receivedRequestIds, sentRequestIds, sentRequestMap, users],
   );
 
-  const handleAddFriend = async (user: DiscoverUser) => {
-    if (user.requestSent || user.isFriend || pendingIds.includes(user._id)) {
+  const handleAddFriend = async (user: SuggestionListUser) => {
+    if (
+      user.requestSent ||
+      user.isFriend ||
+      submittingIds.includes(user._id) ||
+      user.canSendFriendRequest === false
+    ) {
       return;
     }
 
-    setPendingIds((current) => [...current, user._id]);
+    setSubmittingIds((current) => [...current, user._id]);
 
     try {
       const result = await addFriend(user._id);
@@ -85,15 +113,33 @@ const UserSuggestionsList = ({
         toast.error(result.message);
       }
     } finally {
-      setPendingIds((current) =>
+      setSubmittingIds((current) =>
         current.filter((pendingUserId) => pendingUserId !== user._id),
       );
     }
   };
 
+  const handleCancelRequest = async (user: SuggestionListUser) => {
+    if (!user.sentRequestId || submittingIds.includes(user._id)) {
+      return;
+    }
+
+    setSubmittingIds((current) => [...current, user._id]);
+
+    try {
+      await cancelSentRequest(user.sentRequestId, user._id);
+      toast.success("Đã hủy lời mời kết bạn");
+    } catch (error) {
+      console.error("Failed to cancel friend request:", error);
+      toast.error("Không thể hủy lời mời kết bạn");
+    } finally {
+      setSubmittingIds((current) => current.filter((currentUserId) => currentUserId !== user._id));
+    }
+  };
+
   const handleRefresh = async () => {
     if (isRefreshing || !onRefresh) return;
-    
+
     setIsRefreshing(true);
     try {
       await onRefresh();
@@ -115,17 +161,21 @@ const UserSuggestionsList = ({
             {title}
           </h3>
         </div>
-        {onRefresh && (
+        {onRefresh ? (
           <button
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing || loading}
-            className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             title="Làm mới gợi ý"
           >
-            <RotateCw className={`size-4 text-muted-foreground ${isRefreshing || loading ? 'animate-spin' : ''}`} />
+            <RotateCw
+              className={`size-4 text-muted-foreground ${
+                isRefreshing || loading ? "animate-spin" : ""
+              }`}
+            />
           </button>
-        )}
+        ) : null}
       </div>
 
       {loading && mergedUsers.length === 0 ? (
@@ -143,11 +193,11 @@ const UserSuggestionsList = ({
       {mergedUsers.length > 0 ? (
         <div className="space-y-2">
           {mergedUsers.map((user) => {
-            const requestSent = user.requestSent || pendingIds.includes(user._id);
+            const isSubmitting = submittingIds.includes(user._id);
             const buttonLabel = user.isFriend
               ? "Bạn bè"
-              : requestSent
-                ? "Đã gửi"
+              : user.requestSent
+                ? "Hủy lời mời"
                 : user.requestReceived
                   ? "Phản hồi"
                   : "Kết bạn";
@@ -185,21 +235,31 @@ const UserSuggestionsList = ({
                   }
                 />
 
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={requestSent || user.isFriend ? "outline" : "default"}
-                  disabled={requestSent || user.isFriend}
-                  className={
-                    requestSent || user.isFriend
-                      ? "shrink-0 rounded-xl"
-                      : "shrink-0 rounded-xl bg-gradient-chat text-white hover:opacity-90"
-                  }
-                  onClick={() => void handleAddFriend(user)}
-                >
-                  {requestSent || user.isFriend ? null : <UserPlus className="size-4" />}
-                  {buttonLabel}
-                </Button>
+                {user.canRenderAction ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={user.requestSent || user.isFriend ? "outline" : "default"}
+                    disabled={user.isFriend || isSubmitting}
+                    className={
+                      user.requestSent || user.isFriend
+                        ? "shrink-0 rounded-xl"
+                        : "shrink-0 rounded-xl bg-gradient-chat text-white hover:opacity-90"
+                    }
+                    onClick={() =>
+                      user.requestSent
+                        ? void handleCancelRequest(user)
+                        : void handleAddFriend(user)
+                    }
+                  >
+                    {!user.requestSent && !user.isFriend ? <UserPlus className="size-4" /> : null}
+                    {isSubmitting
+                      ? user.requestSent
+                        ? "Đang hủy..."
+                        : "Đang gửi..."
+                      : buttonLabel}
+                  </Button>
+                ) : null}
               </div>
             );
           })}

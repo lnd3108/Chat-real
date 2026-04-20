@@ -2,21 +2,31 @@ import api from "@/lib/axios";
 import type { DiscoverUser, Friend, FriendRequest } from "@/types/user";
 
 const normalizeDiscoverUser = (user: Partial<DiscoverUser> & {
+  id?: string;
+  fullName?: string;
   username?: string;
   userName?: string;
   avatar?: string | null;
   avatarUrl?: string | null;
 }): DiscoverUser => ({
+  id: String(user.id ?? user._id ?? ""),
+  fullName: String(user.fullName ?? user.displayName ?? ""),
   _id: String(user._id ?? ""),
   username: String(user.username ?? user.userName ?? ""),
   userName: String(user.userName ?? user.username ?? ""),
-  displayName: String(user.displayName ?? ""),
+  displayName: String(user.displayName ?? user.fullName ?? ""),
   avatar: user.avatar ?? user.avatarUrl ?? null,
   avatarUrl: user.avatarUrl ?? user.avatar ?? null,
   mutualFriendsCount: Number(user.mutualFriendsCount ?? 0),
+  reasonText:
+    typeof user.reasonText === "string" && user.reasonText.trim()
+      ? user.reasonText
+      : undefined,
   isFriend: Boolean(user.isFriend),
   requestSent: Boolean(user.requestSent),
   requestReceived: Boolean(user.requestReceived),
+  canSendFriendRequest:
+    typeof user.canSendFriendRequest === "boolean" ? user.canSendFriendRequest : true,
 });
 
 export const friendService = {
@@ -44,7 +54,7 @@ export const friendService = {
     return (res.data.users ?? []).map(normalizeDiscoverUser);
   },
 
-  async getSuggestions(limit = 10): Promise<DiscoverUser[]> {
+  async getSuggestions(limit = 5): Promise<DiscoverUser[]> {
     const res = await api.get(`/users/suggestions?limit=${limit}`, {
       timeout: 8000,
     });

@@ -6,6 +6,7 @@ import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
 import { normalizeToastMessage } from "@/lib/toastMessage";
 import { useChatStore } from "./useChatStore";
+import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 
 const getAxiosMessage = (error: unknown, fallback: string) => {
@@ -72,6 +73,7 @@ export const useAuthStore = create<AuthState>()(
           pendingEmailResendAvailableAt: null,
         });
         useChatStore.getState().reset();
+        useFriendStore.getState().reset();
         useNotificationStore.getState().clearAllNotifications();
         localStorage.removeItem("auth-storage");
         localStorage.removeItem("chat-storage");

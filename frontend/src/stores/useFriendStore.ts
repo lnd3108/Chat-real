@@ -11,6 +11,16 @@ export const useFriendStore = create<FriendState>((set) => ({
   searchLoading: false,
   receivedList: [],
   sentList: [],
+  reset: () =>
+    set({
+      friends: [],
+      suggestions: [],
+      loading: false,
+      suggestionsLoading: false,
+      searchLoading: false,
+      receivedList: [],
+      sentList: [],
+    }),
 
   searchByUserName: async (userName) => {
     try {
@@ -36,12 +46,13 @@ export const useFriendStore = create<FriendState>((set) => ({
     }
   },
 
-  getSuggestions: async (limit = 10) => {
+  getSuggestions: async (limit = 5) => {
     try {
       set({ loading: true, suggestionsLoading: true });
       const suggestions = await friendService.getSuggestions(limit);
-      set({ suggestions });
-      return suggestions;
+      const limitedSuggestions = suggestions.slice(0, 5);
+      set({ suggestions: limitedSuggestions });
+      return limitedSuggestions;
     } catch (error) {
       console.error("Loi xay ra khi lay goi y user", error);
       set({ suggestions: [] });
