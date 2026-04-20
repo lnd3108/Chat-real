@@ -26,6 +26,11 @@ import {
   getReportDetail,
   updateReportStatus,
   resolveReportWithAction,
+  getMaintenanceInfo,
+  requestMaintenancePasswordVerification,
+  verifyMaintenancePassword,
+  confirmMaintenanceToggle,
+  updateMaintenanceMessage,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -60,5 +65,12 @@ router.get("/reports", getReports);
 router.get("/reports/:id", getReportDetail);
 router.patch("/reports/:id/status", updateReportStatus);
 router.patch("/reports/:id/resolve-with-action", resolveReportWithAction);
+
+// Maintenance Mode
+router.get("/maintenance/status", getMaintenanceInfo);
+router.post("/maintenance/request-verification", requestMaintenancePasswordVerification);
+router.post("/maintenance/verify-password", verifyMaintenancePassword);
+router.post("/maintenance/confirm-toggle", confirmMaintenanceToggle);
+router.patch("/maintenance/message", updateMaintenanceMessage);
 
 export default router;

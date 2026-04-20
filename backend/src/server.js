@@ -15,6 +15,7 @@ import supportRoute from "./routes/supportRoute.js";
 import supportAdminRoute from "./routes/supportAdminRoute.js";
 import adminRoute from "./routes/adminRoute.js";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
+import { maintenanceCheckMiddleware } from "./middlewares/maintenanceMiddleware.js";
 import { initSocket } from "./socket/index.js";
 import { getMailConfigStatus } from "./utils/mail.js";
 
@@ -27,6 +28,9 @@ const PORT = process.env.PORT || 5001;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+
+// Apply maintenance check middleware
+app.use(maintenanceCheckMiddleware);
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

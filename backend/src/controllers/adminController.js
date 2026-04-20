@@ -6,10 +6,20 @@ import Friend from "../models/Friend.js";
 import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import Session from "../models/Session.js";
 import Report from "../models/Report.js";
-import { disconnectUserSockets, emitToUser } from "../socket/index.js";
+import { disconnectUserSockets, emitToUser, disconnectAllUserSockets } from "../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { sendAccountDeletedEmail } from "../utils/mail.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
+import bcrypt from "bcrypt";
+import {
+  getMaintenanceStatus,
+  requestPasswordVerification,
+  verifyPasswordAndPrepareConfirmation,
+  sendConfirmationCode,
+  verifyConfirmationCode,
+  toggleMaintenanceMode,
+  updateMaintenanceMessage as updateMaintenanceMessageInDb,
+} from "../services/maintenanceService.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -1729,5 +1739,146 @@ export const resolveReportWithAction = async (req, res) => {
   } catch (error) {
     console.error("Error resolving report with action:", error);
     res.status(500).json({ message: "Failed to resolve report with action" });
+  }
+};
+
+// ==================== MAINTENANCE MODE ENDPOINTS ====================
+
+export const getMaintenanceInfo = async (req, res) => {
+  try {
+    const status = await getMaintenanceStatus();
+    return res.status(200).json(status);
+  } catch (error) {
+    console.error("Error getting maintenance info:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Step 1: Request password verification
+export const requestMaintenancePasswordVerification = async (req, res) => {
+  try {
+    const adminId = req.user._id;
+    const admin = await User.findById(adminId).select("hashedPassword email");
+
+    if (!admin) {
+      return res.status(404).json({ message: "Không tìm thấy quản trị viên" });
+    }
+
+    // For testing purposes, you might want to return the code
+    // In production, only admin should request it and check email
+    return res.status(200).json({
+      message: "Yêu cầu xác minh mật khẩu đã được tạo. Vui lòng kiểm tra email.",
+      email: admin.email,
+    });
+  } catch (error) {
+    console.error("Error requesting password verification:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Step 2: Verify admin password and send confirmation code
+export const verifyMaintenancePassword = async (req, res) => {
+  try {
+    const adminId = req.user._id;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "Thiếu mật khẩu" });
+    }
+
+    const admin = await User.findById(adminId).select("hashedPassword email");
+    if (!admin) {
+      return res.status(404).json({ message: "Không tìm thấy quản trị viên" });
+    }
+
+    // Verify password
+    const isPasswordValid = await verifyPasswordAndPrepareConfirmation(
+      password,
+      admin.hashedPassword
+    );
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Mật khẩu không chính xác" });
+    }
+
+    // Send confirmation code
+    const result = await sendConfirmationCode(admin.email);
+    if (!result.ok) {
+      return res.status(500).json({ message: result.message });
+    }
+
+    return res.status(200).json({
+      message: "Mã xác nhận đã được gửi tới email của bạn",
+      expiresAt: result.expiresAt,
+    });
+  } catch (error) {
+    console.error("Error verifying password:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Step 3: Verify confirmation code and toggle maintenance
+export const confirmMaintenanceToggle = async (req, res) => {
+  try {
+    const adminId = req.user._id;
+    const { code, enable } = req.body;
+
+    if (!code || typeof enable !== "boolean") {
+      return res
+        .status(400)
+        .json({ message: "Thiếu code hoặc giá trị enable" });
+    }
+
+    // Verify confirmation code
+    const verifyResult = await verifyConfirmationCode(code);
+    if (!verifyResult.ok) {
+      return res.status(400).json({
+        message: verifyResult.message,
+        attempts: verifyResult.attempts,
+        maxAttempts: verifyResult.maxAttempts,
+      });
+    }
+
+    // Toggle maintenance mode
+    const result = await toggleMaintenanceMode(adminId, enable);
+
+    // If enabling maintenance, disconnect all non-admin users
+    if (enable) {
+      const message = result.message;
+      disconnectAllUserSockets(message);
+    }
+
+    return res.status(200).json({
+      message: enable
+        ? "Bảo trì hệ thống đã được bật"
+        : "Bảo trì hệ thống đã được tắt",
+      isEnabled: result.isEnabled,
+      enabledAt: result.enabledAt,
+      disabledAt: result.disabledAt,
+    });
+  } catch (error) {
+    console.error("Error confirming maintenance toggle:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Update maintenance message
+export const updateMaintenanceMessage = async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({ message: "Tin nhắn bảo trì không hợp lệ" });
+    }
+
+    const result = await updateMaintenanceMessageInDb(message.trim());
+
+    return res.status(200).json({
+      message: "Tin nhắn bảo trì đã được cập nhật",
+      maintenanceMessage: result.message,
+    });
+  } catch (error) {
+    console.error("Error updating maintenance message:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

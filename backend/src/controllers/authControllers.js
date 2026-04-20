@@ -11,6 +11,7 @@ import {
   sendAccountDeletionCodeEmail,
   sendAccountDeletedEmail,
 } from "../utils/mail.js";
+import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
@@ -409,6 +410,16 @@ const findOrCreateGoogleUser = async (payload) => {
 
 export const signUp = async (req, res) => {
   try {
+    // Check maintenance mode
+    const maintenanceEnabled = await isMaintenanceEnabled();
+    if (maintenanceEnabled) {
+      const message = await getMaintenanceMessage();
+      return res.status(503).json({
+        code: "MAINTENANCE_MODE",
+        message,
+      });
+    }
+
     const validatedData = signUpSchema.parse(req.body);
     const { userName, password, email, firstName, lastName } = validatedData;
 
@@ -494,6 +505,16 @@ export const signUp = async (req, res) => {
 
 export const signIn = async (req, res) => {
   try {
+    // Check maintenance mode
+    const maintenanceEnabled = await isMaintenanceEnabled();
+    if (maintenanceEnabled) {
+      const message = await getMaintenanceMessage();
+      return res.status(503).json({
+        code: "MAINTENANCE_MODE",
+        message,
+      });
+    }
+
     const validatedData = signInSchema.parse(req.body);
     const { userName, password } = validatedData;
 
@@ -581,6 +602,16 @@ export const startGoogleAuth = async (_req, res) => {
 
 export const googleCallback = async (req, res) => {
   try {
+    // Check maintenance mode
+    const maintenanceEnabled = await isMaintenanceEnabled();
+    if (maintenanceEnabled) {
+      const message = await getMaintenanceMessage();
+      return res.status(503).json({
+        code: "MAINTENANCE_MODE",
+        message,
+      });
+    }
+
     const { code } = req.body || {};
 
     if (!code) {
@@ -677,6 +708,16 @@ export const verifyEmailCode = async (req, res) => {
       });
     }
 
+    // Check maintenance mode for signin flows (google-signin, signup)
+    const maintenanceEnabled = await isMaintenanceEnabled();
+    if (maintenanceEnabled) {
+      const message = await getMaintenanceMessage();
+      return res.status(503).json({
+        code: "MAINTENANCE_MODE",
+        message,
+      });
+    }
+
     const accessToken = await createSession(user._id, res);
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
@@ -751,6 +792,16 @@ export const signOut = async (req, res) => {
 
 export const refreshToken = async (req, res) => {
   try {
+    // Check maintenance mode
+    const maintenanceEnabled = await isMaintenanceEnabled();
+    if (maintenanceEnabled) {
+      const message = await getMaintenanceMessage();
+      return res.status(503).json({
+        code: "MAINTENANCE_MODE",
+        message,
+      });
+    }
+
     const token = req.cookies?.refreshToken;
     if (!token) {
       return res.status(401).json({ message: "Token không tồn tại." });

@@ -200,4 +200,31 @@ const getMailConfigStatus = () => {
   };
 };
 
+export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
+  const appName = getAppName();
+
+  await sendMail({
+    to: email,
+    subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
+    text: [
+      "Xin chào Quản trị viên,",
+      "",
+      `Mã xác nhận bảo trì hệ thống của bạn là: ${code}`,
+      "",
+      "Mã có hiệu lực trong 10 phút.",
+      "Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin-bottom:12px">${appName}</h2>
+        <p>Xin chào Quản trị viên,</p>
+        <p>Mã xác nhận bảo trì hệ thống của bạn là:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
+        <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
+        <p>Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.</p>
+      </div>
+    `,
+  });
+};
+
 export { getMailConfigStatus, isMailConfigured };

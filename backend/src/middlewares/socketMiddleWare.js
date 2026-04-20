@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import User from "../models/User.js";
+import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
 
 const createSocketAuthError = (message, code) => {
   const error = new Error(message);
@@ -35,6 +36,17 @@ export const socketAuthMiddleWare = async (socket, next) => {
       return next(
         createSocketAuthError("Tài khoản đã bị khóa", "ACCOUNT_BANNED"),
       );
+    }
+
+    // Check maintenance mode for non-admin users
+    if (user.role !== "admin") {
+      const maintenanceEnabled = await isMaintenanceEnabled();
+      if (maintenanceEnabled) {
+        const message = await getMaintenanceMessage();
+        return next(
+          createSocketAuthError(message, "MAINTENANCE_MODE"),
+        );
+      }
     }
 
     socket.user = user;

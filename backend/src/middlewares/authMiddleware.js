@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import User from "../models/User.js";
+import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
 
 const bannedResponse = {
   code: "ACCOUNT_BANNED",
@@ -35,6 +36,18 @@ export const protectedRoute = (req, res, next) => {
 
         if (user.status === "banned") {
           return res.status(403).json(bannedResponse);
+        }
+
+        // Check maintenance mode for non-admin users
+        if (user.role !== "admin") {
+          const maintenanceEnabled = await isMaintenanceEnabled();
+          if (maintenanceEnabled) {
+            const message = await getMaintenanceMessage();
+            return res.status(503).json({
+              code: "MAINTENANCE_MODE",
+              message,
+            });
+          }
         }
 
         req.user = user;

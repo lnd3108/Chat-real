@@ -165,3 +165,40 @@ export const isConversationActiveForUser = (userId, conversationId) => {
 
   return false;
 };
+
+export const disconnectAllUserSockets = (message = "Hệ thống đang bảo trì") => {
+  if (!io) {
+    return;
+  }
+
+  // Disconnect all connected sockets except admin sockets
+  io.sockets.sockets.forEach((socket) => {
+    if (socket.user && socket.user.role !== "admin") {
+      socket.emit("maintenance-mode", { message });
+      socket.disconnect(true);
+    }
+  });
+
+  // Clear all non-admin user data
+  const userIdsToRemove = [];
+  for (const [userId, socketIds] of socketsByUser.entries()) {
+    userIdsToRemove.push(userId);
+  }
+
+  userIdsToRemove.forEach((userId) => {
+    socketsByUser.delete(userId);
+    visibleByUser.delete(userId);
+  });
+
+  // Clear active conversations
+  const socketIdsToRemove = [];
+  for (const socketId of activeConversationBySocket.keys()) {
+    socketIdsToRemove.push(socketId);
+  }
+
+  socketIdsToRemove.forEach((socketId) => {
+    activeConversationBySocket.delete(socketId);
+  });
+
+  emitOnlineUsers();
+};
