@@ -27,6 +27,7 @@ import {
   updateReportStatus,
   resolveReportWithAction,
   getMaintenanceInfo,
+  getSystemHealth,
   requestMaintenancePasswordVerification,
   verifyMaintenancePassword,
   confirmMaintenanceToggle,
@@ -65,6 +66,9 @@ router.get("/reports", getReports);
 router.get("/reports/:id", getReportDetail);
 router.patch("/reports/:id/status", updateReportStatus);
 router.patch("/reports/:id/resolve-with-action", resolveReportWithAction);
+
+// System Health
+router.get("/health", getSystemHealth);
 
 // Maintenance Mode
 router.get("/maintenance/status", getMaintenanceInfo);

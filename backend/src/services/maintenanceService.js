@@ -70,6 +70,10 @@ export const verifyPasswordAndPrepareConfirmation = async (
 // Step 2: Send confirmation code via email
 export const sendConfirmationCode = async (adminEmail) => {
   try {
+    if (!adminEmail) {
+      throw new Error("Thiếu email quản trị viên");
+    }
+
     const config = await getMaintenanceConfig();
 
     // Generate confirmation code
@@ -82,20 +86,44 @@ export const sendConfirmationCode = async (adminEmail) => {
     await config.save();
 
     // Send email
-    await sendMaintenanceConfirmationCodeEmail({
-      email: adminEmail,
-      code,
-    });
+    try {
+      await sendMaintenanceConfirmationCodeEmail({
+        email: adminEmail,
+        code,
+      });
+    } catch (emailError) {
+      console.error("Email send failed in sendConfirmationCode:", {
+        adminEmail,
+        error: emailError.message,
+        code: emailError.code,
+      });
+      // Delete the saved code if email fails
+      config.confirmationCodeHash = undefined;
+      config.confirmationExpiresAt = undefined;
+      await config.save();
+      throw emailError;
+    }
 
     return {
       ok: true,
       expiresAt: config.confirmationExpiresAt.getTime(),
     };
   } catch (error) {
-    console.error("Error sending confirmation code:", error);
+    console.error("Error sending confirmation code:", {
+      error: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+    
+    // Check if it's an SMTP configuration issue
+    const message = 
+      error.message?.includes("SMTP") || error.message?.includes("configured")
+        ? "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên."
+        : "Không thể gửi mã xác nhận, vui lòng thử lại.";
+
     return {
       ok: false,
-      message: "Không thể gửi mã xác nhận, vui lòng thử lại.",
+      message,
     };
   }
 };

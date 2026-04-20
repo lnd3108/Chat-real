@@ -1744,6 +1744,33 @@ export const resolveReportWithAction = async (req, res) => {
 
 // ==================== MAINTENANCE MODE ENDPOINTS ====================
 
+export const getSystemHealth = async (req, res) => {
+  try {
+    const { isMailConfigured } = await import("../utils/mail.js");
+    
+    const health = {
+      status: "healthy",
+      checks: {
+        database: true,
+        smtp: isMailConfigured(),
+      },
+    };
+
+    if (!health.checks.smtp) {
+      health.status = "warning";
+      health.message = "SMTP chưa được cấu hình - không thể gửi email";
+    }
+
+    return res.status(200).json(health);
+  } catch (error) {
+    console.error("Error checking system health:", error);
+    return res.status(500).json({
+      status: "unhealthy",
+      message: error.message,
+    });
+  }
+};
+
 export const getMaintenanceInfo = async (req, res) => {
   try {
     const status = await getMaintenanceStatus();
@@ -1812,8 +1839,19 @@ export const verifyMaintenancePassword = async (req, res) => {
       expiresAt: result.expiresAt,
     });
   } catch (error) {
-    console.error("Error verifying password:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Error verifying maintenance password:", {
+      adminId: req.user?._id,
+      error: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+    
+    // Provide specific error message based on the type of error
+    if (error.message?.includes("SMTP")) {
+      return res.status(500).json({ message: "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên." });
+    }
+    
+    return res.status(500).json({ message: "Lỗi hệ thống: " + error.message });
   }
 };
 

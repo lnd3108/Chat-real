@@ -42,15 +42,30 @@ const getTransporter = () => {
 const getAppName = () => process.env.APP_NAME || "ChatRealTime";
 
 const sendMail = async ({ to, subject, text, html }) => {
-  const mailer = getTransporter();
+  try {
+    // Check if mail is configured
+    if (!isMailConfigured()) {
+      throw new Error("SMTP not configured. Please set SMTP environment variables.");
+    }
 
-  await mailer.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject,
-    text,
-    html,
-  });
+    const mailer = getTransporter();
+
+    await mailer.sendMail({
+      from: process.env.SMTP_FROM,
+      to,
+      subject,
+      text,
+      html,
+    });
+  } catch (error) {
+    console.error("Error sending mail:", {
+      to,
+      subject,
+      error: error.message,
+      code: error.code,
+    });
+    throw error;
+  }
 };
 
 export const sendVerificationCodeEmail = async ({
@@ -201,30 +216,39 @@ const getMailConfigStatus = () => {
 };
 
 export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
-  const appName = getAppName();
+  try {
+    const appName = getAppName();
 
-  await sendMail({
-    to: email,
-    subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
-    text: [
-      "Xin chào Quản trị viên,",
-      "",
-      `Mã xác nhận bảo trì hệ thống của bạn là: ${code}`,
-      "",
-      "Mã có hiệu lực trong 10 phút.",
-      "Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.",
-    ].join("\n"),
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-        <h2 style="margin-bottom:12px">${appName}</h2>
-        <p>Xin chào Quản trị viên,</p>
-        <p>Mã xác nhận bảo trì hệ thống của bạn là:</p>
-        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
-        <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
-        <p>Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.</p>
-      </div>
-    `,
-  });
+    await sendMail({
+      to: email,
+      subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
+      text: [
+        "Xin chào Quản trị viên,",
+        "",
+        `Mã xác nhận bảo trì hệ thống của bạn là: ${code}`,
+        "",
+        "Mã có hiệu lực trong 10 phút.",
+        "Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.",
+      ].join("\n"),
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+          <h2 style="margin-bottom:12px">${appName}</h2>
+          <p>Xin chào Quản trị viên,</p>
+          <p>Mã xác nhận bảo trì hệ thống của bạn là:</p>
+          <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
+          <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
+          <p>Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Error in sendMaintenanceConfirmationCodeEmail:", {
+      email,
+      error: error.message,
+      code: error.code,
+    });
+    throw error;
+  }
 };
 
 export { getMailConfigStatus, isMailConfigured };

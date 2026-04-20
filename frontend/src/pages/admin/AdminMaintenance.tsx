@@ -20,33 +20,28 @@ interface MaintenanceStatus {
 type Step = "idle" | "password" | "code" | "message";
 
 const AdminMaintenance = () => {
-  // State management
   const [status, setStatus] = useState<MaintenanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<Step>("idle");
 
-  // Password verification step
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  // Code confirmation step
   const [code, setCode] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeError, setCodeError] = useState("");
   const [codeAttempts, setCodeAttempts] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(5);
 
-  // Message update
   const [newMessage, setNewMessage] = useState("");
   const [messageLoading, setMessageLoading] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
 
-  // Toggle target
+  // true = bật bảo trì, false = tắt bảo trì, null = chưa xác định
   const [toggleTarget, setToggleTarget] = useState<boolean | null>(null);
 
-  // Fetch maintenance status
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -65,7 +60,6 @@ const AdminMaintenance = () => {
     fetchStatus();
   }, []);
 
-  // Handle password verification
   const handleVerifyPassword = async () => {
     if (!password.trim()) {
       setPasswordError("Vui lòng nhập mật khẩu");
@@ -75,14 +69,15 @@ const AdminMaintenance = () => {
     try {
       setPasswordLoading(true);
       setPasswordError("");
+
       await maintenanceService.verifyPassword(password);
+
       toast.success("Mã xác nhận đã được gửi tới email của bạn");
       setPassword("");
       setStep("code");
     } catch (error: any) {
       const message =
-        error.response?.data?.message ||
-        "Xác minh mật khẩu thất bại";
+        error.response?.data?.message || "Xác minh mật khẩu thất bại";
       setPasswordError(message);
       toast.error(message);
     } finally {
@@ -90,14 +85,18 @@ const AdminMaintenance = () => {
     }
   };
 
-  // Handle code confirmation
   const handleConfirmToggle = async () => {
     if (!code.trim()) {
       setCodeError("Vui lòng nhập mã xác nhận");
       return;
     }
 
-    if (!toggleTarget) {
+    if (code.trim().length !== 6) {
+      setCodeError("Mã xác nhận phải gồm 6 chữ số");
+      return;
+    }
+
+    if (toggleTarget === null) {
       setCodeError("Chế độ cần thiết chưa được xác định");
       return;
     }
@@ -105,12 +104,12 @@ const AdminMaintenance = () => {
     try {
       setCodeLoading(true);
       setCodeError("");
+
       const result = await maintenanceService.confirmToggle(
         code.trim(),
-        toggleTarget
+        toggleTarget,
       );
 
-      // Update status
       setStatus((prev) =>
         prev
           ? {
@@ -119,10 +118,11 @@ const AdminMaintenance = () => {
               enabledAt: result.enabledAt,
               disabledAt: result.disabledAt,
             }
-          : null
+          : null,
       );
 
       toast.success(result.message);
+
       setCode("");
       setStep("idle");
       setToggleTarget(null);
@@ -130,6 +130,7 @@ const AdminMaintenance = () => {
     } catch (error: any) {
       const errData = error.response?.data;
       const message = errData?.message || "Xác nhận mã thất bại";
+
       setCodeError(message);
 
       if (errData?.attempts !== undefined) {
@@ -143,7 +144,6 @@ const AdminMaintenance = () => {
     }
   };
 
-  // Handle message update
   const handleUpdateMessage = async () => {
     if (!newMessage.trim()) {
       toast.error("Vui lòng nhập tin nhắn bảo trì");
@@ -152,33 +152,40 @@ const AdminMaintenance = () => {
 
     try {
       setMessageLoading(true);
+
       await maintenanceService.updateMessage(newMessage.trim());
 
       setStatus((prev) =>
-        prev ? { ...prev, message: newMessage } : null
+        prev
+          ? {
+              ...prev,
+              message: newMessage.trim(),
+            }
+          : null,
       );
 
       toast.success("Tin nhắn bảo trì đã được cập nhật");
       setShowMessageForm(false);
     } catch (error: any) {
       const message =
-        error.response?.data?.message ||
-        "Cập nhật tin nhắn thất bại";
+        error.response?.data?.message || "Cập nhật tin nhắn thất bại";
       toast.error(message);
     } finally {
       setMessageLoading(false);
     }
   };
 
-  // Start toggle process
   const handleStartToggle = (enable: boolean) => {
     setToggleTarget(enable);
     setStep("password");
-    setPasswordError("");
+
     setPassword("");
+    setCode("");
+    setPasswordError("");
+    setCodeError("");
+    setCodeAttempts(0);
   };
 
-  // Cancel operation
   const handleCancel = () => {
     setStep("idle");
     setPassword("");
@@ -188,6 +195,9 @@ const AdminMaintenance = () => {
     setToggleTarget(null);
     setCodeAttempts(0);
   };
+
+  const toggleActionText =
+    toggleTarget === true ? "Bật" : toggleTarget === false ? "Tắt" : "";
 
   if (loading) {
     return (
@@ -203,16 +213,13 @@ const AdminMaintenance = () => {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6">
         <h2 className="text-lg font-semibold text-destructive">Lỗi</h2>
-        <p className="mt-2 text-sm">
-          Không thể tải thông tin bảo trì hệ thống
-        </p>
+        <p className="mt-2 text-sm">Không thể tải thông tin bảo trì hệ thống</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold">
           <Zap className="h-8 w-8 text-amber-500" />
@@ -223,24 +230,27 @@ const AdminMaintenance = () => {
         </p>
       </div>
 
-      {/* Status Card */}
       <div
         className={cn(
           "rounded-lg border p-6 transition-colors",
           status.isEnabled
             ? "border-amber-500/50 bg-amber-500/10"
-            : "border-emerald-500/50 bg-emerald-500/10"
+            : "border-emerald-500/50 bg-emerald-500/10",
         )}
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <h2 className="text-xl font-semibold">
-              Trạng thái: {status.isEnabled ? "🔴 ĐANG BẢO TRÌ" : "🟢 HOẠT ĐỘNG"}
+              Trạng thái:{" "}
+              {status.isEnabled ? "🔴 ĐANG BẢO TRÌ" : "🟢 HOẠT ĐỘNG"}
             </h2>
+
             <p className="mt-2 text-sm text-muted-foreground">
               Hệ thống hiện đang{" "}
               <span className="font-semibold">
-                {status.isEnabled ? "tạm dừng dịch vụ" : "hoạt động bình thường"}
+                {status.isEnabled
+                  ? "tạm dừng dịch vụ"
+                  : "hoạt động bình thường"}
               </span>
             </p>
 
@@ -258,9 +268,7 @@ const AdminMaintenance = () => {
           </div>
 
           <Button
-            onClick={() =>
-              handleStartToggle(!status.isEnabled)
-            }
+            onClick={() => handleStartToggle(!status.isEnabled)}
             disabled={step !== "idle"}
             variant={status.isEnabled ? "destructive" : "default"}
             size="lg"
@@ -272,14 +280,16 @@ const AdminMaintenance = () => {
         </div>
       </div>
 
-      {/* Password Verification Step */}
       {step === "password" && (
         <div className="rounded-lg border border-blue-500/50 bg-blue-500/10 p-6">
-          <h3 className="font-semibold">
-            Bước 1: Xác Minh Mật Khẩu
-          </h3>
+          <h3 className="font-semibold">Bước 1: Xác Minh Mật Khẩu</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Nhập mật khẩu admin của bạn để tiếp tục
+            Nhập mật khẩu admin của bạn để tiếp tục{" "}
+            {toggleTarget !== null && (
+              <span className="font-medium">
+                thao tác {toggleActionText.toLowerCase()} bảo trì
+              </span>
+            )}
           </p>
 
           <div className="mt-4 space-y-3">
@@ -301,6 +311,7 @@ const AdminMaintenance = () => {
                 className="pr-10"
               />
               <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
@@ -324,6 +335,7 @@ const AdminMaintenance = () => {
               >
                 Xác Minh
               </Button>
+
               <Button
                 onClick={handleCancel}
                 disabled={passwordLoading}
@@ -336,19 +348,20 @@ const AdminMaintenance = () => {
         </div>
       )}
 
-      {/* Code Confirmation Step */}
       {step === "code" && (
         <div className="rounded-lg border border-purple-500/50 bg-purple-500/10 p-6">
-          <h3 className="font-semibold">
-            Bước 2: Nhập Mã Xác Nhận
-          </h3>
+          <h3 className="font-semibold">Bước 2: Nhập Mã Xác Nhận</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Kiểm tra email của bạn và nhập mã 6 chữ số
+            Kiểm tra email của bạn và nhập mã 6 chữ số để{" "}
+            <span className="font-medium">
+              {toggleTarget === true ? "bật" : "tắt"} bảo trì
+            </span>
           </p>
 
           <div className="mt-4 space-y-3">
             <Input
               type="text"
+              inputMode="numeric"
               placeholder="000000"
               value={code}
               onChange={(e) => {
@@ -370,8 +383,7 @@ const AdminMaintenance = () => {
                 <AlertTriangle className="h-4 w-4" />
                 <span>
                   {codeError}
-                  {codeAttempts > 0 &&
-                    ` (${codeAttempts}/${maxAttempts})`}
+                  {codeAttempts > 0 ? ` (${codeAttempts}/${maxAttempts})` : ""}
                 </span>
               </div>
             )}
@@ -382,8 +394,9 @@ const AdminMaintenance = () => {
                 disabled={code.length !== 6 || codeLoading}
                 loading={codeLoading}
               >
-                Xác Nhận & {toggleTarget ? "Bật" : "Tắt"} Bảo Trì
+                Xác Nhận & {toggleTarget === true ? "Bật" : "Tắt"} Bảo Trì
               </Button>
+
               <Button
                 onClick={handleCancel}
                 disabled={codeLoading}
@@ -396,7 +409,6 @@ const AdminMaintenance = () => {
         </div>
       )}
 
-      {/* Message Editor Card */}
       <div className="rounded-lg border border-border/50 bg-card/50 p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -405,6 +417,7 @@ const AdminMaintenance = () => {
               Thông báo sẽ được hiển thị cho người dùng khi hệ thống bảo trì
             </p>
           </div>
+
           {!showMessageForm && (
             <Button
               onClick={() => setShowMessageForm(true)}
@@ -430,6 +443,7 @@ const AdminMaintenance = () => {
               className="w-full rounded-lg border border-border/50 bg-background p-3 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               placeholder="Nhập tin nhắn bảo trì..."
             />
+
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateMessage}
@@ -438,6 +452,7 @@ const AdminMaintenance = () => {
               >
                 Lưu Thay Đổi
               </Button>
+
               <Button
                 onClick={() => {
                   setShowMessageForm(false);
@@ -453,10 +468,10 @@ const AdminMaintenance = () => {
         )}
       </div>
 
-      {/* Copy Message Button */}
       {status.message && !showMessageForm && (
         <div className="rounded-lg border border-border/50 bg-card/30 p-4">
           <button
+            type="button"
             onClick={() => {
               navigator.clipboard.writeText(status.message);
               toast.success("Đã sao chép vào clipboard");
@@ -474,25 +489,14 @@ const AdminMaintenance = () => {
         </div>
       )}
 
-      {/* Help Text */}
       <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
         <h4 className="font-semibold text-sm">Hướng dẫn:</h4>
         <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-          <li>
-            ✓ Bạn cần xác minh mật khẩu admin trước
-          </li>
-          <li>
-            ✓ Mã xác nhận sẽ được gửi tới email admin
-          </li>
-          <li>
-            ✓ Mã có hiệu lực trong 10 phút
-          </li>
-          <li>
-            ✓ Khi bật bảo trì, tất cả người dùng sẽ bị ngắt kết nối
-          </li>
-          <li>
-            ✓ Dashboard admin vẫn hoạt động bình thường
-          </li>
+          <li>✓ Bạn cần xác minh mật khẩu admin trước</li>
+          <li>✓ Mã xác nhận sẽ được gửi tới email admin</li>
+          <li>✓ Mã có hiệu lực trong 10 phút</li>
+          <li>✓ Khi bật bảo trì, tất cả người dùng sẽ bị ngắt kết nối</li>
+          <li>✓ Dashboard admin vẫn hoạt động bình thường</li>
         </ul>
       </div>
     </div>
