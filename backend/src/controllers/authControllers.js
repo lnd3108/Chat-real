@@ -505,16 +505,6 @@ export const signUp = async (req, res) => {
 
 export const signIn = async (req, res) => {
   try {
-    // Check maintenance mode
-    const maintenanceEnabled = await isMaintenanceEnabled();
-    if (maintenanceEnabled) {
-      const message = await getMaintenanceMessage();
-      return res.status(503).json({
-        code: "MAINTENANCE_MODE",
-        message,
-      });
-    }
-
     const validatedData = signInSchema.parse(req.body);
     const { userName, password } = validatedData;
 
@@ -534,6 +524,18 @@ export const signIn = async (req, res) => {
 
     if (isUserBanned(user)) {
       return res.status(403).json(buildBannedResponse());
+    }
+
+    // Check maintenance mode - but allow admins to login
+    if (user.role !== "admin") {
+      const maintenanceEnabled = await isMaintenanceEnabled();
+      if (maintenanceEnabled) {
+        const message = await getMaintenanceMessage();
+        return res.status(503).json({
+          code: "MAINTENANCE_MODE",
+          message,
+        });
+      }
     }
 
     if (user.authProvider === "local" && !user.emailVerified) {
@@ -602,16 +604,6 @@ export const startGoogleAuth = async (_req, res) => {
 
 export const googleCallback = async (req, res) => {
   try {
-    // Check maintenance mode
-    const maintenanceEnabled = await isMaintenanceEnabled();
-    if (maintenanceEnabled) {
-      const message = await getMaintenanceMessage();
-      return res.status(503).json({
-        code: "MAINTENANCE_MODE",
-        message,
-      });
-    }
-
     const { code } = req.body || {};
 
     if (!code) {
@@ -630,6 +622,18 @@ export const googleCallback = async (req, res) => {
 
     if (isUserBanned(user)) {
       return res.status(403).json(buildBannedResponse());
+    }
+
+    // Check maintenance mode - but allow admins to login
+    if (user.role !== "admin") {
+      const maintenanceEnabled = await isMaintenanceEnabled();
+      if (maintenanceEnabled) {
+        const message = await getMaintenanceMessage();
+        return res.status(503).json({
+          code: "MAINTENANCE_MODE",
+          message,
+        });
+      }
     }
 
     if (!user.emailVerified) {
@@ -708,14 +712,16 @@ export const verifyEmailCode = async (req, res) => {
       });
     }
 
-    // Check maintenance mode for signin flows (google-signin, signup)
-    const maintenanceEnabled = await isMaintenanceEnabled();
-    if (maintenanceEnabled) {
-      const message = await getMaintenanceMessage();
-      return res.status(503).json({
-        code: "MAINTENANCE_MODE",
-        message,
-      });
+    // Check maintenance mode for signin flows - but allow admins to login
+    if (user.role !== "admin") {
+      const maintenanceEnabled = await isMaintenanceEnabled();
+      if (maintenanceEnabled) {
+        const message = await getMaintenanceMessage();
+        return res.status(503).json({
+          code: "MAINTENANCE_MODE",
+          message,
+        });
+      }
     }
 
     const accessToken = await createSession(user._id, res);
@@ -792,16 +798,6 @@ export const signOut = async (req, res) => {
 
 export const refreshToken = async (req, res) => {
   try {
-    // Check maintenance mode
-    const maintenanceEnabled = await isMaintenanceEnabled();
-    if (maintenanceEnabled) {
-      const message = await getMaintenanceMessage();
-      return res.status(503).json({
-        code: "MAINTENANCE_MODE",
-        message,
-      });
-    }
-
     const token = req.cookies?.refreshToken;
     if (!token) {
       return res.status(401).json({ message: "Token không tồn tại." });
@@ -818,7 +814,7 @@ export const refreshToken = async (req, res) => {
       return res.status(403).json({ message: "Token đã hết hạn" });
     }
 
-    const user = await User.findById(session.userId).select("status");
+    const user = await User.findById(session.userId).select("status role");
     if (!user) {
       await Session.deleteOne({ _id: session._id });
       return res.status(404).json({ message: "Nguoi dung khong ton tai." });
@@ -828,6 +824,18 @@ export const refreshToken = async (req, res) => {
       await Session.deleteMany({ userId: user._id });
       res.clearCookie("refreshToken");
       return res.status(403).json(buildBannedResponse());
+    }
+
+    // Check maintenance mode - but allow admins to refresh token
+    if (user.role !== "admin") {
+      const maintenanceEnabled = await isMaintenanceEnabled();
+      if (maintenanceEnabled) {
+        const message = await getMaintenanceMessage();
+        return res.status(503).json({
+          code: "MAINTENANCE_MODE",
+          message,
+        });
+      }
     }
 
     const accessToken = buildAccessToken(session.userId);
