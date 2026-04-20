@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -7,39 +10,22 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  areAllSoundsEnabled,
-  getNotificationSettings,
-  setAllSoundsEnabled,
-  subscribeNotificationSettings,
-} from "@/lib/messageNotifications";
+import { useSoundSettings } from "@/hooks/useSoundSettings";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState } from "react";
 
 const PreferencesForm = () => {
   const { isDark, toggleTheme } = useThemeStore();
+  const { soundEnabled, setSoundEnabled } = useSoundSettings();
   const {
     showOnlineStatus,
     loadShowOnlineStatus,
     updateShowOnlineStatus,
   } = useSocketStore();
-  const [soundEnabled, setSoundEnabled] = useState(() =>
-    areAllSoundsEnabled(getNotificationSettings()),
-  );
 
   useEffect(() => {
     loadShowOnlineStatus();
   }, [loadShowOnlineStatus]);
-
-  useEffect(
-    () =>
-      subscribeNotificationSettings((settings) => {
-        setSoundEnabled(areAllSoundsEnabled(settings));
-      }),
-    [],
-  );
 
   const handleToggleOnline = async (checked: boolean) => {
     try {
@@ -121,10 +107,7 @@ const PreferencesForm = () => {
             <Switch
               id="sound-toggle"
               checked={soundEnabled}
-              onCheckedChange={(checked) => {
-                setSoundEnabled(checked);
-                setAllSoundsEnabled(checked);
-              }}
+              onCheckedChange={setSoundEnabled}
               className="data-[state=checked]:bg-primary-glow"
             />
           </div>

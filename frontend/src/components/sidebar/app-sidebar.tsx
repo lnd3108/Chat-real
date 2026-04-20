@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
 
 import { NavUser } from "@/components/sidebar/nav-user";
 import {
@@ -16,55 +17,35 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
-import { Switch } from "../ui/switch";
-import CreateNewChat from "../chat/CreateNewChat";
-import NewGroupChatModal from "../chat/NewGroupChatModal";
-import GroupChatList from "../chat/GroupChatList";
-import AddFriendModal from "../chat/AddFriendModal";
-import FriendManagementDialog from "../chat/FriendManagementDialog";
-import DirrectMessageList from "../chat/DirrectMessageList";
-import SupportConversationList from "../chat/SupportConversationList";
-import { useThemeStore } from "@/stores/useThemeStore";
+import { useSoundSettings } from "@/hooks/useSoundSettings";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { useThemeStore } from "@/stores/useThemeStore";
+
+import AddFriendModal from "../chat/AddFriendModal";
+import CreateNewChat from "../chat/CreateNewChat";
+import DirrectMessageList from "../chat/DirrectMessageList";
+import FriendManagementDialog from "../chat/FriendManagementDialog";
+import GroupChatList from "../chat/GroupChatList";
+import NewGroupChatModal from "../chat/NewGroupChatModal";
+import SupportConversationList from "../chat/SupportConversationList";
 import ConversationSkeleton from "../skeleton/ConversationSkeleton";
-import {
-  areAllSoundsEnabled,
-  getNotificationSettings,
-  setAllSoundsEnabled,
-  subscribeNotificationSettings,
-} from "@/lib/messageNotifications";
+import { Switch } from "../ui/switch";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isDark, toggleTheme } = useThemeStore();
+  const { soundEnabled, setSoundEnabled } = useSoundSettings();
   const { user } = useAuthStore();
   const { convoLoading } = useChatStore();
-  const [soundEnabled, setSoundEnabled] = React.useState(() =>
-    areAllSoundsEnabled(getNotificationSettings()),
-  );
-
-  React.useEffect(
-    () =>
-      subscribeNotificationSettings((settings) => {
-        setSoundEnabled(areAllSoundsEnabled(settings));
-      }),
-    [],
-  );
 
   return (
     <Sidebar variant="inset" {...props}>
-      {/* Header */}
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              asChild
-              className="bg-gradient-primary"
-            >
+            <SidebarMenuButton size="lg" asChild className="bg-gradient-primary">
               <a href="#">
-                <div className="flex w-full items-center px-2 justify-between">
+                <div className="flex w-full items-center justify-between px-2">
                   <h1 className="text-xl font-bold text-white">ChatRealTime</h1>
                   <div className="flex items-center gap-2">
                     <Sun className="size-4 text-white/80" />
@@ -81,10 +62,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     )}
                     <Switch
                       checked={soundEnabled}
-                      onCheckedChange={(checked) => {
-                        setSoundEnabled(checked);
-                        setAllSoundsEnabled(checked);
-                      }}
+                      onCheckedChange={setSoundEnabled}
                       className="data-[state=checked]:bg-background/80"
                       aria-label="Bật hoặc tắt âm thanh"
                     />
@@ -96,23 +74,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* Content */}
       <SidebarContent className="beautifull-scrollbar">
-        {/* New Chat */}
         <SidebarGroup>
           <SidebarGroupContent>
             <CreateNewChat />
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Group Chat */}
         <SidebarGroup>
           <SidebarGroupLabel className="uppercase">
             Cuộc trò chuyện nhóm
           </SidebarGroupLabel>
           <SidebarGroupAction
             asChild
-            title="Tạo Nhóm"
+            title="Tạo nhóm"
             className="h-5 w-auto cursor-pointer"
           >
             <div className="flex items-center justify-between">
@@ -124,12 +99,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Dirrect Chat */}
         <SidebarGroup>
-          <SidebarGroupLabel className="uppercase">Bạn Bè</SidebarGroupLabel>
+          <SidebarGroupLabel className="uppercase">Bạn bè</SidebarGroupLabel>
           <SidebarGroupAction
             asChild
-            title="Kết Bạn"
+            title="Kết bạn"
             className="cursor-pointer"
           >
             <div className="inline-flex items-center justify-end gap-3">
@@ -150,7 +124,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer */}
       <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter>
     </Sidebar>
   );
