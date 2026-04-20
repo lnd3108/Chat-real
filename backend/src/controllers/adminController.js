@@ -508,6 +508,250 @@ export const getDashboardOverview = async (req, res) => {
   }
 };
 
+const clampDashboardDays = (value, fallback = 7) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  if (parsed <= 7) return 7;
+  if (parsed <= 30) return 30;
+  return 30;
+};
+
+const getDateRangeStart = (days) => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (days - 1));
+  return start;
+};
+
+const buildDateBuckets = (days) => {
+  const start = getDateRangeStart(days);
+  return Array.from({ length: days }, (_, index) => {
+    const current = new Date(start);
+    current.setDate(start.getDate() + index);
+
+    return {
+      key: current.toISOString().slice(0, 10),
+      label: current.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+      }),
+    };
+  });
+};
+
+export const getDashboardUserChart = async (req, res) => {
+  try {
+    const days = clampDashboardDays(req.query.days, 7);
+    const startDate = getDateRangeStart(days);
+    const buckets = buildDateBuckets(days);
+
+    const rows = await User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+            },
+          },
+          total: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ]);
+
+    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        days,
+        points: buckets.map((bucket) => ({
+          date: bucket.key,
+          label: bucket.label,
+          total: rowMap.get(bucket.key) ?? 0,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay chart user dashboard:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay du lieu chart nguoi dung",
+    });
+  }
+};
+
+export const getDashboardMessageChart = async (req, res) => {
+  try {
+    const days = clampDashboardDays(req.query.days, 7);
+    const startDate = getDateRangeStart(days);
+    const buckets = buildDateBuckets(days);
+
+    const rows = await Message.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+        },
+      },
+      {
+        $lookup: {
+          from: "conversations",
+          localField: "conversationId",
+          foreignField: "_id",
+          as: "conversation",
+        },
+      },
+      {
+        $unwind: "$conversation",
+      },
+      {
+        $match: {
+          "conversation.type": { $in: ["direct", "group", "support"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$createdAt",
+              },
+            },
+            type: "$conversation.type",
+          },
+          total: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.date": 1 },
+      },
+    ]);
+
+    const rowMap = new Map(
+      rows.map((row) => [`${row._id.date}:${row._id.type}`, row.total]),
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        days,
+        points: buckets.map((bucket) => {
+          const direct = rowMap.get(`${bucket.key}:direct`) ?? 0;
+          const group = rowMap.get(`${bucket.key}:group`) ?? 0;
+          const support = rowMap.get(`${bucket.key}:support`) ?? 0;
+
+          return {
+            date: bucket.key,
+            label: bucket.label,
+            direct,
+            group,
+            support,
+            total: direct + group + support,
+          };
+        }),
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay chart message dashboard:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay du lieu chart tin nhan",
+    });
+  }
+};
+
+export const getDashboardReportChart = async (req, res) => {
+  try {
+    const rows = await Report.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          total: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        items: [
+          { status: "pending", label: "Chờ xử lý", total: rowMap.get("pending") ?? 0 },
+          {
+            status: "reviewing",
+            label: "Đang xem xét",
+            total: rowMap.get("reviewing") ?? 0,
+          },
+          { status: "resolved", label: "Đã xử lý", total: rowMap.get("resolved") ?? 0 },
+          { status: "rejected", label: "Từ chối", total: rowMap.get("rejected") ?? 0 },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay chart report dashboard:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay du lieu chart bao cao",
+    });
+  }
+};
+
+export const getDashboardSupportChart = async (req, res) => {
+  try {
+    const rows = await Conversation.aggregate([
+      {
+        $match: {
+          type: "support",
+        },
+      },
+      {
+        $group: {
+          _id: "$supportStatus",
+          total: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        items: [
+          { status: "open", label: "Mở", total: rowMap.get("open") ?? 0 },
+          {
+            status: "in_progress",
+            label: "Đang xử lý",
+            total: rowMap.get("in_progress") ?? 0,
+          },
+          {
+            status: "resolved",
+            label: "Đã giải quyết",
+            total: rowMap.get("resolved") ?? 0,
+          },
+          { status: "closed", label: "Đóng", total: rowMap.get("closed") ?? 0 },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Loi khi lay chart support dashboard:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the lay du lieu chart ho tro",
+    });
+  }
+};
+
 export const getUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;

@@ -6,10 +6,14 @@ import {
   getBlockDetail,
   getBlocks,
   getDashboardOverview,
+  getDashboardMessageChart,
+  getDashboardReportChart,
   getBlockedUsers,
   getConversationDetail,
   getConversations,
   getDashboardStats,
+  getDashboardSupportChart,
+  getDashboardUserChart,
   getFriendships,
   getFriendRequestsAdmin,
   getMessages,
@@ -29,6 +33,10 @@ const router = express.Router();
 router.use(protectedRoute, requireAdmin);
 
 router.get("/dashboard/overview", getDashboardOverview);
+router.get("/dashboard/charts/users", getDashboardUserChart);
+router.get("/dashboard/charts/messages", getDashboardMessageChart);
+router.get("/dashboard/charts/reports", getDashboardReportChart);
+router.get("/dashboard/charts/support", getDashboardSupportChart);
 router.get("/dashboard", getDashboardStats);
 
 router.get("/users", getUsers);
