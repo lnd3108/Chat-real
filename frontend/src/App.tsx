@@ -15,7 +15,6 @@ import AdminBlocks from "./pages/admin/AdminBlocks";
 import AdminFriends from "./pages/admin/AdminFriends";
 import AdminFriendRequests from "./pages/admin/AdminFriendRequests";
 import AdminConversations from "./pages/admin/AdminConversations";
-import AdminMessages from "./pages/admin/AdminMessages";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminReportDetail from "./pages/admin/AdminReportDetail";
 import AdminSupport from "./pages/admin/AdminSupport";
@@ -80,10 +79,7 @@ function App() {
             path="/signin/oauth2/google"
             element={<GoogleAuthCallbackPage />}
           />
-          <Route
-            path="/verify-email"
-            element={<VerifyEmailPage />}
-          />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           {/* Protected routes - User */}
           <Route element={<ProtectedRoute />}>
@@ -93,19 +89,33 @@ function App() {
           {/* Protected routes - Admin */}
           <Route element={<AdminProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route
+                path="/admin"
+                element={<Navigate to="/admin/dashboard" replace />}
+              />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/users/:id" element={<AdminUserDetail />} />
               <Route path="/admin/blocks" element={<AdminBlocks />} />
               <Route path="/admin/friends" element={<AdminFriends />} />
-              <Route path="/admin/friend-requests" element={<AdminFriendRequests />} />
-              <Route path="/admin/conversations" element={<AdminConversations />} />
-              <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route
+                path="/admin/friend-requests"
+                element={<AdminFriendRequests />}
+              />
+              <Route
+                path="/admin/conversations"
+                element={<AdminConversations />}
+              />
               <Route path="/admin/support" element={<AdminSupport />} />
-              <Route path="/admin/support/:id" element={<AdminSupportDetail />} />
+              <Route
+                path="/admin/support/:id"
+                element={<AdminSupportDetail />}
+              />
               <Route path="/admin/reports" element={<AdminReports />} />
-              <Route path="/admin/reports/:id" element={<AdminReportDetail />} />
+              <Route
+                path="/admin/reports/:id"
+                element={<AdminReportDetail />}
+              />
             </Route>
           </Route>
         </Routes>
