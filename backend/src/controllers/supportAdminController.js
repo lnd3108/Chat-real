@@ -1,7 +1,15 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import { emitToUser, getIo } from "../socket/index.js";
+import { emitToUser } from "../socket/index.js";
+import { ADMIN_SOCKET_EVENTS } from "../constants/socketEvents.js";
+import { emitToAdmins } from "../socket/adminSocket.js";
+import {
+  buildAdminActor,
+  emitAdminNotification,
+} from "../services/adminNotificationService.js";
+import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
+import { emitSupportConversationRealtime } from "../services/supportRealtimeService.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const SUPPORT_STATUS_SET = ["open", "in_progress", "resolved", "closed"];
@@ -276,8 +284,6 @@ export const sendSupportReply = async (req, res) => {
       formattedConversation,
     );
 
-    // Emit real-time event
-    const io = getIo();
     const socketMessagePayload = {
       _id: message._id,
       conversationId,
@@ -289,12 +295,14 @@ export const sendSupportReply = async (req, res) => {
       type: "user",
     };
 
-    io.emit("new-support-message", {
-      conversationId,
+    await emitSupportConversationRealtime({
+      type: "reply",
+      conversation: {
+        ...socketConversationPayload,
+        unreadCounts: Object.fromEntries(unreadCounts),
+      },
       message: socketMessagePayload,
-      conversation: socketConversationPayload,
-      unreadCounts: Object.fromEntries(unreadCounts),
-      supportStatus: conversation.supportStatus,
+      actor: req.user,
     });
 
     const requesterUserId =
@@ -308,6 +316,11 @@ export const sendSupportReply = async (req, res) => {
         unreadCounts: Object.fromEntries(unreadCounts),
       });
     }
+
+    await emitDashboardStatsUpdated({
+      reason: "support:reply",
+      conversationId,
+    });
 
     res.status(201).json({
       message: "Support reply sent",
@@ -356,15 +369,25 @@ export const updateSupportStatus = async (req, res) => {
     await populateSupportConversation(conversation);
     const formattedConversation = formatSupportConversation(conversation);
 
-    // Emit real-time event
-    const io = getIo();
-    io.emit("support-status-updated", {
+    emitToAdmins(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE, {
       conversationId: id,
-      status: status,
-      assignedAdminId: formattedConversation.assignedAdmin?._id ?? formattedConversation.assignedAdminId,
+      status,
+      assignedAdminId:
+        formattedConversation.assignedAdmin?._id ??
+        formattedConversation.assignedAdminId,
       conversation: formattedConversation,
-      timestamp: new Date(),
+      createdAt: new Date().toISOString(),
     });
+    emitAdminNotification({
+      type: "support",
+      title: "Trang thai ho tro da thay doi",
+      message: `Hoi thoai ${id.toString().slice(-6)} da chuyen sang ${status}`,
+      link: `/admin/support/${id}`,
+      entityId: id.toString(),
+      actor: buildAdminActor(req.user),
+      metadata: { status },
+    });
+    await emitDashboardStatsUpdated({ reason: "support:status", conversationId: id });
 
     res.json({
       message: "Support status updated",
@@ -412,15 +435,22 @@ export const assignSupportAdmin = async (req, res) => {
     await populateSupportConversation(conversation);
     const formattedConversation = formatSupportConversation(conversation);
 
-    // Emit real-time event
-    const io = getIo();
-    io.emit("support-assigned", {
+    emitToAdmins(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE, {
       conversationId: id,
       assignedAdminId: adminId,
       adminName: admin.displayName,
       conversation: formattedConversation,
-      timestamp: new Date(),
+      createdAt: new Date().toISOString(),
     });
+    emitAdminNotification({
+      type: "support",
+      title: "Hoi thoai da duoc assign",
+      message: `${admin.displayName} vua nhan xu ly mot yeu cau ho tro`,
+      link: `/admin/support/${id}`,
+      entityId: id.toString(),
+      actor: buildAdminActor(admin),
+    });
+    await emitDashboardStatsUpdated({ reason: "support:assigned", conversationId: id });
 
     res.json({
       message: "Admin assigned",

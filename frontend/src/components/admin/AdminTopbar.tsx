@@ -12,7 +12,7 @@ import {
   VolumeX,
 } from "lucide-react";
 
-import NotificationCenterDialog from "@/components/profile/NotificationCenterDialog";
+import AdminNotificationCenterDialog from "@/components/admin/AdminNotificationCenterDialog";
 import ProfileDialog from "@/components/profile/ProfileDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useSoundSettings } from "@/hooks/useSoundSettings";
 import { cn } from "@/lib/utils";
+import { useAdminNotificationStore } from "@/stores/useAdminNotificationStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { useThemeStore } from "@/stores/useThemeStore";
@@ -37,12 +38,14 @@ import UserAvatar from "../chat/UserAvatar";
 const AdminTopbar = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuthStore();
-  const unreadCount = useNotificationStore((state) => state.unreadCount());
+  const userUnreadCount = useNotificationStore((state) => state.unreadCount());
+  const adminUnreadCount = useAdminNotificationStore((state) => state.unreadCount());
   const { isDark, toggleTheme } = useThemeStore();
   const { soundEnabled, setSoundEnabled, toggleSound } = useSoundSettings();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const displayName = user?.displayName || "Admin";
+  const unreadCount = user?.role === "admin" ? adminUnreadCount : userUnreadCount;
   const roleLabel = user?.role === "admin" ? "Quản trị viên" : "Người dùng";
 
   const handleLogout = async () => {
@@ -206,7 +209,7 @@ const AdminTopbar = () => {
         </div>
       </header>
 
-      <NotificationCenterDialog
+      <AdminNotificationCenterDialog
         open={notificationOpen}
         setOpen={setNotificationOpen}
       />

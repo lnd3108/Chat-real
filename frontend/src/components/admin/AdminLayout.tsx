@@ -1,8 +1,11 @@
 import { Outlet } from "react-router";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import { useAdminSocket } from "@/hooks/useAdminSocket";
 
 const AdminLayout = () => {
+  useAdminSocket();
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}

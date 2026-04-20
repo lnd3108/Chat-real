@@ -1,7 +1,8 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
-import { emitToUser, getIo } from "../socket/index.js";
+import { emitToUser } from "../socket/index.js";
+import { emitSupportConversationRealtime } from "../services/supportRealtimeService.js";
 
 const SUPPORT_STATUS_OPEN_SET = ["open", "in_progress"];
 
@@ -124,11 +125,10 @@ export const getOrCreateSupportConversation = async (req, res) => {
       await populateSupportConversation(supportConversation);
       const formattedConversation = formatSupportConversation(supportConversation);
 
-      // Notify admins about new support request via socket
-      const io = getIo();
-      io.emit("new-support-conversation", {
+      await emitSupportConversationRealtime({
+        type: "new-conversation",
         conversation: formattedConversation,
-        timestamp: new Date(),
+        actor: req.user,
       });
 
       return res.json({
@@ -283,8 +283,6 @@ export const sendSupportMessage = async (req, res) => {
     const formattedConversation = formatSupportConversation(conversation);
     const socketConversationPayload = buildSocketConversationPayload(formattedConversation);
 
-    // Emit real-time event
-    const io = getIo();
     const socketMessagePayload = {
       _id: message._id,
       conversationId,
@@ -296,12 +294,14 @@ export const sendSupportMessage = async (req, res) => {
       type: "user",
     };
 
-    io.emit("new-support-message", {
-      conversationId,
+    await emitSupportConversationRealtime({
+      type: "user-message",
+      conversation: {
+        ...socketConversationPayload,
+        unreadCounts: Object.fromEntries(unreadCounts),
+      },
       message: socketMessagePayload,
-      conversation: socketConversationPayload,
-      unreadCounts: Object.fromEntries(unreadCounts),
-      supportStatus: conversation.supportStatus,
+      actor: req.user,
     });
 
     emitToUser(userId, "new-message", {

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { maintenanceService } from "@/services/maintenanceService";
 import { cn } from "@/lib/utils";
+import { useAdminDashboardStore } from "@/stores/useAdminDashboardStore";
 
 interface MaintenanceStatus {
   isEnabled: boolean;
@@ -20,6 +21,7 @@ interface MaintenanceStatus {
 type Step = "idle" | "password" | "code" | "message";
 
 const AdminMaintenance = () => {
+  const dashboardOverview = useAdminDashboardStore((state) => state.overview);
   const [status, setStatus] = useState<MaintenanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<Step>("idle");
@@ -59,6 +61,24 @@ const AdminMaintenance = () => {
 
     fetchStatus();
   }, []);
+
+  useEffect(() => {
+    if (!dashboardOverview?.maintenance) {
+      return;
+    }
+
+    setStatus((prev) =>
+      prev
+        ? {
+            ...prev,
+            isEnabled: dashboardOverview.maintenance?.isEnabled ?? prev.isEnabled,
+            message: dashboardOverview.maintenance?.message ?? prev.message,
+            enabledAt: dashboardOverview.maintenance?.enabledAt ?? prev.enabledAt,
+            disabledAt: dashboardOverview.maintenance?.disabledAt ?? prev.disabledAt,
+          }
+        : prev,
+    );
+  }, [dashboardOverview]);
 
   const handleVerifyPassword = async () => {
     if (!password.trim()) {

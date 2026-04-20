@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { axiosInstance } from "@/lib/axios";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useAdminDashboardStore } from "@/stores/useAdminDashboardStore";
 
 interface DashboardOverview {
   totalUsers: number;
@@ -480,6 +481,10 @@ const StatusBars = ({
 
 const AdminDashboard = () => {
   const user = useAuthStore((state) => state.user);
+  const dashboardOverview = useAdminDashboardStore((state) => state.overview);
+  const dashboardLoading = useAdminDashboardStore((state) => state.loading);
+  const dashboardError = useAdminDashboardStore((state) => state.error);
+  const fetchDashboardOverview = useAdminDashboardStore((state) => state.fetchOverview);
   const [userRange, setUserRange] = useState<7 | 30>(7);
   const [messageRange, setMessageRange] = useState<7 | 30>(7);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
@@ -620,6 +625,24 @@ const AdminDashboard = () => {
     void fetchReportChart();
     void fetchSupportChart();
   }, []);
+
+  useEffect(() => {
+    void fetchDashboardOverview();
+  }, [fetchDashboardOverview]);
+
+  useEffect(() => {
+    if (dashboardOverview) {
+      setOverview(dashboardOverview as DashboardOverview);
+    }
+  }, [dashboardOverview]);
+
+  useEffect(() => {
+    setOverviewLoading(dashboardLoading);
+  }, [dashboardLoading]);
+
+  useEffect(() => {
+    setOverviewError(dashboardError);
+  }, [dashboardError]);
 
   useEffect(() => {
     void fetchUserChart(userRange);

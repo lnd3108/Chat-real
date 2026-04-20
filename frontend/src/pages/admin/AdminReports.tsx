@@ -7,7 +7,7 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { axiosInstance } from "@/lib/axios";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 interface ReporterSnapshot {
   _id: string;
@@ -113,8 +113,12 @@ const formatDate = (dateString?: string | null) => {
 
 const AdminReports = () => {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
+  const reports = useAdminSocketStore((state) => state.reports as Report[]);
+  const loading = useAdminSocketStore((state) => state.reportsLoading);
+  const pagination = useAdminSocketStore(
+    (state) => state.reportsPagination as PaginationData,
+  );
+  const fetchReportsFromStore = useAdminSocketStore((state) => state.fetchReports);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<
@@ -125,18 +129,9 @@ const AdminReports = () => {
   >("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("createdAt-desc");
-  const [pagination, setPagination] = useState<PaginationData>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 1,
-  });
 
-  const fetchReports = async ({ silent = false }: { silent?: boolean } = {}) => {
+  const fetchReports = async () => {
     try {
-      if (!silent) {
-        setLoading(true);
-      }
       setError(null);
 
       const params = {
@@ -150,42 +145,15 @@ const AdminReports = () => {
 
       console.debug("[report][admin-page][fetch]", params);
 
-      const response = await axiosInstance.get("/admin/reports", { params });
-
-      console.debug("[report][admin-page][response]", {
-        reports: response.data?.data?.reports?.length ?? 0,
-        pagination: response.data?.data?.pagination ?? null,
-      });
-
-      setReports(response.data?.data?.reports ?? []);
-      setPagination(
-        response.data?.data?.pagination ?? {
-          page: 1,
-          limit: 20,
-          total: 0,
-          pages: 1,
-        },
-      );
+      await fetchReportsFromStore(params);
     } catch (err) {
       console.error("[report][admin-page][error]", err);
       setError("Không thể tải danh sách báo cáo.");
-    } finally {
-      if (!silent) {
-        setLoading(false);
-      }
     }
   };
 
   useEffect(() => {
     void fetchReports();
-  }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      void fetchReports({ silent: true });
-    }, 15000);
-
-    return () => window.clearInterval(intervalId);
   }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
 
   const handleSearch = (value: string) => {

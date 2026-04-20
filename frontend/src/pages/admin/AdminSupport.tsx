@@ -7,8 +7,7 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { axiosInstance } from "@/lib/axios";
-import { useSocketStore } from "@/stores/useSocketStore";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 interface SupportUser {
   _id: string;
@@ -76,68 +75,40 @@ const formatDate = (dateString?: string | null) => {
 
 const AdminSupport = () => {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<SupportConversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const conversations = useAdminSocketStore(
+    (state) => state.supportConversations as SupportConversation[],
+  );
+  const loading = useAdminSocketStore((state) => state.supportLoading);
+  const pagination = useAdminSocketStore(
+    (state) => state.supportPagination as PaginationData,
+  );
+  const fetchSupportConversationsFromStore = useAdminSocketStore(
+    (state) => state.fetchSupportConversations,
+  );
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("updatedAt-desc");
-  const [pagination, setPagination] = useState<PaginationData>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 1,
-  });
 
   useEffect(() => {
     void fetchSupportConversations();
   }, [page, statusFilter, searchQuery, sortBy]);
 
-  const socket = useSocketStore((state) => state.socket);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const refresh = () => {
-      void fetchSupportConversations();
-    };
-
-    socket.on("new-support-conversation", refresh);
-    socket.on("new-support-message", refresh);
-    socket.on("support-status-updated", refresh);
-    socket.on("support-assigned", refresh);
-
-    return () => {
-      socket.off("new-support-conversation", refresh);
-      socket.off("new-support-message", refresh);
-      socket.off("support-status-updated", refresh);
-      socket.off("support-assigned", refresh);
-    };
-  }, [socket, page, statusFilter, searchQuery, sortBy]);
-
   const fetchSupportConversations = async () => {
     try {
-      setLoading(true);
+      await fetchSupportConversationsFromStore({
+        page,
+        limit: 20,
+        status: statusFilter,
+        q: searchQuery,
+        sort: sortBy,
+      });
       setError(null);
 
-      const response = await axiosInstance.get("/admin/support/conversations", {
-        params: {
-          page,
-          limit: 20,
-          status: statusFilter,
-          q: searchQuery,
-          sort: sortBy,
-        },
-      });
-
-      setConversations(response.data.data.conversations ?? []);
-      setPagination(response.data.data.pagination);
     } catch (err) {
       console.error(err);
       setError("Không thể tải danh sách hỗ trợ.");
-    } finally {
-      setLoading(false);
     }
   };
 

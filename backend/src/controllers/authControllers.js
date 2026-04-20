@@ -12,6 +12,13 @@ import {
   sendAccountDeletedEmail,
 } from "../utils/mail.js";
 import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
+import { ADMIN_SOCKET_EVENTS } from "../constants/socketEvents.js";
+import { emitToAdmins } from "../socket/adminSocket.js";
+import {
+  buildAdminActor,
+  emitAdminNotification,
+} from "../services/adminNotificationService.js";
+import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
@@ -34,6 +41,28 @@ const buildBannedResponse = () => ({
 });
 
 const isUserBanned = (user) => user?.status === "banned";
+
+const emitAdminUserLifecycle = (eventName, user, title, message, reason) => {
+  if (!user || user.role === "admin") {
+    return;
+  }
+
+  emitToAdmins(eventName, {
+    user: buildAdminActor(user),
+    changedAt: new Date().toISOString(),
+  });
+
+  emitAdminNotification({
+    type: "user",
+    title,
+    message,
+    link: `/admin/users/${user._id}`,
+    entityId: user._id.toString(),
+    actor: buildAdminActor(user),
+  });
+
+  void emitDashboardStatsUpdated({ reason, userId: user._id.toString() });
+};
 
 const createSession = async (userId, res) => {
   const accessToken = buildAccessToken(userId);
@@ -479,6 +508,14 @@ export const signUp = async (req, res) => {
       emailVerified: false,
     });
 
+    emitAdminUserLifecycle(
+      ADMIN_SOCKET_EVENTS.USER_NEW,
+      user,
+      "Nguoi dung moi dang ky",
+      `${user.displayName} vua tao tai khoan`,
+      "user:register",
+    );
+
     const verification = await sendEmailVerificationForUser(user, "signup", {
       ignoreCooldown: true,
     });
@@ -569,6 +606,13 @@ export const signIn = async (req, res) => {
     }
 
     const accessToken = await createSession(user._id, res);
+    emitAdminUserLifecycle(
+      ADMIN_SOCKET_EVENTS.USER_LOGIN,
+      user,
+      "Nguoi dung dang nhap",
+      `${user.displayName} vua dang nhap`,
+      "user:login",
+    );
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
     if (error.name === "ZodError") {
@@ -653,6 +697,13 @@ export const googleCallback = async (req, res) => {
     }
 
     const accessToken = await createSession(user._id, res);
+    emitAdminUserLifecycle(
+      ADMIN_SOCKET_EVENTS.USER_LOGIN,
+      user,
+      "Nguoi dung dang nhap",
+      `${user.displayName} vua dang nhap`,
+      "user:login",
+    );
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
     console.error("Lỗi googleCallback", error);
@@ -725,6 +776,13 @@ export const verifyEmailCode = async (req, res) => {
     }
 
     const accessToken = await createSession(user._id, res);
+    emitAdminUserLifecycle(
+      ADMIN_SOCKET_EVENTS.USER_LOGIN,
+      user,
+      "Nguoi dung dang nhap",
+      `${user.displayName} vua dang nhap`,
+      "user:login",
+    );
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
     console.error("Lỗi verifyEmailCode", error);
@@ -781,11 +839,36 @@ export const resendVerificationCode = async (req, res) => {
 export const signOut = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
+    let signedOutUser = null;
+
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      try {
+        const decoded = jwt.verify(
+          req.headers.authorization.slice("Bearer ".length),
+          process.env.ACCESS_TOKEN_SECRET,
+        );
+        signedOutUser = await User.findById(decoded.userId).select(
+          "displayName userName email avatarUrl role status createdAt",
+        );
+      } catch {
+        signedOutUser = null;
+      }
+    }
 
     if (token) {
       await Session.deleteOne({ refreshToken: token });
       res.clearCookie("refreshToken");
     }
+
+    emitAdminUserLifecycle(
+      ADMIN_SOCKET_EVENTS.USER_LOGOUT,
+      signedOutUser,
+      "Nguoi dung dang xuat",
+      signedOutUser
+        ? `${signedOutUser.displayName} vua dang xuat`
+        : "Mot nguoi dung vua dang xuat",
+      "user:logout",
+    );
 
     return res.sendStatus(204);
   } catch (error) {

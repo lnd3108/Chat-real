@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { axiosInstance } from "@/lib/axios";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 type ReportStatus = "pending" | "reviewing" | "resolved" | "rejected";
 type UserStatus = "active" | "inactive" | "suspended" | "banned" | "deleted";
@@ -153,6 +154,7 @@ const formatDate = (dateString?: string | null) => {
 const AdminReportDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const reports = useAdminSocketStore((state) => state.reports);
 
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [moderationTargetUser, setModerationTargetUser] =
@@ -184,6 +186,26 @@ const AdminReportDetail = () => {
   useEffect(() => {
     void fetchReportDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    const realtimeReport = reports.find((item) => item._id === id);
+    if (!realtimeReport) {
+      return;
+    }
+
+    setReport((current) =>
+      current
+        ? {
+            ...current,
+            ...realtimeReport,
+          }
+        : current,
+    );
+  }, [id, reports]);
 
   const handleUpdateStatus = async (newStatus: ReportStatus) => {
     if (!report) return;

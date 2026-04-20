@@ -1,30 +1,69 @@
 import { Server } from "socket.io";
 
 import { getUserConversationsForSocketIO } from "../controllers/conversationController.js";
+import {
+  ADMIN_SOCKET_EVENTS,
+  SOCKET_ROOMS,
+  USER_SOCKET_EVENTS,
+} from "../constants/socketEvents.js";
 import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
 import User from "../models/User.js";
+import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
 
 let io;
 
 const socketsByUser = new Map();
 const visibleByUser = new Map();
 const activeConversationBySocket = new Map();
+const userMetaByUser = new Map();
+
+const buildSocketUserPayload = (user) => ({
+  _id: user._id,
+  displayName: user.displayName,
+  userName: user.userName,
+  email: user.email ?? null,
+  avatarUrl: user.avatarUrl ?? null,
+  role: user.role ?? "user",
+  status: user.status ?? "active",
+  createdAt: user.createdAt ?? null,
+});
+
+const getOnlineVisibleUserIds = () => {
+  const userIds = [];
+
+  for (const [userId, socketIds] of socketsByUser.entries()) {
+    const visible = visibleByUser.get(userId) ?? true;
+    const meta = userMetaByUser.get(userId);
+
+    if (socketIds.size > 0 && visible && meta?.role !== "admin") {
+      userIds.push(userId);
+    }
+  }
+
+  return userIds;
+};
 
 const emitOnlineUsers = () => {
   if (!io) {
     return;
   }
 
-  const onlineVisibleUsers = [];
+  io.emit("online-users", getOnlineVisibleUserIds());
+};
 
-  for (const [userId, socketIds] of socketsByUser.entries()) {
-    const visible = visibleByUser.get(userId) ?? true;
-    if (socketIds.size > 0 && visible) {
-      onlineVisibleUsers.push(userId);
-    }
+const emitAdminUserPresence = (eventType, user, isOnline) => {
+  if (!io || user.role === "admin") {
+    return;
   }
 
-  io.emit("online-users", onlineVisibleUsers);
+  io.to(SOCKET_ROOMS.ADMINS).emit(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, {
+    eventType,
+    userId: user._id.toString(),
+    isOnline,
+    status: isOnline ? "online" : "offline",
+    user: buildSocketUserPayload(user),
+    changedAt: new Date().toISOString(),
+  });
 };
 
 export const initSocket = (server) => {
@@ -54,29 +93,52 @@ export const initSocket = (server) => {
       socketsByUser.set(userId, new Set());
     }
 
+    const socketIds = socketsByUser.get(userId);
+    const wasOffline = !socketIds || socketIds.size === 0;
+
     socketsByUser.get(userId).add(socket.id);
     visibleByUser.set(userId, visible);
     activeConversationBySocket.set(socket.id, null);
+    userMetaByUser.set(userId, buildSocketUserPayload(user));
+
+    socket.join(userId);
+    if (user.role === "admin") {
+      socket.join(SOCKET_ROOMS.ADMINS);
+    }
 
     emitOnlineUsers();
 
-    socket.join(userId);
+    if (wasOffline) {
+      emitAdminUserPresence(USER_SOCKET_EVENTS.ONLINE, user, true);
+      void emitDashboardStatsUpdated({ reason: "user:online", userId });
+    }
+
     const conversations = await getUserConversationsForSocketIO(user._id);
     conversations.forEach((id) => socket.join(id.toString()));
 
     socket.on("disconnect", () => {
-      const socketIds = socketsByUser.get(userId);
-      if (socketIds) {
-        socketIds.delete(socket.id);
+      const currentSocketIds = socketsByUser.get(userId);
+      let becameOffline = false;
 
-        if (socketIds.size === 0) {
+      if (currentSocketIds) {
+        currentSocketIds.delete(socket.id);
+
+        if (currentSocketIds.size === 0) {
           socketsByUser.delete(userId);
           visibleByUser.delete(userId);
+          userMetaByUser.delete(userId);
+          becameOffline = true;
         }
       }
 
       activeConversationBySocket.delete(socket.id);
       emitOnlineUsers();
+
+      if (becameOffline) {
+        emitAdminUserPresence(USER_SOCKET_EVENTS.OFFLINE, user, false);
+        void emitDashboardStatsUpdated({ reason: "user:offline", userId });
+      }
+
       console.log(`socket disconnect: ${socket.id}`);
     });
 
@@ -110,7 +172,7 @@ export const initSocket = (server) => {
 
 export const getIo = () => {
   if (!io) {
-    throw new Error("Socket.io chưa được khởi tạo. Gọi initSocket(server) trước.");
+    throw new Error("Socket.io has not been initialized. Call initSocket(server) first.");
   }
 
   return io;
@@ -148,6 +210,7 @@ export const disconnectUserSockets = (userId) => {
 
   socketsByUser.delete(normalizedUserId);
   visibleByUser.delete(normalizedUserId);
+  userMetaByUser.delete(normalizedUserId);
   emitOnlineUsers();
 };
 
@@ -166,31 +229,30 @@ export const isConversationActiveForUser = (userId, conversationId) => {
   return false;
 };
 
-export const disconnectAllUserSockets = (message = "Hệ thống đang bảo trì") => {
+export const disconnectAllUserSockets = (message = "He thong dang bao tri") => {
   if (!io) {
     return;
   }
 
-  // Disconnect all connected sockets except admin sockets
   io.sockets.sockets.forEach((socket) => {
     if (socket.user && socket.user.role !== "admin") {
-      socket.emit("maintenance-mode", { message });
+      socket.emit(USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON, { message });
+      socket.emit(USER_SOCKET_EVENTS.MAINTENANCE_MODE_LEGACY, { message });
       socket.disconnect(true);
     }
   });
 
-  // Clear all non-admin user data
   const userIdsToRemove = [];
-  for (const [userId, socketIds] of socketsByUser.entries()) {
+  for (const [userId] of socketsByUser.entries()) {
     userIdsToRemove.push(userId);
   }
 
   userIdsToRemove.forEach((userId) => {
     socketsByUser.delete(userId);
     visibleByUser.delete(userId);
+    userMetaByUser.delete(userId);
   });
 
-  // Clear active conversations
   const socketIdsToRemove = [];
   for (const socketId of activeConversationBySocket.keys()) {
     socketIdsToRemove.push(socketId);
@@ -202,3 +264,5 @@ export const disconnectAllUserSockets = (message = "Hệ thống đang bảo tr�
 
   emitOnlineUsers();
 };
+
+export const getOnlineUsersCount = () => getOnlineVisibleUserIds().length;

@@ -2,6 +2,7 @@ import Report from "../models/Report.js";
 import User from "../models/User.js";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
+import { emitNewReportCreated } from "../services/reportRealtimeService.js";
 
 /**
  * Create a new report
@@ -148,6 +149,7 @@ export const createReport = async (req, res) => {
     });
 
     await report.save();
+    await emitNewReportCreated(report._id);
 
     console.log("[report][create][saved]", {
       _id: report._id?.toString?.() ?? report._id,

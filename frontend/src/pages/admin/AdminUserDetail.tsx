@@ -16,6 +16,7 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 type UserStatus = "active" | "inactive" | "suspended" | "banned";
 type UserRole = "user" | "admin";
@@ -99,6 +100,7 @@ const formatDateTime = (value: string) =>
 const AdminUserDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const users = useAdminSocketStore((state) => state.users);
 
   const [user, setUser] = useState<AdminUserDetailData | null>(null);
   const [stats, setStats] = useState<AdminUserStats | null>(null);
@@ -141,6 +143,28 @@ const AdminUserDetail = () => {
 
     void fetchUserDetail(id);
   }, [id]);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    const realtimeUser = users.find((item) => item._id === id);
+    if (!realtimeUser) {
+      return;
+    }
+
+    setUser((currentUser) =>
+      currentUser
+        ? {
+            ...currentUser,
+            status: realtimeUser.status,
+            displayName: realtimeUser.displayName,
+            role: realtimeUser.role,
+          }
+        : currentUser,
+    );
+  }, [id, users]);
 
   const updateUserStatusLocally = (status: "active" | "banned") => {
     setUser((currentUser) =>

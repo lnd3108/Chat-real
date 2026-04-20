@@ -8,7 +8,7 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { axiosInstance } from "@/lib/axios";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 type UserStatus = "active" | "inactive" | "suspended" | "banned";
 
@@ -51,20 +51,19 @@ const statusConfig: Record<UserStatus, { label: string; className: string }> = {
 
 const AdminUsers = () => {
   const navigate = useNavigate();
+  const users = useAdminSocketStore((state) => state.users as UserRow[]);
+  const loading = useAdminSocketStore((state) => state.usersLoading);
+  const pagination = useAdminSocketStore(
+    (state) => state.usersPagination as PaginationData,
+  );
+  const fetchUsersFromStore = useAdminSocketStore((state) => state.fetchUsers);
+  const upsertUser = useAdminSocketStore((state) => state.upsertUser);
 
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
-  const [pagination, setPagination] = useState<PaginationData>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 1,
-  });
 
   useEffect(() => {
     void fetchUsers();
@@ -72,26 +71,18 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      await fetchUsersFromStore({
+        page,
+        limit: 20,
+        q: searchQuery,
+        status: statusFilter,
+        sort: sortBy,
+      });
       setError(null);
 
-      const response = await axiosInstance.get("/admin/users", {
-        params: {
-          page,
-          limit: 20,
-          q: searchQuery,
-          status: statusFilter,
-          sort: sortBy,
-        },
-      });
-
-      setUsers(response.data.data.users);
-      setPagination(response.data.data.pagination);
     } catch (err) {
       console.error(err);
       setError("Không thể tải danh sách người dùng.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -122,16 +113,7 @@ const AdminUsers = () => {
   };
 
   const updateUserStatusLocally = (userId: string, status: "active" | "banned") => {
-    setUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user._id === userId
-          ? {
-              ...user,
-              status,
-            }
-          : user,
-      ),
-    );
+    upsertUser({ _id: userId, status });
   };
 
   if (error && !loading) {

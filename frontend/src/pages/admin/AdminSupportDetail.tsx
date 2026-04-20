@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useSocketStore } from "@/stores/useSocketStore";
+import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 interface SupportMessage {
   _id: string;
@@ -83,7 +83,18 @@ const AdminSupportDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUserId = useAuthStore((state) => state.user?._id);
-  const socket = useSocketStore((state) => state.socket);
+  const fetchSupportConversationDetail = useAdminSocketStore(
+    (state) => state.fetchSupportConversationDetail,
+  );
+  const supportMessagesByConversation = useAdminSocketStore(
+    (state) => state.supportMessagesByConversation,
+  );
+  const supportConversations = useAdminSocketStore(
+    (state) => state.supportConversations,
+  );
+  const setActiveSupportConversationId = useAdminSocketStore(
+    (state) => state.setActiveSupportConversationId,
+  );
 
   const [conversation, setConversation] = useState<SupportConversation | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
@@ -98,66 +109,34 @@ const AdminSupportDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!socket || !id) {
+    setActiveSupportConversationId(id ?? null);
+    return () => {
+      setActiveSupportConversationId(null);
+    };
+  }, [id, setActiveSupportConversationId]);
+
+  useEffect(() => {
+    if (!id) {
       return;
     }
-
-    const handleSupportMessage = (payload: {
-      conversationId?: string;
-      message?: SupportMessage;
-      conversation?: SupportConversation;
-    }) => {
-      if (payload.conversationId !== id || !payload.message) {
-        return;
-      }
-
-      const incomingMessage = payload.message;
-
-      setMessages((prev) =>
-        prev.some((item) => item._id === incomingMessage._id)
-          ? prev
-          : [...prev, incomingMessage],
-      );
-
-      if (payload.conversation) {
-        setConversation(payload.conversation);
-        setNewStatus(payload.conversation.supportStatus);
-      }
-    };
-
-    const handleSupportConversationUpdate = (payload: {
-      conversationId?: string;
-      conversation?: SupportConversation;
-    }) => {
-      if (payload.conversationId !== id || !payload.conversation) {
-        return;
-      }
-
-      setConversation(payload.conversation);
-      setNewStatus(payload.conversation.supportStatus);
-    };
-
-    socket.on("new-support-message", handleSupportMessage);
-    socket.on("support-status-updated", handleSupportConversationUpdate);
-    socket.on("support-assigned", handleSupportConversationUpdate);
-
-    return () => {
-      socket.off("new-support-message", handleSupportMessage);
-      socket.off("support-status-updated", handleSupportConversationUpdate);
-      socket.off("support-assigned", handleSupportConversationUpdate);
-    };
-  }, [id, socket]);
+    setMessages((supportMessagesByConversation[id] as SupportMessage[]) ?? []);
+    const nextConversation = supportConversations.find((item) => item._id === id);
+    if (nextConversation) {
+      setConversation(nextConversation as SupportConversation);
+      setNewStatus(nextConversation.supportStatus);
+    }
+  }, [id, supportConversations, supportMessagesByConversation]);
 
   const fetchConversationDetail = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await axiosInstance.get(`/admin/support/conversations/${id}`);
+      const response = await fetchSupportConversationDetail(id!);
 
-      setConversation(response.data.data.conversation ?? null);
-      setMessages(response.data.data.messages ?? []);
-      setNewStatus(response.data.data.conversation?.supportStatus ?? "");
+      setConversation((response.conversation as SupportConversation | null) ?? null);
+      setMessages((response.messages as SupportMessage[]) ?? []);
+      setNewStatus(response.conversation?.supportStatus ?? "");
     } catch (err) {
       console.error(err);
       setError("Không thể tải chi tiết hỗ trợ.");

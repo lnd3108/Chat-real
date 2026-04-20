@@ -1,0 +1,16 @@
+export const ADMIN_SOCKET_EVENTS = {
+  USER_NEW: "admin:user:new",
+  USER_LOGIN: "admin:user:login",
+  USER_LOGOUT: "admin:user:logout",
+  USER_STATUS_CHANGED: "admin:user:status-changed",
+  USER_LOCKED: "admin:user:locked",
+  USER_UNLOCKED: "admin:user:unlocked",
+  USER_DELETED: "admin:user:deleted",
+  SUPPORT_NEW_MESSAGE: "admin:support:new-message",
+  REPORT_NEW: "admin:report:new",
+  REPORT_UPDATED: "admin:report:updated",
+  DASHBOARD_STATS_UPDATED: "admin:dashboard:stats-updated",
+  SYSTEM_NOTIFICATION: "admin:system:notification",
+  MAINTENANCE_ON: "admin:maintenance:on",
+  MAINTENANCE_OFF: "admin:maintenance:off",
+} as const;

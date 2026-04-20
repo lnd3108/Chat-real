@@ -6,7 +6,12 @@ import Friend from "../models/Friend.js";
 import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../models/Blocking.js";
 import Session from "../models/Session.js";
 import Report from "../models/Report.js";
-import { disconnectUserSockets, emitToUser, disconnectAllUserSockets } from "../socket/index.js";
+import {
+  disconnectUserSockets,
+  emitToUser,
+  disconnectAllUserSockets,
+  getIo,
+} from "../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
 import { sendAccountDeletedEmail } from "../utils/mail.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
@@ -20,6 +25,17 @@ import {
   toggleMaintenanceMode,
   updateMaintenanceMessage as updateMaintenanceMessageInDb,
 } from "../services/maintenanceService.js";
+import { ADMIN_SOCKET_EVENTS, USER_SOCKET_EVENTS } from "../constants/socketEvents.js";
+import { emitToAdmins } from "../socket/adminSocket.js";
+import {
+  buildAdminActor,
+  emitAdminNotification,
+} from "../services/adminNotificationService.js";
+import {
+  emitDashboardStatsUpdated,
+  getAdminDashboardRealtimeStats,
+} from "../services/dashboardRealtimeService.js";
+import { emitReportUpdated } from "../services/reportRealtimeService.js";
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -460,6 +476,7 @@ export const getDashboardOverview = async (req, res) => {
       totalReviewingReports,
       totalOpenSupportConversations,
       totalInProgressSupportConversations,
+      dashboardRealtime,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ status: "active" }),
@@ -485,6 +502,7 @@ export const getDashboardOverview = async (req, res) => {
         type: "support",
         supportStatus: "in_progress",
       }),
+      getAdminDashboardRealtimeStats(),
     ]);
 
     return res.status(200).json({
@@ -507,6 +525,12 @@ export const getDashboardOverview = async (req, res) => {
         totalReviewingReports,
         totalOpenSupportConversations,
         totalInProgressSupportConversations,
+        totalOnlineUsers: dashboardRealtime.totalOnlineUsers,
+        newUsersToday: dashboardRealtime.newUsersToday,
+        totalUnreadSupportConversations:
+          dashboardRealtime.totalUnreadSupportConversations,
+        latestUsers: dashboardRealtime.latestUsers,
+        maintenance: dashboardRealtime.maintenance,
       },
     });
   } catch (error) {
@@ -926,6 +950,26 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
+    emitToAdmins(ADMIN_SOCKET_EVENTS.USER_DELETED, {
+      user: buildAdminActor(user),
+      actor: buildAdminActor(req.user),
+      changedAt: new Date().toISOString(),
+      summary,
+    });
+    emitAdminNotification({
+      type: "user",
+      title: "Tai khoan da bi xoa",
+      message: `${req.user.displayName} vua xoa @${user.userName}`,
+      link: "/admin/users",
+      entityId: user._id.toString(),
+      actor: buildAdminActor(req.user),
+      severity: "warning",
+    });
+    await emitDashboardStatsUpdated({
+      reason: "user:deleted",
+      userId: user._id.toString(),
+    });
+
     return res.status(200).json({
       success: true,
       message: "Cập nhật role thành công",
@@ -973,11 +1017,53 @@ export const updateUserStatus = async (req, res) => {
 
     if (status === "banned") {
       await Session.deleteMany({ userId: user._id });
+      emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_LOCKED, {
+        message: "Tai khoan cua ban da bi khoa boi quan tri vien.",
+      });
       emitToUser(user._id, "account:banned", {
         message: "Tài khoản của bạn đã bị khóa bởi quản trị viên.",
       });
       disconnectUserSockets(user._id);
+      emitToAdmins(ADMIN_SOCKET_EVENTS.USER_LOCKED, {
+        user: buildAdminActor(user),
+        actor: buildAdminActor(req.user),
+        changedAt: new Date().toISOString(),
+      });
+      emitAdminNotification({
+        type: "user",
+        title: "Tai khoan da bi khoa",
+        message: `${req.user.displayName} vua khoa @${user.userName}`,
+        link: `/admin/users/${user._id}`,
+        entityId: user._id.toString(),
+        actor: buildAdminActor(req.user),
+      });
+    } else {
+      emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_UNLOCKED, {
+        message: "Tai khoan cua ban da duoc mo khoa.",
+      });
+      emitToAdmins(ADMIN_SOCKET_EVENTS.USER_UNLOCKED, {
+        user: buildAdminActor(user),
+        actor: buildAdminActor(req.user),
+        changedAt: new Date().toISOString(),
+      });
+      emitAdminNotification({
+        type: "user",
+        title: "Tai khoan da duoc mo khoa",
+        message: `${req.user.displayName} vua mo khoa @${user.userName}`,
+        link: `/admin/users/${user._id}`,
+        entityId: user._id.toString(),
+        actor: buildAdminActor(req.user),
+      });
     }
+
+    emitToAdmins(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, {
+      user: buildAdminActor(user),
+      changedAt: new Date().toISOString(),
+    });
+    await emitDashboardStatsUpdated({
+      reason: status === "banned" ? "user:locked" : "user:unlocked",
+      userId: user._id.toString(),
+    });
 
     return res.status(200).json({
       success: true,
@@ -1671,6 +1757,11 @@ export const updateReportStatus = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
+    await emitReportUpdated(report._id, {
+      action: "status-updated",
+      actorId: adminId.toString(),
+    });
+
     res.json({
       message: "Report status updated successfully",
       data: { report },
@@ -1728,6 +1819,11 @@ export const resolveReportWithAction = async (req, res) => {
       .populate("targetUserId", "displayName userName avatarUrl")
       .populate("reviewedByAdminId", "displayName userName")
       .lean();
+
+    await emitReportUpdated(updatedReport._id, {
+      action,
+      actorId: adminId.toString(),
+    });
 
     res.json({
       message: "Report resolved with action successfully",
@@ -1886,6 +1982,41 @@ export const confirmMaintenanceToggle = async (req, res) => {
       disconnectAllUserSockets(message);
     }
 
+    const actor = await User.findById(adminId).select(
+      "displayName userName email avatarUrl role status createdAt",
+    );
+    const maintenancePayload = {
+      isEnabled: result.isEnabled,
+      message: result.message,
+      enabledAt: result.enabledAt,
+      disabledAt: result.disabledAt,
+      actor: buildAdminActor(actor),
+      createdAt: new Date().toISOString(),
+    };
+
+    emitToAdmins(
+      enable ? ADMIN_SOCKET_EVENTS.MAINTENANCE_ON : ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF,
+      maintenancePayload,
+    );
+    emitAdminNotification({
+      type: "system",
+      title: enable ? "Da bat maintenance mode" : "Da tat maintenance mode",
+      message:
+        enable
+          ? `${actor?.displayName ?? "Admin"} vua bat che do bao tri`
+          : `${actor?.displayName ?? "Admin"} vua tat che do bao tri`,
+      link: "/admin/maintenance",
+      actor: buildAdminActor(actor),
+      severity: enable ? "warning" : "success",
+    });
+    getIo().emit(
+      enable ? USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON : USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_OFF,
+      { message: result.message, isEnabled: result.isEnabled },
+    );
+    await emitDashboardStatsUpdated({
+      reason: enable ? "maintenance:on" : "maintenance:off",
+    });
+
     return res.status(200).json({
       message: enable
         ? "Bảo trì hệ thống đã được bật"
@@ -1910,6 +2041,7 @@ export const updateMaintenanceMessage = async (req, res) => {
     }
 
     const result = await updateMaintenanceMessageInDb(message.trim());
+    await emitDashboardStatsUpdated({ reason: "maintenance:message-updated" });
 
     return res.status(200).json({
       message: "Tin nhắn bảo trì đã được cập nhật",
