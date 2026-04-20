@@ -28,30 +28,35 @@ export const protectedRoute = (req, res, next) => {
             .json({ message: "Access token hết hạn hoặc không hợp lệ." });
         }
 
-        const user = await User.findById(decodedUser.userId).select("-hashedPassword");
+        try {
+          const user = await User.findById(decodedUser.userId).select("-hashedPassword");
 
-        if (!user) {
-          return res.status(404).json({ message: "Người dùng không tồn tại." });
-        }
-
-        if (user.status === "banned") {
-          return res.status(403).json(bannedResponse);
-        }
-
-        // Check maintenance mode for non-admin users
-        if (user.role !== "admin") {
-          const maintenanceEnabled = await isMaintenanceEnabled();
-          if (maintenanceEnabled) {
-            const message = await getMaintenanceMessage();
-            return res.status(503).json({
-              code: "MAINTENANCE_MODE",
-              message,
-            });
+          if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại." });
           }
-        }
 
-        req.user = user;
-        return next();
+          if (user.status === "banned") {
+            return res.status(403).json(bannedResponse);
+          }
+
+          // Check maintenance mode for non-admin users
+          if (user.role !== "admin") {
+            const maintenanceEnabled = await isMaintenanceEnabled();
+            if (maintenanceEnabled) {
+              const message = await getMaintenanceMessage();
+              return res.status(503).json({
+                code: "MAINTENANCE_MODE",
+                message,
+              });
+            }
+          }
+
+          req.user = user;
+          return next();
+        } catch (dbError) {
+          console.error("Lỗi trong protectedRoute callback:", dbError);
+          return res.status(500).json({ message: "Lỗi hệ thống." });
+        }
       },
     );
   } catch (error) {
