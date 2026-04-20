@@ -13,6 +13,17 @@ export const createReport = async (req, res) => {
       req.body;
     const reporterId = req.user._id;
 
+    console.log("[report][create][request]", {
+      reporterId: reporterId?.toString?.() ?? reporterId,
+      targetType,
+      targetUserId: targetUserId ?? null,
+      targetMessageId: targetMessageId ?? null,
+      targetConversationId: targetConversationId ?? null,
+      reasonLength: typeof reason === "string" ? reason.trim().length : 0,
+      descriptionLength:
+        typeof description === "string" ? description.trim().length : 0,
+    });
+
     // Validation
     if (!targetType || !["user", "message", "conversation"].includes(targetType)) {
       return res.status(400).json({ message: "Invalid targetType" });
@@ -137,6 +148,14 @@ export const createReport = async (req, res) => {
     });
 
     await report.save();
+
+    console.log("[report][create][saved]", {
+      _id: report._id?.toString?.() ?? report._id,
+      reporterId: report.reporterId?.toString?.() ?? report.reporterId,
+      targetType: report.targetType,
+      status: report.status,
+      createdAt: report.createdAt,
+    });
 
     res.status(201).json({
       message: "Report created successfully",

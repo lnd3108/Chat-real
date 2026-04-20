@@ -14,7 +14,7 @@ export type FriendItem = {
 type Props = {
   label: string;
   value: string;
-  setValue: (v: string) => void;
+  setValue: (value: string) => void;
   placeholder?: string;
   friends: FriendItem[];
 };
@@ -53,8 +53,8 @@ const SuggestUserInput = ({
       <div className="relative">
         <Input
           value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
+          onChange={(event) => {
+            setValue(event.target.value);
             setOpen(true);
           }}
           onFocus={() => {
@@ -84,7 +84,7 @@ const SuggestUserInput = ({
                     <button
                       key={friend._id || friend.userName}
                       type="button"
-                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => {
                         setValue(friend.userName);
                         setOpen(false);

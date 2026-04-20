@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import SuggestUserInput, { type FriendItem } from "./SuggestUserInput";
 
 export type ReportPayload = {
+  targetUserId?: string;
   targetUserName: string;
   reason: string;
   description: string;
@@ -36,6 +37,11 @@ const ReportTab = ({
       return;
     }
 
+    if (!report.targetUserId) {
+      toast.error("Chọn đúng người dùng từ danh sách gợi ý.");
+      return;
+    }
+
     if (!report.description.trim()) {
       toast.error("Nhập mô tả báo cáo.");
       return;
@@ -49,7 +55,15 @@ const ReportTab = ({
       <SuggestUserInput
         label="Username cần báo cáo"
         value={report.targetUserName}
-        setValue={(v) => setReport({ ...report, targetUserName: v })}
+        setValue={(value) =>
+          setReport({
+            ...report,
+            targetUserName: value,
+            targetUserId:
+              friends.find((friend) => friend.userName === value.trim())?._id ??
+              undefined,
+          })
+        }
         placeholder="Ví dụ: leminh"
         friends={friends}
       />
@@ -80,7 +94,9 @@ const ReportTab = ({
         <Label>Mô tả</Label>
         <Textarea
           value={report.description}
-          onChange={(e) => setReport({ ...report, description: e.target.value })}
+          onChange={(event) =>
+            setReport({ ...report, description: event.target.value })
+          }
           placeholder="Mô tả chi tiết hành vi vi phạm..."
           className="glass-light min-h-24 border-border/30"
           disabled={isSubmitting}

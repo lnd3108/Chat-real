@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, FileText, Flag, ImageIcon, Loader2, ShieldBan } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  Flag,
+  ImageIcon,
+  Loader2,
+  ShieldBan,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
 import { getParticipantId } from "@/lib/chatParticipants";
+import { cn } from "@/lib/utils";
+import { reportService } from "@/services/reportService";
+import { userService } from "@/services/userService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { cn } from "@/lib/utils";
-import { appendReport } from "@/lib/directChatPreferences";
-import { userService } from "@/services/userService";
+
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +27,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Badge } from "../ui/badge";
+import { Textarea } from "../ui/textarea";
 import UserAvatar from "./UserAvatar";
 
 interface DirectInfoDialogProps {
@@ -55,6 +63,7 @@ const DirectInfoDialog = ({
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
   const [blockReason, setBlockReason] = useState("");
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [isBlocked, setIsBlocked] = useState(() => chat.blockInfo?.blockedByMe ?? false);
   const [reportReason, setReportReason] = useState(reportReasons[0]);
   const [reportDescription, setReportDescription] = useState("");
@@ -85,6 +94,7 @@ const DirectInfoDialog = ({
     setReportExpanded(true);
     setMediaViewerOpen(false);
     setIsSubmittingBlock(false);
+    setIsSubmittingReport(false);
   }, [open]);
 
   const sharedMedia = useMemo(
@@ -133,8 +143,8 @@ const DirectInfoDialog = ({
   };
 
   const handleSendReport = () => {
-    if (!userName) {
-      toast.error("Không tìm thấy username để báo cáo.");
+    if (!targetUserId) {
+      toast.error("Không tìm thấy người dùng để báo cáo.");
       return;
     }
 
@@ -143,17 +153,31 @@ const DirectInfoDialog = ({
       return;
     }
 
-    appendReport({
-      conversationId: chat._id,
-      targetUserName: userName.trim(),
-      reason: reportReason,
-      description: reportDescription.trim(),
-      createdAt: new Date().toISOString(),
-    });
+    void (async () => {
+      try {
+        setIsSubmittingReport(true);
 
-    setReportDescription("");
-    setReportReason(reportReasons[0]);
-    toast.success("Đã gửi báo cáo");
+        const payload = {
+          targetType: "user" as const,
+          targetUserId,
+          targetConversationId: chat._id,
+          reason: reportReason,
+          description: reportDescription.trim(),
+        };
+
+        console.debug("[report][user-submit][direct]", payload);
+        await reportService.createReport(payload);
+
+        setReportDescription("");
+        setReportReason(reportReasons[0]);
+        toast.success("Đã gửi báo cáo");
+      } catch (error) {
+        console.error("Lỗi gửi báo cáo direct:", error);
+        toast.error("Gửi báo cáo thất bại, thử lại.");
+      } finally {
+        setIsSubmittingReport(false);
+      }
+    })();
   };
 
   return (
@@ -180,7 +204,9 @@ const DirectInfoDialog = ({
 
             <div className="min-w-0 flex-1">
               <p className="truncate text-lg font-semibold">{displayName}</p>
-              <p className="truncate text-sm text-muted-foreground">@{userName || "unknown"}</p>
+              <p className="truncate text-sm text-muted-foreground">
+                @{userName || "unknown"}
+              </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {bio?.trim() || "Người dùng này chưa cập nhật giới thiệu."}
               </p>
@@ -392,7 +418,7 @@ const DirectInfoDialog = ({
                 <div className="rounded-xl border border-border/60 p-4">
                   <p className="text-sm font-medium">Gửi báo cáo</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Báo cáo này sẽ được lưu kèm username và cuộc trò chuyện hiện tại.
+                    Báo cáo này sẽ được gửi lên hệ thống moderation để admin kiểm tra.
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -402,6 +428,7 @@ const DirectInfoDialog = ({
                         type="button"
                         variant={reportReason === reason ? "default" : "outline"}
                         onClick={() => setReportReason(reason)}
+                        disabled={isSubmittingReport}
                       >
                         {reason}
                       </Button>
@@ -416,11 +443,21 @@ const DirectInfoDialog = ({
                       onChange={(event) => setReportDescription(event.target.value)}
                       placeholder="Mô tả chi tiết hành vi vi phạm..."
                       className="min-h-24"
+                      disabled={isSubmittingReport}
                     />
                   </div>
 
-                  <Button type="button" className="mt-4 w-full" onClick={handleSendReport}>
-                    <Flag className="mr-2 size-4" />
+                  <Button
+                    type="button"
+                    className="mt-4 w-full"
+                    onClick={handleSendReport}
+                    disabled={isSubmittingReport}
+                  >
+                    {isSubmittingReport ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Flag className="mr-2 size-4" />
+                    )}
                     Gửi báo cáo
                   </Button>
                 </div>

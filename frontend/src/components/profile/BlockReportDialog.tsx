@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appendReport } from "@/lib/directChatPreferences";
+import { reportService } from "@/services/reportService";
 import { userService } from "@/services/userService";
 import { useFriendStore } from "@/stores/useFriendStore";
 import type { BlockedUser, Friend } from "@/types/user";
@@ -21,7 +21,7 @@ import type { FriendItem } from "./SuggestUserInput";
 
 type Props = {
   open: boolean;
-  setOpen: (val: boolean) => void;
+  setOpen: (value: boolean) => void;
 };
 
 type FriendLike = Friend & {
@@ -30,6 +30,7 @@ type FriendLike = Friend & {
 };
 
 const defaultReportState: ReportPayload = {
+  targetUserId: undefined,
   targetUserName: "",
   reason: "Spam",
   description: "",
@@ -87,14 +88,22 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
 
   const onSendReport = async () => {
     try {
+      if (!report.targetUserId) {
+        toast.error("Chọn đúng người dùng cần báo cáo.");
+        return;
+      }
+
       setIsSubmittingReport(true);
 
-      appendReport({
-        targetUserName: report.targetUserName.trim(),
+      const payload = {
+        targetType: "user" as const,
+        targetUserId: report.targetUserId,
         reason: report.reason,
         description: report.description.trim(),
-        createdAt: new Date().toISOString(),
-      });
+      };
+
+      console.debug("[report][user-submit][privacy]", payload);
+      await reportService.createReport(payload);
 
       toast.success("Đã gửi báo cáo");
       setReport(defaultReportState);
@@ -120,7 +129,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "block" | "report")}>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as "block" | "report")}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="block">Chặn</TabsTrigger>
             <TabsTrigger value="report">Báo cáo</TabsTrigger>

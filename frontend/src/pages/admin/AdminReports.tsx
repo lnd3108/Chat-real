@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { Eye, Search, Flag, AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, Flag, Search } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
 
 interface ReporterSnapshot {
@@ -122,8 +122,12 @@ const AdminReports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"" | "pending" | "reviewing" | "resolved" | "rejected">("");
-  const [typeFilter, setTypeFilter] = useState<"" | "user" | "message" | "conversation">("");
+  const [statusFilter, setStatusFilter] = useState<
+    "" | "pending" | "reviewing" | "resolved" | "rejected"
+  >("");
+  const [typeFilter, setTypeFilter] = useState<
+    "" | "user" | "message" | "conversation"
+  >("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("createdAt-desc");
   const [pagination, setPagination] = useState<PaginationData>({
@@ -137,38 +141,47 @@ const AdminReports = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  useEffect(() => {
-    void fetchReports();
-  }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
-
-  useEffect(() => {
-    if (!detailOpen || !selectedReportId) return;
-    void fetchReportDetail(selectedReportId);
-  }, [detailOpen, selectedReportId]);
-
-  const fetchReports = async () => {
+  const fetchReports = async ({ silent = false }: { silent?: boolean } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
-      const response = await axiosInstance.get("/admin/reports", {
-        params: {
-          page,
-          limit: 20,
-          status: statusFilter,
-          targetType: typeFilter,
-          q: searchQuery,
-          sort: sortBy,
-        },
+      const params = {
+        page,
+        limit: 20,
+        status: statusFilter,
+        targetType: typeFilter,
+        q: searchQuery,
+        sort: sortBy,
+      };
+
+      console.debug("[report][admin-page][fetch]", params);
+
+      const response = await axiosInstance.get("/admin/reports", { params });
+
+      console.debug("[report][admin-page][response]", {
+        reports: response.data?.data?.reports?.length ?? 0,
+        pagination: response.data?.data?.pagination ?? null,
       });
 
-      setReports(response.data.data.reports ?? []);
-      setPagination(response.data.data.pagination);
+      setReports(response.data?.data?.reports ?? []);
+      setPagination(
+        response.data?.data?.pagination ?? {
+          page: 1,
+          limit: 20,
+          total: 0,
+          pages: 1,
+        },
+      );
     } catch (err) {
-      console.error(err);
+      console.error("[report][admin-page][error]", err);
       setError("Không thể tải danh sách báo cáo.");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -185,17 +198,38 @@ const AdminReports = () => {
     }
   };
 
+  useEffect(() => {
+    void fetchReports();
+  }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void fetchReports({ silent: true });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
+
+  useEffect(() => {
+    if (!detailOpen || !selectedReportId) return;
+    void fetchReportDetail(selectedReportId);
+  }, [detailOpen, selectedReportId]);
+
   const handleSearch = (value: string) => {
     setSearchQuery(value);
     setPage(1);
   };
 
-  const handleStatusChange = (value: "" | "pending" | "reviewing" | "resolved" | "rejected") => {
+  const handleStatusChange = (
+    value: "" | "pending" | "reviewing" | "resolved" | "rejected",
+  ) => {
     setStatusFilter(value);
     setPage(1);
   };
 
-  const handleTypeChange = (value: "" | "user" | "message" | "conversation") => {
+  const handleTypeChange = (
+    value: "" | "user" | "message" | "conversation",
+  ) => {
     setTypeFilter(value);
     setPage(1);
   };
@@ -242,8 +276,8 @@ const AdminReports = () => {
           <div className="space-y-1">
             <p className="font-medium text-foreground">Lưu ý quyền riêng tư</p>
             <p className="text-sm text-muted-foreground">
-              Admin chỉ được xem nội dung liên quan đến báo cáo cụ thể. Không
-              được duyệt hàng loạt tin nhắn người dùng ngoài phạm vi báo cáo.
+              Admin chỉ được xem nội dung liên quan đến báo cáo cụ thể. Không được
+              duyệt hàng loạt tin nhắn người dùng ngoài phạm vi báo cáo.
             </p>
           </div>
         </div>
@@ -263,7 +297,7 @@ const AdminReports = () => {
 
           <select
             value={statusFilter}
-            onChange={(event) => handleStatusChange(event.target.value as any)}
+            onChange={(event) => handleStatusChange(event.target.value as never)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả trạng thái</option>
@@ -275,7 +309,7 @@ const AdminReports = () => {
 
           <select
             value={typeFilter}
-            onChange={(event) => handleTypeChange(event.target.value as any)}
+            onChange={(event) => handleTypeChange(event.target.value as never)}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả loại</option>
@@ -493,19 +527,26 @@ const AdminReports = () => {
 
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
                 <p className="text-sm font-medium text-foreground">Lý do</p>
-                <p className="mt-2 text-sm text-muted-foreground">{selectedReport.reason}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {selectedReport.reason}
+                </p>
 
-                {selectedReport.description && (
+                {selectedReport.description ? (
                   <>
                     <p className="mt-4 text-sm font-medium text-foreground">Mô tả</p>
-                    <p className="mt-2 text-sm text-muted-foreground">{selectedReport.description}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {selectedReport.description}
+                    </p>
                   </>
-                )}
+                ) : null}
               </div>
 
-              {selectedReport.targetType === "user" && selectedReport.targetUserSnapshot && (
+              {selectedReport.targetType === "user" &&
+              selectedReport.targetUserSnapshot ? (
                 <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Người dùng bị báo cáo</p>
+                  <p className="text-sm font-medium text-foreground">
+                    Người dùng bị báo cáo
+                  </p>
                   <div className="mt-3 flex items-center gap-3">
                     <UserAvatar
                       type="chat"
@@ -520,30 +561,37 @@ const AdminReports = () => {
                       <p className="text-sm text-muted-foreground">
                         @{selectedReport.targetUserSnapshot.userName}
                       </p>
-                      {selectedReport.targetUserSnapshot.email && (
-                        <p className="text-xs text-muted-foreground">{selectedReport.targetUserSnapshot.email}</p>
-                      )}
+                      {selectedReport.targetUserSnapshot.email ? (
+                        <p className="text-xs text-muted-foreground">
+                          {selectedReport.targetUserSnapshot.email}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {selectedReport.targetType === "message" && selectedReport.targetMessagePreview && (
+              {selectedReport.targetType === "message" &&
+              selectedReport.targetMessagePreview ? (
                 <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Tin nhắn bị báo cáo</p>
+                  <p className="text-sm font-medium text-foreground">
+                    Tin nhắn bị báo cáo
+                  </p>
                   <div className="mt-3 space-y-2">
-                    {selectedReport.targetMessagePreview.content && (
+                    {selectedReport.targetMessagePreview.content ? (
                       <div className="rounded-lg bg-background/50 p-3">
                         <p className="text-sm text-muted-foreground">
                           {selectedReport.targetMessagePreview.content}
                         </p>
                       </div>
-                    )}
-                    {selectedReport.targetMessagePreview.imgUrl && (
+                    ) : null}
+                    {selectedReport.targetMessagePreview.imgUrl ? (
                       <div className="rounded-lg bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground">Có hình ảnh đính kèm</p>
+                        <p className="text-xs text-muted-foreground">
+                          Có hình ảnh đính kèm
+                        </p>
                       </div>
-                    )}
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
                       Gửi bởi {selectedReport.targetMessagePreview.senderDisplayName}
                     </p>
@@ -552,35 +600,40 @@ const AdminReports = () => {
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {selectedReport.targetType === "conversation" && selectedReport.targetConversationSnapshot && (
+              {selectedReport.targetType === "conversation" &&
+              selectedReport.targetConversationSnapshot ? (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Cuộc trò chuyện bị báo cáo</p>
+                  <p className="text-sm font-medium text-foreground">
+                    Cuộc trò chuyện bị báo cáo
+                  </p>
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-muted-foreground">
                       Loại: {selectedReport.targetConversationSnapshot.type}
                     </p>
-                    {selectedReport.targetConversationSnapshot.groupName && (
+                    {selectedReport.targetConversationSnapshot.groupName ? (
                       <p className="text-sm text-muted-foreground">
                         Tên: {selectedReport.targetConversationSnapshot.groupName}
                       </p>
-                    )}
+                    ) : null}
                     <p className="text-sm text-muted-foreground">
                       Số thành viên: {selectedReport.targetConversationSnapshot.membersCount}
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {selectedReport.resolutionNote && (
+              {selectedReport.resolutionNote ? (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
                   <p className="text-sm font-medium text-foreground">Ghi chú xử lý</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{selectedReport.resolutionNote}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {selectedReport.resolutionNote}
+                  </p>
                 </div>
-              )}
+              ) : null}
 
-              {selectedReport.reviewedByAdminId && (
+              {selectedReport.reviewedByAdminId ? (
                 <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                     Đã được xem bởi
@@ -590,7 +643,7 @@ const AdminReports = () => {
                     {formatDate(selectedReport.reviewedAt)}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </DialogContent>

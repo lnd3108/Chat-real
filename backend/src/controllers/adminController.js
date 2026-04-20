@@ -1514,6 +1514,19 @@ export const getReports = async (req, res) => {
 
     const total = await Report.countDocuments(query);
 
+    console.log("[report][admin-list]", {
+      adminId: req.user?._id?.toString?.() ?? req.user?._id ?? null,
+      page: pageNum,
+      limit: limitNum,
+      status: status ?? "",
+      targetType: targetType ?? "",
+      q: q ?? "",
+      sort,
+      matched: reports.length,
+      total,
+      firstReportId: reports[0]?._id?.toString?.() ?? null,
+    });
+
     res.json({
       message: "Reports retrieved successfully",
       data: {
