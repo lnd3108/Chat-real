@@ -209,4 +209,9 @@ export const chatServices = {
     const res = await api.post(`/messages/${messageId}/reactions`, { emoji });
     return res.data.message as Message;
   },
+
+  async deleteSupportConversation(conversationId: string) {
+    const res = await api.delete(`/support/conversations/${conversationId}`);
+    return res.data;
+  },
 };

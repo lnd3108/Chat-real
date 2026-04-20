@@ -153,7 +153,7 @@ export const getOrCreateSupportConversation = async (req, res) => {
 export const getCurrentSupportConversation = getOrCreateSupportConversation;
 
 /**
- * Get all support conversations for user
+ * Get all support conversations for user (excludes deleted ones)
  * GET /support/conversations/me
  */
 export const getUserSupportConversations = async (req, res) => {
@@ -175,6 +175,7 @@ export const getUserSupportConversations = async (req, res) => {
     const conversations = await Conversation.find({
       type: "support",
       supportCreatedByUserId: userId,
+      userDeletedAt: null,
     })
       .sort(sortObj)
       .skip(skip)
@@ -186,6 +187,7 @@ export const getUserSupportConversations = async (req, res) => {
     const total = await Conversation.countDocuments({
       type: "support",
       supportCreatedByUserId: userId,
+      userDeletedAt: null,
     });
 
     res.json({
@@ -363,5 +365,38 @@ export const getSupportConversationDetail = async (req, res) => {
   } catch (error) {
     console.error("Error fetching support conversation detail:", error);
     res.status(500).json({ message: "Failed to fetch support conversation" });
+  }
+};
+
+/**
+ * Delete support conversation for user (soft delete - saves history for admin)
+ * DELETE /support/conversations/:id
+ */
+export const deleteSupportConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: id,
+      type: "support",
+      supportCreatedByUserId: userId,
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Support conversation not found" });
+    }
+
+    // Mark as deleted by user (soft delete - keeps history for admin)
+    conversation.userDeletedAt = new Date();
+    await conversation.save();
+
+    res.json({
+      message: "Support conversation deleted successfully",
+      data: { conversationId: id },
+    });
+  } catch (error) {
+    console.error("Error deleting support conversation:", error);
+    res.status(500).json({ message: "Failed to delete support conversation" });
   }
 };

@@ -154,6 +154,11 @@ const conversationSchema = new mongoose.Schema(
       default: null,
       sparse: true,
     },
+    userDeletedAt: {
+      type: Date,
+      default: null,
+      sparse: true,
+    },
   },
   {
     timestamps: true,

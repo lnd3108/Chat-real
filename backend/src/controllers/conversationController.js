@@ -259,6 +259,10 @@ export const getConversation = async (req, res) => {
 
     const conversations = await Conversation.find({
       "participants.userId": userId,
+      $or: [
+        { type: { $ne: "support" } },
+        { type: "support", userDeletedAt: null },
+      ],
     })
       // .sort({ lastMessageAt: 1, updatedAt: -1 })
       .sort({ lastMessageAt: -1 })
@@ -380,7 +384,13 @@ export const getMessages = async (req, res) => {
 export const getUserConversationsForSocketIO = async (userId) => {
   try {
     const conversations = await Conversation.find(
-      { "participants.userId": userId },
+      {
+        "participants.userId": userId,
+        $or: [
+          { type: { $ne: "support" } },
+          { type: "support", userDeletedAt: null },
+        ],
+      },
       {
         _id: 1,
       },

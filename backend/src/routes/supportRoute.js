@@ -6,6 +6,7 @@ import {
   getUserSupportConversations,
   sendSupportMessage,
   getSupportConversationDetail,
+  deleteSupportConversation,
 } from "../controllers/supportController.js";
 
 const router = express.Router();
@@ -21,6 +22,9 @@ router.get("/conversations/me", getUserSupportConversations);
 
 // Get support conversation detail with messages
 router.get("/conversations/:id", getSupportConversationDetail);
+
+// Delete support conversation for user (soft delete)
+router.delete("/conversations/:id", deleteSupportConversation);
 
 // Send support message
 router.post("/messages", sendSupportMessage);
