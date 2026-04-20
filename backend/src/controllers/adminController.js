@@ -1552,7 +1552,14 @@ export const getReportDetail = async (req, res) => {
     const report = await Report.findById(id)
       .populate("reporterId", "displayName userName email avatarUrl")
       .populate("targetUserId", "displayName userName email avatarUrl status")
-      .populate("targetMessageId", "content imgUrl senderId senderDisplayName createdAt")
+      .populate({
+        path: "targetMessageId",
+        select: "content imgUrl senderId senderDisplayName createdAt",
+        populate: {
+          path: "senderId",
+          select: "displayName userName email avatarUrl status",
+        },
+      })
       .populate("targetConversationId", "type groupName members createdAt")
       .populate("reviewedByAdminId", "displayName userName email")
       .lean();
@@ -1561,9 +1568,57 @@ export const getReportDetail = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
+    let moderationTargetUser = null;
+
+    if (report.targetUserId) {
+      moderationTargetUser = {
+        _id: report.targetUserId._id,
+        displayName:
+          report.targetUserId.displayName ??
+          report.targetUserSnapshot?.displayName ??
+          "Người dùng đã xóa",
+        userName:
+          report.targetUserId.userName ??
+          report.targetUserSnapshot?.userName ??
+          "deleted-user",
+        email: report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
+        avatarUrl:
+          report.targetUserId.avatarUrl ?? report.targetUserSnapshot?.avatarUrl ?? null,
+        status: report.targetUserId.status ?? "active",
+        source: "target_user",
+      };
+    } else if (report.targetType === "message") {
+      const sender = report.targetMessageId?.senderId;
+
+      if (sender) {
+        moderationTargetUser = {
+          _id: sender._id,
+          displayName: sender.displayName ?? report.targetMessagePreview?.senderDisplayName ?? "Người gửi",
+          userName: sender.userName ?? "unknown",
+          email: sender.email ?? null,
+          avatarUrl: sender.avatarUrl ?? null,
+          status: sender.status ?? "active",
+          source: "message_sender",
+        };
+      } else if (report.targetMessagePreview?.senderDisplayName) {
+        moderationTargetUser = {
+          _id: null,
+          displayName: report.targetMessagePreview.senderDisplayName,
+          userName: "deleted-user",
+          email: null,
+          avatarUrl: null,
+          status: "deleted",
+          source: "message_sender_deleted",
+        };
+      }
+    }
+
     res.json({
       message: "Report retrieved successfully",
-      data: { report },
+      data: {
+        report,
+        moderationTargetUser,
+      },
     });
   } catch (error) {
     console.error("Error fetching report detail:", error);

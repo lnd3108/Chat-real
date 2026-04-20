@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { AlertCircle, Eye, Flag, Search } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
@@ -118,6 +112,7 @@ const formatDate = (dateString?: string | null) => {
 };
 
 const AdminReports = () => {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,10 +131,6 @@ const AdminReports = () => {
     total: 0,
     pages: 1,
   });
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchReports = async ({ silent = false }: { silent?: boolean } = {}) => {
     try {
@@ -185,19 +176,6 @@ const AdminReports = () => {
     }
   };
 
-  const fetchReportDetail = async (reportId: string) => {
-    try {
-      setDetailLoading(true);
-      const response = await axiosInstance.get(`/admin/reports/${reportId}`);
-      setSelectedReport(response.data.data.report);
-    } catch (err) {
-      console.error(err);
-      setSelectedReport(null);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
   useEffect(() => {
     void fetchReports();
   }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
@@ -209,11 +187,6 @@ const AdminReports = () => {
 
     return () => window.clearInterval(intervalId);
   }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
-
-  useEffect(() => {
-    if (!detailOpen || !selectedReportId) return;
-    void fetchReportDetail(selectedReportId);
-  }, [detailOpen, selectedReportId]);
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
@@ -239,10 +212,8 @@ const AdminReports = () => {
     setPage(1);
   };
 
-  const handleOpenDetail = (reportId: string) => {
-    setSelectedReportId(reportId);
-    setSelectedReport(null);
-    setDetailOpen(true);
+  const goToReportDetail = (reportId: string) => {
+    navigate(`/admin/reports/${reportId}`);
   };
 
   if (error && !loading) {
@@ -425,7 +396,7 @@ const AdminReports = () => {
                           type="button"
                           variant="ghost"
                           className="h-10 rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
-                          onClick={() => handleOpenDetail(report._id)}
+                          onClick={() => goToReportDetail(report._id)}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Xem
@@ -446,208 +417,6 @@ const AdminReports = () => {
           </>
         )}
       </div>
-
-      <Dialog
-        open={detailOpen}
-        onOpenChange={(open) => {
-          setDetailOpen(open);
-          if (!open) {
-            setSelectedReportId(null);
-            setSelectedReport(null);
-          }
-        }}
-      >
-        <DialogContent className="border-border/40 bg-card/95 sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Chi tiết báo cáo</DialogTitle>
-            <DialogDescription>Xem và đánh giá báo cáo này</DialogDescription>
-          </DialogHeader>
-
-          {detailLoading || !selectedReport ? (
-            <div className="flex h-64 items-center justify-center">
-              <LoadingSpinner className="h-8 w-8" />
-            </div>
-          ) : (
-            <div className="max-h-[60vh] space-y-5 overflow-y-auto pr-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                    typeConfig[selectedReport.targetType].className
-                  }`}
-                >
-                  {typeConfig[selectedReport.targetType].label}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                    statusConfig[selectedReport.status].className
-                  }`}
-                >
-                  {statusConfig[selectedReport.status].label}
-                </span>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-border/50 bg-card/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Mã báo cáo
-                  </p>
-                  <p className="mt-2 break-all font-mono text-sm text-foreground">
-                    {selectedReport._id}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Tạo lúc
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {formatDate(selectedReport.createdAt)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Người báo cáo</p>
-                <div className="mt-3 flex items-center gap-3">
-                  <UserAvatar
-                    type="chat"
-                    name={selectedReport.reporterSnapshot.displayName}
-                    avatarUrl={selectedReport.reporterSnapshot.avatarUrl}
-                    className="size-10"
-                  />
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {selectedReport.reporterSnapshot.displayName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      @{selectedReport.reporterSnapshot.userName}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Lý do</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {selectedReport.reason}
-                </p>
-
-                {selectedReport.description ? (
-                  <>
-                    <p className="mt-4 text-sm font-medium text-foreground">Mô tả</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {selectedReport.description}
-                    </p>
-                  </>
-                ) : null}
-              </div>
-
-              {selectedReport.targetType === "user" &&
-              selectedReport.targetUserSnapshot ? (
-                <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">
-                    Người dùng bị báo cáo
-                  </p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <UserAvatar
-                      type="chat"
-                      name={selectedReport.targetUserSnapshot.displayName}
-                      avatarUrl={selectedReport.targetUserSnapshot.avatarUrl}
-                      className="size-10"
-                    />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {selectedReport.targetUserSnapshot.displayName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        @{selectedReport.targetUserSnapshot.userName}
-                      </p>
-                      {selectedReport.targetUserSnapshot.email ? (
-                        <p className="text-xs text-muted-foreground">
-                          {selectedReport.targetUserSnapshot.email}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {selectedReport.targetType === "message" &&
-              selectedReport.targetMessagePreview ? (
-                <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">
-                    Tin nhắn bị báo cáo
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {selectedReport.targetMessagePreview.content ? (
-                      <div className="rounded-lg bg-background/50 p-3">
-                        <p className="text-sm text-muted-foreground">
-                          {selectedReport.targetMessagePreview.content}
-                        </p>
-                      </div>
-                    ) : null}
-                    {selectedReport.targetMessagePreview.imgUrl ? (
-                      <div className="rounded-lg bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Có hình ảnh đính kèm
-                        </p>
-                      </div>
-                    ) : null}
-                    <p className="text-xs text-muted-foreground">
-                      Gửi bởi {selectedReport.targetMessagePreview.senderDisplayName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(selectedReport.targetMessagePreview.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              {selectedReport.targetType === "conversation" &&
-              selectedReport.targetConversationSnapshot ? (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">
-                    Cuộc trò chuyện bị báo cáo
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Loại: {selectedReport.targetConversationSnapshot.type}
-                    </p>
-                    {selectedReport.targetConversationSnapshot.groupName ? (
-                      <p className="text-sm text-muted-foreground">
-                        Tên: {selectedReport.targetConversationSnapshot.groupName}
-                      </p>
-                    ) : null}
-                    <p className="text-sm text-muted-foreground">
-                      Số thành viên: {selectedReport.targetConversationSnapshot.membersCount}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              {selectedReport.resolutionNote ? (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-                  <p className="text-sm font-medium text-foreground">Ghi chú xử lý</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {selectedReport.resolutionNote}
-                  </p>
-                </div>
-              ) : null}
-
-              {selectedReport.reviewedByAdminId ? (
-                <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Đã được xem bởi
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">Admin</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(selectedReport.reviewedAt)}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

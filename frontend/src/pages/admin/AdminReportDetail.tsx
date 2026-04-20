@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Check, X, AlertCircle, Loader2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router";
+import { ArrowLeft, Check, Loader2, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 
+import AdminDeleteUserDialog from "@/components/admin/AdminDeleteUserDialog";
+import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { axiosInstance } from "@/lib/axios";
 import { Textarea } from "@/components/ui/textarea";
+import { axiosInstance } from "@/lib/axios";
+
+type ReportStatus = "pending" | "reviewing" | "resolved" | "rejected";
+type UserStatus = "active" | "inactive" | "suspended" | "banned" | "deleted";
 
 interface ReporterSnapshot {
   _id: string;
@@ -39,6 +37,16 @@ interface TargetMessagePreview {
   createdAt: string;
 }
 
+interface ModerationTargetUser {
+  _id: string | null;
+  displayName: string;
+  userName: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  status: UserStatus;
+  source: "target_user" | "message_sender" | "message_sender_deleted";
+}
+
 interface ReportDetail {
   _id: string;
   reporterId: string;
@@ -48,7 +56,7 @@ interface ReportDetail {
   targetConversationId?: string;
   reason: string;
   description?: string;
-  status: "pending" | "reviewing" | "resolved" | "rejected";
+  status: ReportStatus;
   reviewedByAdminId?: string;
   reviewedAt?: string;
   resolutionNote?: string;
@@ -65,42 +73,73 @@ interface ReportDetail {
   };
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
+const reportStatusConfig: Record<ReportStatus, { label: string; className: string }> = {
   pending: {
-    label: "Pending",
+    label: "Chờ xử lý",
     className: "bg-yellow-500/10 text-yellow-700",
   },
   reviewing: {
-    label: "Reviewing",
+    label: "Đang xem xét",
     className: "bg-blue-500/10 text-blue-700",
   },
   resolved: {
-    label: "Resolved",
+    label: "Đã xử lý",
     className: "bg-emerald-500/10 text-emerald-700",
   },
   rejected: {
-    label: "Rejected",
+    label: "Từ chối",
     className: "bg-red-500/10 text-red-700",
   },
 };
 
-const typeConfig: Record<string, { label: string; className: string }> = {
+const typeConfig: Record<
+  ReportDetail["targetType"],
+  { label: string; className: string }
+> = {
   user: {
-    label: "User Report",
+    label: "Báo cáo người dùng",
     className: "bg-purple-500/10 text-purple-700",
   },
   message: {
-    label: "Message Report",
+    label: "Báo cáo tin nhắn",
     className: "bg-blue-500/10 text-blue-700",
   },
   conversation: {
-    label: "Conversation Report",
+    label: "Báo cáo cuộc trò chuyện",
     className: "bg-amber-500/10 text-amber-700",
   },
 };
 
+const userStatusConfig: Record<UserStatus, { label: string; className: string }> = {
+  active: {
+    label: "Hoạt động",
+    className: "bg-emerald-500/10 text-emerald-700",
+  },
+  banned: {
+    label: "Bị khóa",
+    className: "bg-rose-500/10 text-rose-700",
+  },
+  inactive: {
+    label: "Không hoạt động",
+    className: "bg-slate-500/10 text-slate-700",
+  },
+  suspended: {
+    label: "Tạm khóa",
+    className: "bg-amber-500/10 text-amber-700",
+  },
+  deleted: {
+    label: "Đã xóa",
+    className: "bg-slate-700/10 text-slate-700",
+  },
+};
+
+const isModeratableStatus = (
+  status: UserStatus,
+): status is "active" | "inactive" | "suspended" | "banned" =>
+  status !== "deleted";
+
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "No date";
+  if (!dateString) return "Không có ngày";
 
   return new Date(dateString).toLocaleString("vi-VN", {
     year: "numeric",
@@ -116,17 +155,12 @@ const AdminReportDetail = () => {
   const navigate = useNavigate();
 
   const [report, setReport] = useState<ReportDetail | null>(null);
+  const [moderationTargetUser, setModerationTargetUser] =
+    useState<ModerationTargetUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
-
   const [resolutionNote, setResolutionNote] = useState("");
-  const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetchReportDetail();
-  }, [id]);
 
   const fetchReportDetail = async () => {
     if (!id) return;
@@ -137,16 +171,21 @@ const AdminReportDetail = () => {
 
       const response = await axiosInstance.get(`/admin/reports/${id}`);
       setReport(response.data.data.report);
+      setModerationTargetUser(response.data.data.moderationTargetUser ?? null);
       setResolutionNote(response.data.data.report.resolutionNote || "");
     } catch (err) {
       console.error(err);
-      setError("Failed to load report.");
+      setError("Không thể tải chi tiết báo cáo.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateStatus = async (newStatus: string) => {
+  useEffect(() => {
+    void fetchReportDetail();
+  }, [id]);
+
+  const handleUpdateStatus = async (newStatus: ReportStatus) => {
     if (!report) return;
 
     try {
@@ -154,51 +193,78 @@ const AdminReportDetail = () => {
 
       const response = await axiosInstance.patch(`/admin/reports/${report._id}/status`, {
         status: newStatus,
-        resolutionNote: newStatus === "resolved" || newStatus === "rejected" ? resolutionNote : undefined,
+        resolutionNote:
+          newStatus === "resolved" || newStatus === "rejected"
+            ? resolutionNote || undefined
+            : undefined,
       });
 
       setReport(response.data.data.report);
-      toast.success("Report status updated");
+      setResolutionNote(response.data.data.report.resolutionNote || resolutionNote);
+      toast.success("Đã cập nhật trạng thái báo cáo.");
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to update status");
+      toast.error(error?.response?.data?.message || "Không thể cập nhật trạng thái báo cáo.");
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleResolveWithAction = async () => {
-    if (!report || !selectedAction) return;
+  const markReportResolved = async (note: string) => {
+    if (!report || report.status === "resolved") {
+      return;
+    }
 
     try {
-      setUpdating(true);
-
-      const response = await axiosInstance.patch(`/admin/reports/${report._id}/resolve-with-action`, {
-        action: selectedAction,
-        resolutionNote,
+      const response = await axiosInstance.patch(`/admin/reports/${report._id}/status`, {
+        status: "resolved",
+        resolutionNote: note,
       });
 
       setReport(response.data.data.report);
-      setActionDialogOpen(false);
-      setSelectedAction(null);
-      toast.success("Report resolved with action");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to resolve with action");
-    } finally {
-      setUpdating(false);
+      setResolutionNote(response.data.data.report.resolutionNote || note);
+    } catch (error) {
+      console.error("Failed to auto resolve report after account action:", error);
     }
+  };
+
+  const handleAccountStatusSuccess = async (nextStatus: "active" | "banned") => {
+    const note =
+      nextStatus === "banned" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản";
+
+    setModerationTargetUser((current) =>
+      current
+        ? {
+            ...current,
+            status: nextStatus,
+          }
+        : current,
+    );
+
+    await markReportResolved(note);
+    await fetchReportDetail();
+  };
+
+  const handleDeleteAccountSuccess = async () => {
+    setModerationTargetUser((current) =>
+      current
+        ? {
+            ...current,
+            status: "deleted",
+          }
+        : current,
+    );
+
+    await markReportResolved("Đã xóa tài khoản");
+    await fetchReportDetail();
   };
 
   if (error && !loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/admin/reports")}
-            className="gap-2"
-          >
+          <Button variant="ghost" onClick={() => navigate("/admin/reports")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Quay lại
           </Button>
         </div>
 
@@ -217,21 +283,28 @@ const AdminReportDetail = () => {
     );
   }
 
+  const moderationStatus =
+    moderationTargetUser?.status && userStatusConfig[moderationTargetUser.status]
+      ? userStatusConfig[moderationTargetUser.status]
+      : null;
+  const moderatableTargetUser =
+    moderationTargetUser &&
+    moderationTargetUser._id &&
+    isModeratableStatus(moderationTargetUser.status)
+      ? moderationTargetUser
+      : null;
+  const canModerateAccount = !!moderatableTargetUser;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/admin/reports")}
-            className="gap-2"
-          >
+          <Button variant="ghost" onClick={() => navigate("/admin/reports")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Quay lại
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Report Details</h1>
+            <h1 className="text-3xl font-bold text-foreground">Chi tiết báo cáo</h1>
             <p className="mt-1 text-sm text-muted-foreground">ID: {report._id}</p>
           </div>
         </div>
@@ -246,20 +319,18 @@ const AdminReportDetail = () => {
           </span>
           <span
             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-              statusConfig[report.status].className
+              reportStatusConfig[report.status].className
             }`}
           >
-            {statusConfig[report.status].label}
+            {reportStatusConfig[report.status].label}
           </span>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Content */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Reporter Section */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h2 className="text-lg font-semibold text-foreground">Reporter Information</h2>
+            <h2 className="text-lg font-semibold text-foreground">Người báo cáo</h2>
             <div className="mt-4 flex items-center gap-4">
               <UserAvatar
                 type="chat"
@@ -271,39 +342,39 @@ const AdminReportDetail = () => {
                 <p className="font-medium text-foreground">
                   {report.reporterSnapshot.displayName}
                 </p>
-                <p className="text-sm text-muted-foreground">@{report.reporterSnapshot.userName}</p>
+                <p className="text-sm text-muted-foreground">
+                  @{report.reporterSnapshot.userName}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Report Reason Section */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h2 className="text-lg font-semibold text-foreground">Reason</h2>
+            <h2 className="text-lg font-semibold text-foreground">Nội dung báo cáo</h2>
             <p className="mt-3 text-muted-foreground">{report.reason}</p>
 
-            {report.description && (
+            {report.description ? (
               <>
-                <h3 className="mt-4 font-medium text-foreground">Description</h3>
+                <h3 className="mt-4 font-medium text-foreground">Mô tả</h3>
                 <p className="mt-2 text-muted-foreground">{report.description}</p>
               </>
-            )}
+            ) : null}
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <span className="inline-block rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-                Created: {formatDate(report.createdAt)}
+                Tạo lúc: {formatDate(report.createdAt)}
               </span>
-              {report.reviewedAt && (
+              {report.reviewedAt ? (
                 <span className="inline-block rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-                  Reviewed: {formatDate(report.reviewedAt)}
+                  Đã xem: {formatDate(report.reviewedAt)}
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
 
-          {/* Target Content Section */}
-          {report.targetType === "user" && report.targetUserSnapshot && (
+          {report.targetType === "user" && report.targetUserSnapshot ? (
             <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Reported User</h2>
+              <h2 className="text-lg font-semibold text-foreground">Người dùng bị báo cáo</h2>
               <div className="mt-4 flex items-center gap-4">
                 <UserAvatar
                   type="chat"
@@ -315,99 +386,103 @@ const AdminReportDetail = () => {
                   <p className="font-medium text-foreground">
                     {report.targetUserSnapshot.displayName}
                   </p>
-                  <p className="text-sm text-muted-foreground">@{report.targetUserSnapshot.userName}</p>
-                  {report.targetUserSnapshot.email && (
-                    <p className="text-xs text-muted-foreground">{report.targetUserSnapshot.email}</p>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    @{report.targetUserSnapshot.userName}
+                  </p>
+                  {report.targetUserSnapshot.email ? (
+                    <p className="text-xs text-muted-foreground">
+                      {report.targetUserSnapshot.email}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {report.targetType === "message" && report.targetMessagePreview && (
+          {report.targetType === "message" && report.targetMessagePreview ? (
             <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Reported Message</h2>
+              <h2 className="text-lg font-semibold text-foreground">Tin nhắn bị báo cáo</h2>
               <div className="mt-4 space-y-3">
-                {report.targetMessagePreview.content && (
+                {report.targetMessagePreview.content ? (
                   <div className="rounded-lg bg-background/50 p-4">
                     <p className="text-sm text-muted-foreground">
                       {report.targetMessagePreview.content}
                     </p>
                   </div>
-                )}
+                ) : null}
                 <div className="text-xs text-muted-foreground">
-                  <p>Sent by: {report.targetMessagePreview.senderDisplayName}</p>
+                  <p>Người gửi: {report.targetMessagePreview.senderDisplayName}</p>
                   <p>{formatDate(report.targetMessagePreview.createdAt)}</p>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {report.targetType === "conversation" && report.targetConversationSnapshot && (
+          {report.targetType === "conversation" && report.targetConversationSnapshot ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Reported Conversation</h2>
+              <h2 className="text-lg font-semibold text-foreground">Cuộc trò chuyện bị báo cáo</h2>
               <div className="mt-4 space-y-2">
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Type</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Loại</p>
                   <p className="mt-1 text-sm font-medium text-foreground">
                     {report.targetConversationSnapshot.type}
                   </p>
                 </div>
-                {report.targetConversationSnapshot.groupName && (
+                {report.targetConversationSnapshot.groupName ? (
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Name</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Tên</p>
                     <p className="mt-1 text-sm font-medium text-foreground">
                       {report.targetConversationSnapshot.groupName}
                     </p>
                   </div>
-                )}
+                ) : null}
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Members</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Số thành viên
+                  </p>
                   <p className="mt-1 text-sm font-medium text-foreground">
                     {report.targetConversationSnapshot.membersCount}
                   </p>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Resolution Note Section */}
-          {report.resolutionNote && (
+          {report.resolutionNote ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Resolution Note</h2>
+              <h2 className="text-lg font-semibold text-foreground">Ghi chú xử lý</h2>
               <p className="mt-3 text-muted-foreground">{report.resolutionNote}</p>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Sidebar - Actions */}
         <div className="space-y-4">
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="font-semibold text-foreground">Actions</h3>
+            <h3 className="font-semibold text-foreground">Xử lý báo cáo</h3>
 
             <div className="mt-4 space-y-3">
-              {report.status === "pending" && (
+              {report.status === "pending" ? (
                 <Button
                   onClick={() => handleUpdateStatus("reviewing")}
                   disabled={updating}
                   className="w-full gap-2"
                   variant="outline"
                 >
-                  {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Start Reviewing
+                  {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Bắt đầu xem xét
                 </Button>
-              )}
+              ) : null}
 
-              {report.status !== "resolved" && report.status !== "rejected" && (
+              {report.status !== "resolved" && report.status !== "rejected" ? (
                 <>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">
-                      Resolution Note
+                      Ghi chú xử lý
                     </label>
                     <Textarea
-                      placeholder="Enter resolution note..."
+                      placeholder="Nhập ghi chú xử lý..."
                       value={resolutionNote}
-                      onChange={(e) => setResolutionNote(e.target.value)}
+                      onChange={(event) => setResolutionNote(event.target.value)}
                       className="resize-none"
                       rows={4}
                     />
@@ -418,9 +493,8 @@ const AdminReportDetail = () => {
                     disabled={updating || !resolutionNote.trim()}
                     className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
                   >
-                    {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-                    <Check className="h-4 w-4" />
-                    Resolve
+                    {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    Đánh dấu đã xử lý
                   </Button>
 
                   <Button
@@ -429,85 +503,105 @@ const AdminReportDetail = () => {
                     variant="outline"
                     className="w-full gap-2 text-red-600 hover:bg-red-500/10"
                   >
-                    {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-                    <X className="h-4 w-4" />
-                    Reject
+                    {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                    Từ chối báo cáo
                   </Button>
-
-                  {report.targetType === "user" && (
-                    <Button
-                      onClick={() => setActionDialogOpen(true)}
-                      disabled={updating}
-                      variant="outline"
-                      className="w-full gap-2"
-                    >
-                      {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-                      <AlertCircle className="h-4 w-4" />
-                      Action on User
-                    </Button>
-                  )}
                 </>
-              )}
+              ) : null}
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card/50 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-foreground">Xử lý tài khoản</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Reuse action từ quản lý người dùng để khóa, mở khóa hoặc xóa tài khoản.
+                </p>
+              </div>
+              {moderationStatus ? (
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${moderationStatus.className}`}
+                >
+                  {moderationStatus.label}
+                </span>
+              ) : null}
+            </div>
+
+            {moderationTargetUser ? (
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center gap-4 rounded-xl border border-border/50 bg-background/40 p-4">
+                  <UserAvatar
+                    type="chat"
+                    name={moderationTargetUser.displayName}
+                    avatarUrl={moderationTargetUser.avatarUrl ?? undefined}
+                    className="size-12"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {moderationTargetUser.displayName}
+                    </p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      @{moderationTargetUser.userName}
+                    </p>
+                    {moderationTargetUser.email ? (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {moderationTargetUser.email}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                {canModerateAccount ? (
+                  <div className="space-y-3">
+                    <AdminUserStatusDialog
+                      userId={moderatableTargetUser!._id!}
+                      userName={moderatableTargetUser!.userName}
+                      displayName={moderatableTargetUser!.displayName}
+                      currentStatus={moderatableTargetUser!.status as "active" | "inactive" | "suspended" | "banned"}
+                      fullWidth
+                      onSuccess={handleAccountStatusSuccess}
+                    />
+
+                    <AdminDeleteUserDialog
+                      userId={moderatableTargetUser!._id!}
+                      userName={moderatableTargetUser!.userName}
+                      displayName={moderatableTargetUser!.displayName}
+                      fullWidth
+                      redirectToUsers={false}
+                      onSuccess={handleDeleteAccountSuccess}
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+                    {moderationTargetUser.status === "deleted"
+                      ? "Tài khoản này đã bị xóa. Các thao tác khóa, mở khóa và xóa đều đã bị vô hiệu hóa."
+                      : "Không xác định được user đích để xử lý trực tiếp từ báo cáo này."}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-border/50 bg-muted/40 p-4 text-sm text-muted-foreground">
+                Với loại báo cáo này hiện không xác định rõ tài khoản đích để xử lý trực tiếp.
+              </div>
+            )}
           </div>
 
           {report.status === "resolved" || report.status === "rejected" ? (
             <div className="rounded-xl border border-border/50 bg-muted/50 p-4 text-sm text-muted-foreground">
-              <p>This report has been finalized.</p>
-              <p className="mt-2 text-xs">Status: {statusConfig[report.status].label}</p>
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="mt-0.5 h-4 w-4" />
+                <div>
+                  <p>Báo cáo này đã được chốt.</p>
+                  <p className="mt-1 text-xs">
+                    Trạng thái: {reportStatusConfig[report.status].label}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>
       </div>
-
-      {/* Action Dialog */}
-      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Moderation Action</DialogTitle>
-            <DialogDescription>
-              Choose an action to take against the reported user
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <Button
-              onClick={() => {
-                setSelectedAction("ban-user");
-                handleResolveWithAction();
-              }}
-              disabled={updating}
-              className="w-full gap-2 justify-start"
-              variant="outline"
-            >
-              {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-              Ban User
-            </Button>
-
-            <Button
-              onClick={() => {
-                setSelectedAction("delete-message");
-                handleResolveWithAction();
-              }}
-              disabled={updating}
-              className="w-full gap-2 justify-start"
-              variant="outline"
-            >
-              {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Associated Content
-            </Button>
-
-            <Button
-              onClick={() => setActionDialogOpen(false)}
-              disabled={updating}
-              variant="ghost"
-              className="w-full"
-            >
-              Cancel
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -24,6 +24,8 @@ interface AdminDeleteUserDialogProps {
   userName: string;
   displayName: string;
   fullWidth?: boolean;
+  redirectToUsers?: boolean;
+  onSuccess?: () => void;
 }
 
 const AdminDeleteUserDialog = ({
@@ -31,6 +33,8 @@ const AdminDeleteUserDialog = ({
   userName,
   displayName,
   fullWidth = false,
+  redirectToUsers = true,
+  onSuccess,
 }: AdminDeleteUserDialogProps) => {
   const navigate = useNavigate();
   const currentAdminId = useAuthStore((state) => state.user?._id);
@@ -54,7 +58,11 @@ const AdminDeleteUserDialog = ({
 
       toast.success("Đã xóa tài khoản người dùng.");
       setOpen(false);
-      navigate("/admin/users", { replace: true });
+      onSuccess?.();
+
+      if (redirectToUsers) {
+        navigate("/admin/users", { replace: true });
+      }
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Không thể xóa tài khoản.");
     } finally {
@@ -87,12 +95,9 @@ const AdminDeleteUserDialog = ({
             </p>
             <p>Quy tắc áp dụng:</p>
             <p>- Direct chat sẽ bị xóa sạch cùng toàn bộ direct messages.</p>
+            <p>- Group chat sẽ không bị xóa chỉ vì user này, nhưng user sẽ bị remove khỏi nhóm.</p>
             <p>
-              - Group chat sẽ không bị xóa chỉ vì user này, nhưng user sẽ bị remove khỏi nhóm.
-            </p>
-            <p>
-              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành
-              {" "}
+              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành{" "}
               <strong>“Người dùng đã xóa”</strong>.
             </p>
           </AlertDialogDescription>
