@@ -266,7 +266,9 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
   const maxValue = Math.max(...points.map((point) => point.total), 0);
 
   if (!points.length || maxValue === 0) {
-    return <EmptyChartState message="Chưa có dữ liệu người dùng mới trong khoảng thời gian này." />;
+    return (
+      <EmptyChartState message="Chưa có dữ liệu người dùng mới trong khoảng thời gian này." />
+    );
   }
 
   const width = 100;
@@ -299,7 +301,9 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
         </div>
         <div className="text-right text-sm text-muted-foreground">
           <p>Đỉnh cao nhất</p>
-          <p className="mt-1 font-medium text-foreground">{formatNumber(maxValue)} user</p>
+          <p className="mt-1 font-medium text-foreground">
+            {formatNumber(maxValue)} user
+          </p>
         </div>
       </div>
 
@@ -356,7 +360,12 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
           <defs>
             <linearGradient id="userArea" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="currentColor" className="text-primary" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0" className="text-primary" />
+              <stop
+                offset="100%"
+                stopColor="currentColor"
+                stopOpacity="0"
+                className="text-primary"
+              />
             </linearGradient>
           </defs>
         </svg>
@@ -369,7 +378,9 @@ const StackedMessageChart = ({ points }: { points: MessageChartPoint[] }) => {
   const maxValue = Math.max(...points.map((point) => point.total), 0);
 
   if (!points.length || maxValue === 0) {
-    return <EmptyChartState message="Chưa có dữ liệu tin nhắn trong khoảng thời gian này." />;
+    return (
+      <EmptyChartState message="Chưa có dữ liệu tin nhắn trong khoảng thời gian này." />
+    );
   }
 
   return (
@@ -402,18 +413,9 @@ const StackedMessageChart = ({ points }: { points: MessageChartPoint[] }) => {
                     style={{ height: `${Math.max(heightPercent, 6)}%` }}
                     title={`${point.label}: ${point.total} tin nhắn`}
                   >
-                    <div
-                      className="bg-emerald-500"
-                      style={{ height: `${supportPercent}%` }}
-                    />
-                    <div
-                      className="bg-violet-500"
-                      style={{ height: `${groupPercent}%` }}
-                    />
-                    <div
-                      className="bg-sky-500"
-                      style={{ height: `${directPercent}%` }}
-                    />
+                    <div className="bg-emerald-500" style={{ height: `${supportPercent}%` }} />
+                    <div className="bg-violet-500" style={{ height: `${groupPercent}%` }} />
+                    <div className="bg-sky-500" style={{ height: `${directPercent}%` }} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">{point.label}</div>
@@ -445,7 +447,8 @@ const StatusBars = ({
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
-        Tổng trạng thái: <span className="font-semibold text-foreground">{formatNumber(total)}</span>
+        Tổng trạng thái:{" "}
+        <span className="font-semibold text-foreground">{formatNumber(total)}</span>
       </div>
 
       <div className="space-y-4 rounded-2xl border border-border/50 bg-background/60 p-4">
@@ -477,7 +480,8 @@ const StatusBars = ({
 
 const AdminDashboard = () => {
   const user = useAuthStore((state) => state.user);
-  const [rangeDays, setRangeDays] = useState<7 | 30>(7);
+  const [userRange, setUserRange] = useState<7 | 30>(7);
+  const [messageRange, setMessageRange] = useState<7 | 30>(7);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
@@ -618,15 +622,18 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    void fetchUserChart(rangeDays);
-    void fetchMessageChart(rangeDays);
-  }, [rangeDays]);
+    void fetchUserChart(userRange);
+  }, [userRange]);
+
+  useEffect(() => {
+    void fetchMessageChart(messageRange);
+  }, [messageRange]);
 
   const refreshAll = async () => {
     await Promise.all([
       fetchOverview(),
-      fetchUserChart(rangeDays),
-      fetchMessageChart(rangeDays),
+      fetchUserChart(userRange),
+      fetchMessageChart(messageRange),
       fetchReportChart(),
       fetchSupportChart(),
     ]);
@@ -840,8 +847,8 @@ const AdminDashboard = () => {
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {overviewError}. Dashboard vẫn được thiết kế fail-safe nên các
-                module admin riêng như Người dùng, Báo cáo hoặc Hỗ trợ vẫn có
-                thể truy cập độc lập.
+                module admin riêng như Người dùng, Báo cáo hoặc Hỗ trợ vẫn có thể
+                truy cập độc lập.
               </p>
             </div>
 
@@ -953,7 +960,7 @@ const AdminDashboard = () => {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <ChartShell
               title="User mới theo ngày"
-              description={`Line chart cho ${rangeDays} ngày gần nhất.`}
+              description={`Line chart cho ${userRange} ngày gần nhất.`}
               loading={userChart.loading}
               error={userChart.error}
               actions={
@@ -962,9 +969,9 @@ const AdminDashboard = () => {
                     <Button
                       key={days}
                       type="button"
-                      variant={rangeDays === days ? "default" : "outline"}
+                      variant={userRange === days ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setRangeDays(days as 7 | 30)}
+                      onClick={() => setUserRange(days as 7 | 30)}
                     >
                       {days} ngày
                     </Button>
@@ -977,9 +984,24 @@ const AdminDashboard = () => {
 
             <ChartShell
               title="Messages theo ngày"
-              description={`Stacked bar chart tách direct / group / support trong ${rangeDays} ngày gần nhất.`}
+              description={`Stacked bar chart tách direct / group / support trong ${messageRange} ngày gần nhất.`}
               loading={messageChart.loading}
               error={messageChart.error}
+              actions={
+                <div className="flex items-center gap-2">
+                  {[7, 30].map((days) => (
+                    <Button
+                      key={days}
+                      type="button"
+                      variant={messageRange === days ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setMessageRange(days as 7 | 30)}
+                    >
+                      {days} ngày
+                    </Button>
+                  ))}
+                </div>
+              }
             >
               <StackedMessageChart points={messageChart.data ?? []} />
             </ChartShell>
