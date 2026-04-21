@@ -254,7 +254,6 @@ export const useAdminSocket = () => {
       socket.off(ADMIN_SOCKET_EVENTS.SYSTEM_NOTIFICATION, handleSystemNotification);
       socket.off(ADMIN_SOCKET_EVENTS.MAINTENANCE_ON);
       socket.off(ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF);
-      useAdminSocketStore.getState().setBoundSocketId(null);
     };
   }, [boundSocketId, socket, userRole]);
 };
