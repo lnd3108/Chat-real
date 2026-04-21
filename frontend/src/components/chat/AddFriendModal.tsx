@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { playClickSound } from "@/lib/sound";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFriendStore } from "@/stores/useFriendStore";
+import { useSuggestionStore } from "@/stores/useSuggestionStore";
 import type { DiscoverUser } from "@/types/user";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -27,56 +28,104 @@ const AddFriendModal = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DiscoverUser[]>([]);
-  const modalLoadedRef = useRef(false);
-  const { searchUsers, getSuggestions, suggestions, searchLoading, suggestionsLoading } =
-    useFriendStore();
+  const { searchUsers, searchLoading } = useFriendStore();
+  const {
+    suggestions,
+    isFetching: isFetchingSuggestions,
+    hasFetched: hasFetchedSuggestions,
+    fetchSuggestions,
+    refreshSuggestions,
+  } = useSuggestionStore();
+
+  // Ref để chặn effect chạy 2 lần trong StrictMode
+  const effectRunRef = useRef(false);
+  // Ref để track xem modal mở lần đầu hay không
+  const modalFirstOpenRef = useRef(false);
+  // Timeout ID để clear khi unmount
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const trimmedQuery = query.trim();
 
-  // Reset modal state when modal closes
+  // 🔥 Reset ref khi modal close
   useEffect(() => {
     if (!open) {
-      modalLoadedRef.current = false;
+      effectRunRef.current = false;
+      modalFirstOpenRef.current = false;
+      setQuery("");
+      setSearchResults([]);
     }
   }, [open]);
 
+  // 🔥 CHỐNG SPAM: Main effect - fetch suggestions khi modal mở, search khi user nhập
   useEffect(() => {
     if (!open || !currentUserId) {
       return;
     }
 
+    // 🔥 StrictMode dev chạy 2 lần → block lần 2
+    if (effectRunRef.current && !trimmedQuery) {
+      console.info("[AddFriendModal] Effect đã chạy, skip lần 2");
+      return;
+    }
+
     if (!trimmedQuery) {
-      // Load suggestions when search is cleared or no query
-      if (!suggestionsLoading) {
-        modalLoadedRef.current = true;
-        void getSuggestions(5);
+      // 🔥 CASE: Modal mở / query được clear
+      effectRunRef.current = true;
+
+      // 🔥 Chỉ fetch suggestions khi:
+      // - Modal mở lần đầu (modalFirstOpenRef.current = false)
+      // - Hoặc user bấm clear query
+      // - Và chưa fetch bao giờ (hasFetchedSuggestions = false)
+      if (!modalFirstOpenRef.current && !hasFetchedSuggestions) {
+        modalFirstOpenRef.current = true;
+        console.info("[AddFriendModal] Fetching suggestions khi modal mở lần đầu");
+        void fetchSuggestions(5, false);
       }
       return;
     }
 
-    // Reset flag when user starts searching - will reload suggestions when query is cleared
-    modalLoadedRef.current = false;
+    // 🔥 CASE: User nhập query để tìm kiếm
+    // Reset flag để lần sau khi clear query sẽ fetch suggestions lại
+    effectRunRef.current = false;
+    modalFirstOpenRef.current = false;
 
-    const timeoutId = window.setTimeout(() => {
+    // Debounce search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = window.setTimeout(() => {
+      console.info("[AddFriendModal] Searching with query:", trimmedQuery);
       void searchUsers(trimmedQuery, 10).then(setSearchResults);
     }, 250);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [open, trimmedQuery]);
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [
+    open,
+    trimmedQuery,
+    currentUserId,
+    // 🔥 Dependency: CHỈ user ID, query, open (ổn định)
+    // KHÔNG dùng suggestionsLoading, searchLoading, suggestions, searchResults
+  ]);
 
   const displayedUsers = useMemo(
     () => (trimmedQuery ? searchResults : suggestions),
     [searchResults, suggestions, trimmedQuery],
   );
 
-  const currentLoading = trimmedQuery ? searchLoading : suggestionsLoading;
+  const currentLoading = trimmedQuery ? searchLoading : isFetchingSuggestions;
   const emptyText = trimmedQuery
     ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
     : "Chưa có gợi ý phù hợp.";
 
   const handleRefreshSuggestions = useCallback(async () => {
-    await getSuggestions(5);
-  }, []);
+    console.info("[AddFriendModal] User bấm reload suggestions");
+    await refreshSuggestions(5);
+  }, [refreshSuggestions]);
 
   return (
     <Dialog

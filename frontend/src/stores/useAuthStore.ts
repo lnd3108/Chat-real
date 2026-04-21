@@ -8,6 +8,7 @@ import { normalizeToastMessage } from "@/lib/toastMessage";
 import { useChatStore } from "./useChatStore";
 import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
+import { useSuggestionStore } from "./useSuggestionStore";
 
 const getAxiosMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -75,6 +76,7 @@ export const useAuthStore = create<AuthState>()(
         useChatStore.getState().reset();
         useFriendStore.getState().reset();
         useNotificationStore.getState().clearAllNotifications();
+        useSuggestionStore.getState().resetSuggestions();
         localStorage.removeItem("auth-storage");
         localStorage.removeItem("chat-storage");
         localStorage.removeItem("notification-storage");

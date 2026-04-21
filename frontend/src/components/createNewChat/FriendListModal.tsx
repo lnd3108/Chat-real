@@ -3,6 +3,7 @@ import { MessageCircle, Users } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useFriendStore } from "@/stores/useFriendStore";
+import { useSuggestionStore } from "@/stores/useSuggestionStore";
 import { Card } from "../ui/card";
 import {
   DialogContent,
@@ -37,35 +38,58 @@ const FriendListModal = ({
   const {
     friends: friendsStore,
     loading: loadingStore,
-    suggestions,
-    suggestionsLoading,
-    getSuggestions,
   } = useFriendStore();
+  const {
+    suggestions,
+    isFetching,
+    hasFetched,
+    fetchSuggestions,
+    refreshSuggestions,
+  } = useSuggestionStore();
   const { createConversation } = useChatStore();
-  const modalLoadedRef = useRef(false);
+  
+  // Ref để chặn fetch lặp lại khi modal mở
+  const modalOpenedRef = useRef(false);
+  // Ref để chặn effect chạy 2 lần trong StrictMode
+  const effectRunRef = useRef(false);
 
   const friends = friendsProp ?? friendsStore;
   const loading = loadingProp ?? loadingStore;
   const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
 
-  // Reset modal state when modal closes
+  // 🔥 Reset state khi modal close
   useEffect(() => {
     if (!open) {
-      modalLoadedRef.current = false;
+      modalOpenedRef.current = false;
+      effectRunRef.current = false;
     }
   }, [open]);
 
+  // 🔥 Fetch suggestions khi modal mở và chưa có danh sách bạn
   useEffect(() => {
+    // Điều kiện: modal mở + có user + cần hiển thị suggestions
     if (!open || !currentUserId || !shouldShowSuggestions) {
       return;
     }
 
-    // Load suggestions only once per modal open
-    if (!modalLoadedRef.current) {
-      modalLoadedRef.current = true;
-      void getSuggestions(5);
+    // 🔥 CHỐNG SPAM: StrictMode dev chạy 2 lần → check ref
+    if (effectRunRef.current) {
+      console.info("[FriendListModal] Effect đã chạy, skip lần 2");
+      return;
     }
-  }, [open]);
+    effectRunRef.current = true;
+
+    // 🔥 CHỐNG SPAM: Chỉ fetch khi modal mở lần đầu tiên
+    if (!modalOpenedRef.current) {
+      modalOpenedRef.current = true;
+      
+      // Nếu chưa fetch, fetch lần đầu
+      if (!hasFetched) {
+        console.info("[FriendListModal] Fetching suggestions...");
+        void fetchSuggestions(5, false);
+      }
+    }
+  }, [open, currentUserId]); // ✅ Dependency: CHỈ open, userId (ổn định)
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
@@ -73,8 +97,9 @@ const FriendListModal = ({
   };
 
   const handleRefreshSuggestions = useCallback(async () => {
-    await getSuggestions(5);
-  }, []);
+    console.info("[FriendListModal] User bấm reload");
+    await refreshSuggestions(5);
+  }, [refreshSuggestions]);
 
   return (
     <DialogContent className="glass max-w-2xl">
@@ -135,7 +160,7 @@ const FriendListModal = ({
         {shouldShowSuggestions ? (
           <UserSuggestionsList
             users={suggestions}
-            loading={Boolean(currentUserId) && suggestionsLoading}
+            loading={Boolean(currentUserId) && isFetching}
             compact
             title="Bạn có thể biết"
             emptyText="Chưa có gợi ý phù hợp để bắt đầu."

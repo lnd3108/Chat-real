@@ -2,30 +2,55 @@ import { useEffect, useCallback, useRef } from "react";
 import { SidebarInset, SidebarTrigger } from "../ui/sidebar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
-import { useFriendStore } from "@/stores/useFriendStore";
+import { useSuggestionStore } from "@/stores/useSuggestionStore";
 import UserSuggestionsList from "./UserSuggestionsList";
 
 const ChatWelcomeScreen = () => {
   const currentUserId = useAuthStore((state) => state.user?._id);
   const conversations = useChatStore((state) => state.conversations);
-  const { suggestions, getSuggestions, suggestionsLoading } = useFriendStore();
-  const componentMountedRef = useRef(false);
+  const {
+    suggestions,
+    isFetching,
+    hasFetched,
+    fetchSuggestions,
+    refreshSuggestions,
+  } = useSuggestionStore();
+  
+  // Ref để chặn effect chạy 2 lần trong StrictMode (dev)
+  const effectRunRef = useRef(false);
 
   useEffect(() => {
+    // 🔥 CHỐNG SPAM: Chỉ chạy khi có user ID và chưa có conversation
     if (!currentUserId || conversations.length > 0) {
       return;
     }
 
-    // Load suggestions only once on component mount or when conversations change
-    if (!componentMountedRef.current && suggestions.length === 0) {
-      componentMountedRef.current = true;
-      void getSuggestions(5);
+    // 🔥 CHỐNG SPAM: StrictMode dev chạy 2 lần → check ref
+    if (effectRunRef.current) {
+      console.info("[ChatWelcomeScreen] Effect đã chạy, skip lần 2");
+      return;
     }
-  }, [currentUserId, conversations.length]);
+    effectRunRef.current = true;
+
+    // 🔥 CHỐNG SPAM: Nếu chưa fetch, fetch lần đầu
+    if (!hasFetched) {
+      console.info("[ChatWelcomeScreen] Fetching suggestions...");
+      void fetchSuggestions(5, false);
+    }
+
+    // 🔥 Cleanup: Hủy ref khi component unmount hoặc user thay đổi
+    return () => {
+      if (currentUserId === useAuthStore.getState().user?._id) {
+        // Chỉ reset nếu user ID không thay đổi
+        // (nếu logout → user ID thay đổi → component unmount)
+      }
+    };
+  }, [currentUserId]); // ✅ Dependency: CHỈ user ID (ổn định)
 
   const handleRefreshSuggestions = useCallback(async () => {
-    await getSuggestions(5);
-  }, []);
+    console.info("[ChatWelcomeScreen] User bấm reload");
+    await refreshSuggestions(5);
+  }, [refreshSuggestions]);
 
   return (
     <SidebarInset className="flex h-full w-full bg-transparent">
@@ -50,7 +75,7 @@ const ChatWelcomeScreen = () => {
 
           <UserSuggestionsList
             users={suggestions}
-            loading={Boolean(currentUserId) && suggestionsLoading}
+            loading={Boolean(currentUserId) && isFetching}
             title="Bạn có thể biết"
             emptyText="Chưa tìm thấy người phù hợp để gợi ý."
             onRefresh={handleRefreshSuggestions}
