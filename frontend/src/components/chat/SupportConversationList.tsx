@@ -2,6 +2,8 @@ import { LifeBuoy, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/httpError";
+import { logger } from "@/lib/logger";
 import { useChatStore } from "@/stores/useChatStore";
 
 import SupportChatCard from "./SupportChatCard";
@@ -15,8 +17,12 @@ const SupportConversationList = () => {
     try {
       await getOrCreateSupportConversation();
     } catch (error) {
-      console.error("Không thể khởi tạo hỗ trợ:", error);
-      toast.error("Không thể tạo cuộc trò chuyện hỗ trợ lúc này.");
+      const message = getErrorMessage(
+        error,
+        "Không thể tạo cuộc trò chuyện hỗ trợ lúc này.",
+      );
+      logger.warn("Khong the khoi tao ho tro", { message });
+      toast.error(message);
     }
   };
 

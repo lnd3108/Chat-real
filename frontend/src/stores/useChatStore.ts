@@ -10,6 +10,8 @@ import type { ChatState } from "@/types/store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/httpError";
+import { logger } from "@/lib/logger";
 import { useAuthStore } from "./useAuthStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { useSocketStore } from "./useSocketStore";
@@ -651,7 +653,12 @@ export const useChatStore = create<ChatState>()(
 
           return conversation;
         } catch (error) {
-          console.error("Failed to get or create support conversation:", error);
+          logger.warn("Failed to get or create support conversation", {
+            message: getErrorMessage(
+              error,
+              "Khong the tao cuoc tro chuyen ho tro luc nay.",
+            ),
+          });
           throw error;
         } finally {
           set({ loading: false });

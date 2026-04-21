@@ -101,11 +101,16 @@ export const getOrCreateSupportConversation = async (req, res) => {
     // Nếu chưa có cuộc trò chuyện đang mở thì tạo mới
     if (!supportConversation) {
       const admin = await User.findOne({
-        role: { $in: [APP_ROLES.SUPER_ADMIN, APP_ROLES.ADMIN] },
-      }).select("_id");
+        role: {
+          $in: [APP_ROLES.SUPER_ADMIN, APP_ROLES.ADMIN, APP_ROLES.SUPPORT],
+        },
+        status: "active",
+      })
+        .sort({ updatedAt: -1, createdAt: 1 })
+        .select("_id");
 
       if (!admin) {
-        return res.status(400).json({
+        return res.status(503).json({
           message: "Hiện không có quản trị viên hỗ trợ. Vui lòng thử lại sau.",
         });
       }
@@ -114,6 +119,7 @@ export const getOrCreateSupportConversation = async (req, res) => {
         type: "support",
         supportStatus: "open",
         supportCreatedByUserId: userId,
+        assignedAdminId: admin._id,
         participants: [
           { userId: userId, joinedAt: new Date() },
           { userId: admin._id, joinedAt: new Date() },
