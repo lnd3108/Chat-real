@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 export const GoogleAuthCallbackPage = () => {
@@ -20,7 +21,7 @@ export const GoogleAuthCallbackPage = () => {
       const ok = await completeGoogleSignIn(code);
       const currentUser = useAuthStore.getState().user;
       const nextPath = ok
-        ? currentUser?.role === "admin"
+        ? hasAdminPanelAccess(currentUser)
           ? "/admin/dashboard"
           : "/"
         : "/verify-email";

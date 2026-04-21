@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Label } from "../ui/label";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/authService";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 
 const signInSchema = z.object({
   userName: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
@@ -53,7 +54,7 @@ export function SignInForm({
     const nextPath =
       result === "verify_email"
         ? "/verify-email"
-        : currentUser?.role === "admin"
+        : hasAdminPanelAccess(currentUser)
           ? "/admin/dashboard"
           : "/";
 

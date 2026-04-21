@@ -3,13 +3,17 @@ import { useNavigate } from "react-router";
 import { Eye, Search } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
+import RoleBadge from "@/components/admin/RoleBadge";
 import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
+import UpdateUserRoleModal from "@/components/admin/UpdateUserRoleModal";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getErrorMessage } from "@/lib/httpError";
+import { APP_PERMISSIONS, hasPermission } from "@/lib/rbac";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type { AdminUserRecord, AdminUserStatus, PaginationData } from "@/types/admin";
 
 const statusConfig: Record<AdminUserStatus, { label: string; className: string }> = {
@@ -35,6 +39,8 @@ const AdminUsers = () => {
   );
   const fetchUsersFromStore = useAdminSocketStore((state) => state.fetchUsers);
   const upsertUser = useAdminSocketStore((state) => state.upsertUser);
+  const currentUser = useAuthStore((state) => state.user);
+  const canAssignRole = hasPermission(currentUser, APP_PERMISSIONS.ROLE_ASSIGN);
 
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -211,21 +217,13 @@ const AdminUsers = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-amber-500/10 text-amber-700"
-                            : "bg-sky-500/10 text-sky-700"
-                        }`}
-                      >
-                        {user.role === "admin" ? "Admin" : "Người dùng"}
-                      </span>
+                      <RoleBadge roles={user.roles} />
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="ml-auto flex w-[172px] flex-col items-stretch gap-2">
+                      <div className="ml-auto flex w-[188px] flex-col items-stretch gap-2">
                         <Button
                           type="button"
                           variant="ghost"
@@ -245,6 +243,19 @@ const AdminUsers = () => {
                           buttonClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
                           onSuccess={(status) => updateUserStatusLocally(user._id, status)}
                         />
+                        {canAssignRole ? (
+                          <UpdateUserRoleModal
+                            user={user}
+                            fullWidth
+                            triggerClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
+                            onSuccess={(updatedUser) =>
+                              upsertUser({
+                                ...updatedUser,
+                                _id: user._id,
+                              })
+                            }
+                          />
+                        ) : null}
                       </div>
                     </td>
                   </tr>

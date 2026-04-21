@@ -7,6 +7,7 @@ export type PaginationData = {
 
 export type AdminUserStatus = "active" | "inactive" | "suspended" | "banned";
 export type AdminUserRole = "user" | "admin";
+export type AdminAppRole = "USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
 export type AdminReportStatus = "pending" | "reviewing" | "resolved" | "rejected";
 export type AdminReportTargetType = "user" | "message" | "conversation";
 export type AdminSupportStatus = "open" | "in_progress" | "resolved" | "closed";
@@ -17,9 +18,14 @@ export interface AdminUserRecord {
   userName: string;
   email: string;
   role: AdminUserRole;
+  roles?: AdminAppRole[];
+  primaryRole?: AdminAppRole;
+  permissions?: string[];
   status: AdminUserStatus;
   avatarUrl?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  isSystemAccount?: boolean;
   isOnline?: boolean;
 }
 
@@ -89,7 +95,17 @@ export interface AdminSystemNotificationPayload {
 }
 
 export interface AdminUserRealtimePayload {
+  userId?: string;
   user?: AdminUserRecord;
+  oldRoles?: AdminAppRole[];
+  newRoles?: AdminAppRole[];
+  reason?: string;
+  updatedAt?: string;
+  updatedBy?: {
+    _id?: string;
+    displayName?: string;
+    userName?: string;
+  };
   isOnline?: boolean;
   status?: string;
   actor?: unknown;

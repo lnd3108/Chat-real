@@ -1,3 +1,6 @@
+import { APP_ROLES } from "../constants/rbac.js";
+import { normalizeRoles } from "./rbacService.js";
+
 const PROTECTED_ACCOUNT_USERNAMES = new Set([
   "admin",
   "super_admin",
@@ -15,7 +18,12 @@ export const isProtectedAccount = (user) => {
     return false;
   }
 
-  if (String(user.role ?? "").toLowerCase() === "admin") {
+  const roles = normalizeRoles(user);
+  if (roles.some((role) => role !== APP_ROLES.USER)) {
+    return true;
+  }
+
+  if (Boolean(user.isSystemAccount)) {
     return true;
   }
 
@@ -31,6 +39,8 @@ export const getFriendshipDiscoveryUserFilter = () => {
   const protectedUserNames = Array.from(PROTECTED_ACCOUNT_USERNAMES).join("|");
   return {
     role: { $ne: "admin" },
+    isSystemAccount: { $ne: true },
+    $or: [{ roles: { $exists: false } }, { roles: { $size: 0 } }, { roles: APP_ROLES.USER }],
     status: ACTIVE_USER_STATUS,
     userName: {
       $not: {

@@ -1,6 +1,12 @@
 import express from "express";
 
-import { requireAdmin, protectedRoute } from "../middlewares/authMiddleware.js";
+import {
+  requireAdmin,
+  requireAnyPermission,
+  requirePermission,
+  protectedRoute,
+} from "../middlewares/authMiddleware.js";
+import { APP_PERMISSIONS } from "../constants/rbac.js";
 import {
   deleteUserAsAdmin,
   getBlockDetail,
@@ -33,48 +39,58 @@ import {
   confirmMaintenanceToggle,
   updateMaintenanceMessage,
 } from "../controllers/adminController.js";
+import {
+  getAdminAuditLogs,
+  getAdminRoles,
+  getAdminUserPermissions,
+  patchAdminUserRoles,
+} from "../controllers/adminRoleController.js";
 
 const router = express.Router();
 
 router.use(protectedRoute, requireAdmin);
 
-router.get("/dashboard/overview", getDashboardOverview);
-router.get("/dashboard/charts/users", getDashboardUserChart);
-router.get("/dashboard/charts/messages", getDashboardMessageChart);
-router.get("/dashboard/charts/reports", getDashboardReportChart);
-router.get("/dashboard/charts/support", getDashboardSupportChart);
-router.get("/dashboard", getDashboardStats);
+router.get("/dashboard/overview", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardOverview);
+router.get("/dashboard/charts/users", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardUserChart);
+router.get("/dashboard/charts/messages", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardMessageChart);
+router.get("/dashboard/charts/reports", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardReportChart);
+router.get("/dashboard/charts/support", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardSupportChart);
+router.get("/dashboard", requirePermission(APP_PERMISSIONS.DASHBOARD_VIEW), getDashboardStats);
 
-router.get("/users", getUsers);
-router.get("/users/:id", getUserDetail);
-router.patch("/users/:id/status", updateUserStatus);
-router.patch("/users/:userId/role", updateUserRole);
-router.delete("/users/:id", deleteUserAsAdmin);
+router.get("/roles", requirePermission(APP_PERMISSIONS.ROLE_VIEW), getAdminRoles);
+router.get("/audit-logs", requirePermission(APP_PERMISSIONS.AUDIT_LOG_VIEW), getAdminAuditLogs);
+router.get("/users", requirePermission(APP_PERMISSIONS.USER_VIEW), getUsers);
+router.get("/users/:id/permissions", requirePermission(APP_PERMISSIONS.PERMISSION_VIEW), getAdminUserPermissions);
+router.get("/users/:id", requirePermission(APP_PERMISSIONS.USER_VIEW), getUserDetail);
+router.patch("/users/:id/status", requireAnyPermission([APP_PERMISSIONS.USER_LOCK, APP_PERMISSIONS.USER_UNLOCK]), updateUserStatus);
+router.patch("/users/:id/roles", requirePermission(APP_PERMISSIONS.ROLE_ASSIGN), patchAdminUserRoles);
+router.patch("/users/:userId/role", requirePermission(APP_PERMISSIONS.ROLE_ASSIGN), patchAdminUserRoles);
+router.delete("/users/:id", requirePermission(APP_PERMISSIONS.USER_DELETE), deleteUserAsAdmin);
 
-router.get("/friends", getFriendships);
-router.get("/friend-requests", getFriendRequestsAdmin);
-router.get("/conversations", getConversations);
-router.get("/conversations/:id", getConversationDetail);
-router.get("/messages", getMessages);
-router.get("/blocks", getBlocks);
-router.get("/blocks/:id", getBlockDetail);
-router.patch("/blocks/:id/unblock", unblockBlockRelationAsAdmin);
-router.get("/blocked-users", getBlockedUsers);
+router.get("/friends", requirePermission(APP_PERMISSIONS.USER_VIEW), getFriendships);
+router.get("/friend-requests", requirePermission(APP_PERMISSIONS.USER_VIEW), getFriendRequestsAdmin);
+router.get("/conversations", requirePermission(APP_PERMISSIONS.USER_VIEW), getConversations);
+router.get("/conversations/:id", requirePermission(APP_PERMISSIONS.USER_VIEW), getConversationDetail);
+router.get("/messages", requirePermission(APP_PERMISSIONS.USER_VIEW), getMessages);
+router.get("/blocks", requirePermission(APP_PERMISSIONS.USER_VIEW), getBlocks);
+router.get("/blocks/:id", requirePermission(APP_PERMISSIONS.USER_VIEW), getBlockDetail);
+router.patch("/blocks/:id/unblock", requireAnyPermission([APP_PERMISSIONS.USER_UNLOCK, APP_PERMISSIONS.USER_LOCK]), unblockBlockRelationAsAdmin);
+router.get("/blocked-users", requirePermission(APP_PERMISSIONS.USER_VIEW), getBlockedUsers);
 
 // Reports
-router.get("/reports", getReports);
-router.get("/reports/:id", getReportDetail);
-router.patch("/reports/:id/status", updateReportStatus);
-router.patch("/reports/:id/resolve-with-action", resolveReportWithAction);
+router.get("/reports", requirePermission(APP_PERMISSIONS.REPORT_VIEW), getReports);
+router.get("/reports/:id", requirePermission(APP_PERMISSIONS.REPORT_VIEW), getReportDetail);
+router.patch("/reports/:id/status", requirePermission(APP_PERMISSIONS.REPORT_HANDLE), updateReportStatus);
+router.patch("/reports/:id/resolve-with-action", requirePermission(APP_PERMISSIONS.REPORT_HANDLE), resolveReportWithAction);
 
 // System Health
 router.get("/health", getSystemHealth);
 
 // Maintenance Mode
-router.get("/maintenance/status", getMaintenanceInfo);
-router.post("/maintenance/request-verification", requestMaintenancePasswordVerification);
-router.post("/maintenance/verify-password", verifyMaintenancePassword);
-router.post("/maintenance/confirm-toggle", confirmMaintenanceToggle);
-router.patch("/maintenance/message", updateMaintenanceMessage);
+router.get("/maintenance/status", requirePermission(APP_PERMISSIONS.MAINTENANCE_TOGGLE), getMaintenanceInfo);
+router.post("/maintenance/request-verification", requirePermission(APP_PERMISSIONS.MAINTENANCE_TOGGLE), requestMaintenancePasswordVerification);
+router.post("/maintenance/verify-password", requirePermission(APP_PERMISSIONS.MAINTENANCE_TOGGLE), verifyMaintenancePassword);
+router.post("/maintenance/confirm-toggle", requirePermission(APP_PERMISSIONS.MAINTENANCE_TOGGLE), confirmMaintenanceToggle);
+router.patch("/maintenance/message", requirePermission(APP_PERMISSIONS.MAINTENANCE_TOGGLE), updateMaintenanceMessage);
 
 export default router;

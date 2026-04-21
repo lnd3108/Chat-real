@@ -27,10 +27,12 @@ export const getErrorMessage = (error: unknown, fallback: string): string => {
     typeof error === "object" &&
     error !== null &&
     "message" in error &&
-    typeof (error as ApiErrorLike).message === "string" &&
-    (error as ApiErrorLike).message?.trim()
+    typeof (error as ApiErrorLike).message === "string"
   ) {
-    return (error as ApiErrorLike).message as string;
+    const errorMessage = (error as ApiErrorLike).message as string;
+    if (errorMessage.trim()) {
+      return errorMessage;
+    }
   }
 
   return fallback;

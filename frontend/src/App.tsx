@@ -20,6 +20,7 @@ import AdminReportDetail from "./pages/admin/AdminReportDetail";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminSupportDetail from "./pages/admin/AdminSupportDetail";
 import AdminMaintenance from "./pages/admin/AdminMaintenance";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import MaintenanceModeModal from "./components/MaintenanceModeModal";
 import { useThemeStore } from "./stores/useThemeStore";
 import { useEffect } from "react";
@@ -98,6 +99,7 @@ function App() {
               />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               <Route path="/admin/users/:id" element={<AdminUserDetail />} />
               <Route path="/admin/blocks" element={<AdminBlocks />} />
               <Route path="/admin/friends" element={<AdminFriends />} />

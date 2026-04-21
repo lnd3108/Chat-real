@@ -9,6 +9,7 @@ import {
   getUserSuggestionsForViewer,
   searchDiscoverableUsersForViewer,
 } from "../services/userDiscoveryService.js";
+import { serializeUserAccess } from "../services/rbacService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
 
 const formatBlockedUsers = async (blockedUsers = []) => {
@@ -52,7 +53,7 @@ const normalizeString = (value) => {
 
 export const authMe = async (req, res) => {
   try {
-    const user = req.user;
+    const user = serializeUserAccess(req.user);
 
     return res.status(200).json({ user });
   } catch (error) {
@@ -194,7 +195,7 @@ export const updateMe = async (req, res) => {
 
     const userObject = updatedUser?.toObject?.() || updatedUser;
     const safeUser = {
-      ...userObject,
+      ...serializeUserAccess(userObject),
       phone: userObject?.phone ?? null,
       bio: userObject?.bio ?? null,
     };
@@ -230,7 +231,7 @@ export const updatePreferences = async (req, res) => {
 
     return res.status(200).json({
       message: "Cap nhat cau hinh thanh cong!",
-      user: updatedUser,
+      user: serializeUserAccess(updatedUser?.toObject?.() || updatedUser),
     });
   } catch (error) {
     console.error("Loi updatePreferences:", error);

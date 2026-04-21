@@ -11,6 +11,8 @@ import {
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
 import { emitSupportConversationRealtime } from "../services/supportRealtimeService.js";
 import { escapeRegex } from "../utils/regex.js";
+import { APP_PERMISSIONS } from "../constants/rbac.js";
+import { hasPermission } from "../services/rbacService.js";
 const SUPPORT_STATUS_SET = ["open", "in_progress", "resolved", "closed"];
 
 const populateSupportConversation = async (conversation) => {
@@ -422,7 +424,7 @@ export const assignSupportAdmin = async (req, res) => {
 
     // Kiểm tra quản trị viên có tồn tại hay không
     const admin = await User.findById(adminId);
-    if (!admin || admin.role !== "admin") {
+    if (!admin || !hasPermission(admin.toObject(), APP_PERMISSIONS.SUPPORT_VIEW)) {
       return res.status(400).json({ message: "Mã quản trị viên không hợp lệ" });
     }
 

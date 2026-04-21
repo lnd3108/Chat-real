@@ -2,6 +2,12 @@ import jwt from "jsonwebtoken";
 
 import User from "../models/User.js";
 import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
+import {
+  hasAdminPanelAccess,
+  hasAnyPermission,
+  hasPermission,
+  serializeUserAccess,
+} from "../services/rbacService.js";
 
 const bannedResponse = {
   code: "ACCOUNT_BANNED",
@@ -23,9 +29,9 @@ export const protectedRoute = (req, res, next) => {
       async (err, decodedUser) => {
         if (err) {
           console.error(err);
-          return res
-            .status(403)
-            .json({ message: "Access token hết hạn hoặc không hợp lệ." });
+          return res.status(403).json({
+            message: "Access token hết hạn hoặc không hợp lệ.",
+          });
         }
 
         try {
@@ -35,12 +41,13 @@ export const protectedRoute = (req, res, next) => {
             return res.status(404).json({ message: "Người dùng không tồn tại." });
           }
 
-          if (user.status === "banned") {
+          const accessUser = serializeUserAccess(user.toObject());
+
+          if (accessUser.status === "banned") {
             return res.status(403).json(bannedResponse);
           }
 
-          // Check maintenance mode for non-admin users
-          if (user.role !== "admin") {
+          if (!hasAdminPanelAccess(accessUser)) {
             const maintenanceEnabled = await isMaintenanceEnabled();
             if (maintenanceEnabled) {
               const message = await getMaintenanceMessage();
@@ -51,7 +58,7 @@ export const protectedRoute = (req, res, next) => {
             }
           }
 
-          req.user = user;
+          req.user = accessUser;
           return next();
         } catch (dbError) {
           console.error("Lỗi trong protectedRoute callback:", dbError);
@@ -66,11 +73,31 @@ export const protectedRoute = (req, res, next) => {
 };
 
 export const requireAdmin = (req, res, next) => {
-  if (req.user?.role === "admin") {
+  if (hasAdminPanelAccess(req.user)) {
     return next();
   }
 
   return res.status(403).json({
-    message: "Bạn không có quyền admin để thực hiện thao tác này.",
+    message: "Bạn không có quyền truy cập khu vực quản trị.",
+  });
+};
+
+export const requirePermission = (permission) => (req, res, next) => {
+  if (hasPermission(req.user, permission)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: "Bạn không có quyền thực hiện thao tác này.",
+  });
+};
+
+export const requireAnyPermission = (permissions = []) => (req, res, next) => {
+  if (hasAnyPermission(req.user, permissions)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: "Bạn không có quyền thực hiện thao tác này.",
   });
 };

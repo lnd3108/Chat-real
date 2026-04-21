@@ -9,6 +9,7 @@ import {
 import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
 import User from "../models/User.js";
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
+import { hasAdminPanelAccess } from "../services/rbacService.js";
 
 let io;
 
@@ -24,6 +25,9 @@ const buildSocketUserPayload = (user) => ({
   email: user.email ?? null,
   avatarUrl: user.avatarUrl ?? null,
   role: user.role ?? "user",
+  roles: user.roles ?? [],
+  primaryRole: user.primaryRole ?? null,
+  permissions: user.permissions ?? [],
   status: user.status ?? "active",
   createdAt: user.createdAt ?? null,
 });
@@ -35,7 +39,7 @@ const getOnlineVisibleUserIds = () => {
     const visible = visibleByUser.get(userId) ?? true;
     const meta = userMetaByUser.get(userId);
 
-    if (socketIds.size > 0 && visible && meta?.role !== "admin") {
+    if (socketIds.size > 0 && visible && !hasAdminPanelAccess(meta)) {
       userIds.push(userId);
     }
   }
@@ -52,7 +56,7 @@ const emitOnlineUsers = () => {
 };
 
 const emitAdminUserPresence = (eventType, user, isOnline) => {
-  if (!io || user.role === "admin") {
+  if (!io || hasAdminPanelAccess(user)) {
     return;
   }
 
@@ -102,7 +106,7 @@ export const initSocket = (server) => {
     userMetaByUser.set(userId, buildSocketUserPayload(user));
 
     socket.join(userId);
-    if (user.role === "admin") {
+    if (hasAdminPanelAccess(user)) {
       socket.join(SOCKET_ROOMS.ADMINS);
     }
 
@@ -235,7 +239,7 @@ export const disconnectAllUserSockets = (message = "He thong dang bao tri") => {
   }
 
   io.sockets.sockets.forEach((socket) => {
-    if (socket.user && socket.user.role !== "admin") {
+    if (socket.user && !hasAdminPanelAccess(socket.user)) {
       socket.emit(USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON, { message });
       socket.emit(USER_SOCKET_EVENTS.MAINTENANCE_MODE_LEGACY, { message });
       socket.disconnect(true);

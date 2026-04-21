@@ -6,6 +6,7 @@ export const ADMIN_SOCKET_EVENTS = {
   USER_LOCKED: "admin:user:locked",
   USER_UNLOCKED: "admin:user:unlocked",
   USER_DELETED: "admin:user:deleted",
+  USER_ROLE_UPDATED: "admin:user-role-updated",
   SUPPORT_NEW_MESSAGE: "admin:support:new-message",
   REPORT_NEW: "admin:report:new",
   REPORT_UPDATED: "admin:report:updated",

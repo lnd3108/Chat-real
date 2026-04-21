@@ -1,4 +1,5 @@
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -75,7 +76,7 @@ const AdminProtectedRoute = () => {
     return <Navigate to="/signin" replace />;
   }
 
-  if (user?.role !== "admin") {
+  if (!hasAdminPanelAccess(user)) {
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(97,218,251,0.16),_transparent_35%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--background))_100%)] px-6">
         <div className="pointer-events-none absolute inset-0 opacity-40">

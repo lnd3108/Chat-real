@@ -1,4 +1,5 @@
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { MessageCircleMore } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -75,7 +76,7 @@ const ProtectedRoute = () => {
     return <Navigate to="/signin" replace />;
   }
 
-  if (user?.role === "admin") {
+  if (hasAdminPanelAccess(user)) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 

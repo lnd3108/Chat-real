@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink } from "react-router";
 import {
   Ban,
@@ -11,73 +11,95 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  ScrollText,
   Users,
   Zap,
 } from "lucide-react";
 
+import { APP_PERMISSIONS, hasPermission } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { signOut } = useAuthStore();
+  const { signOut, user } = useAuthStore();
 
-  const menuItems = [
-    {
-      id: "dashboard",
-      label: "Tổng quan",
-      icon: LayoutDashboard,
-      path: "/admin/dashboard",
-    },
-    {
-      id: "users",
-      label: "Người dùng",
-      icon: Users,
-      path: "/admin/users",
-    },
-    {
-      id: "blocks",
-      label: "Khối chặn",
-      icon: Ban,
-      path: "/admin/blocks",
-    },
-    {
-      id: "friends",
-      label: "Bạn bè",
-      icon: Heart,
-      path: "/admin/friends",
-    },
-    {
-      id: "friend-requests",
-      label: "Lời mời kết bạn",
-      icon: Mail,
-      path: "/admin/friend-requests",
-    },
-    {
-      id: "conversations",
-      label: "Cuộc trò chuyện",
-      icon: MessageSquare,
-      path: "/admin/conversations",
-    },
-    {
-      id: "support",
-      label: "Hỗ trợ",
-      icon: LifeBuoy,
-      path: "/admin/support",
-    },
-    {
-      id: "reports",
-      label: "Báo cáo",
-      icon: Flag,
-      path: "/admin/reports",
-    },
-    {
-      id: "maintenance",
-      label: "Bảo Trì",
-      icon: Zap,
-      path: "/admin/maintenance",
-    },
-  ];
+  const menuItems = useMemo(
+    () =>
+      [
+        {
+          id: "dashboard",
+          label: "Tổng quan",
+          icon: LayoutDashboard,
+          path: "/admin/dashboard",
+          visible: hasPermission(user, APP_PERMISSIONS.DASHBOARD_VIEW),
+        },
+        {
+          id: "users",
+          label: "Người dùng",
+          icon: Users,
+          path: "/admin/users",
+          visible: hasPermission(user, APP_PERMISSIONS.USER_VIEW),
+        },
+        {
+          id: "audit-logs",
+          label: "Lịch sử quyền",
+          icon: ScrollText,
+          path: "/admin/audit-logs",
+          visible: hasPermission(user, APP_PERMISSIONS.AUDIT_LOG_VIEW),
+        },
+        {
+          id: "blocks",
+          label: "Khối chặn",
+          icon: Ban,
+          path: "/admin/blocks",
+          visible: hasPermission(user, APP_PERMISSIONS.USER_VIEW),
+        },
+        {
+          id: "friends",
+          label: "Bạn bè",
+          icon: Heart,
+          path: "/admin/friends",
+          visible: hasPermission(user, APP_PERMISSIONS.USER_VIEW),
+        },
+        {
+          id: "friend-requests",
+          label: "Lời mời kết bạn",
+          icon: Mail,
+          path: "/admin/friend-requests",
+          visible: hasPermission(user, APP_PERMISSIONS.USER_VIEW),
+        },
+        {
+          id: "conversations",
+          label: "Cuộc trò chuyện",
+          icon: MessageSquare,
+          path: "/admin/conversations",
+          visible: hasPermission(user, APP_PERMISSIONS.USER_VIEW),
+        },
+        {
+          id: "support",
+          label: "Hỗ trợ",
+          icon: LifeBuoy,
+          path: "/admin/support",
+          visible: hasPermission(user, APP_PERMISSIONS.SUPPORT_VIEW),
+        },
+        {
+          id: "reports",
+          label: "Báo cáo",
+          icon: Flag,
+          path: "/admin/reports",
+          visible: hasPermission(user, APP_PERMISSIONS.REPORT_VIEW),
+        },
+        {
+          id: "maintenance",
+          label: "Bảo trì",
+          icon: Zap,
+          path: "/admin/maintenance",
+          visible: hasPermission(user, APP_PERMISSIONS.MAINTENANCE_TOGGLE),
+        },
+      ].filter((item) => item.visible),
+    [user],
+  );
 
   const handleLogout = async () => {
     await signOut();

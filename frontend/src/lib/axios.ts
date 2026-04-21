@@ -83,7 +83,12 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 403 && originalRequest._retryCount < 4) {
+    const shouldRetryAuth =
+      error.response?.status === 403 &&
+      typeof errorMessage === "string" &&
+      errorMessage.toLowerCase().includes("access token");
+
+    if (shouldRetryAuth && originalRequest._retryCount < 4) {
       originalRequest._retryCount += 1;
 
       try {

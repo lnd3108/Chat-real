@@ -55,6 +55,7 @@ import {
   getAdminReportSort,
   validateAdminReportStatusUpdate,
 } from "../services/adminReportService.js";
+import { serializeUserAccess } from "../services/rbacService.js";
 import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
 
@@ -591,7 +592,11 @@ export const getUsers = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        users,
+        users: users.map((user) =>
+          serializeUserAccess(
+            typeof user.toObject === "function" ? user.toObject() : user,
+          ),
+        ),
         pagination: {
           page,
           limit,
@@ -649,18 +654,27 @@ export const getUserDetail = async (req, res) => {
     });
     const messagesCount = await Message.countDocuments({ senderId: id });
 
+    const userAccess = serializeUserAccess(
+      typeof user.toObject === "function" ? user.toObject() : user,
+    );
+
     return res.status(200).json({
       success: true,
       data: {
         user: {
           _id: user._id,
           avatar: user.avatarUrl ?? null,
+          avatarUrl: user.avatarUrl ?? null,
           username: user.userName,
+          userName: user.userName,
           displayName: user.displayName,
           email: user.email,
           status: user.status,
           createdAt: user.createdAt,
-          role: user.role,
+          role: userAccess.role,
+          roles: userAccess.roles,
+          primaryRole: userAccess.primaryRole,
+          permissions: userAccess.permissions,
         },
         stats: {
           friendsCount,

@@ -62,10 +62,26 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    roles: {
+      type: [String],
+      default: [],
+    },
+    permissions: {
+      type: [String],
+      default: [],
+    },
     status: {
       type: String,
       enum: ["active", "inactive", "suspended", "banned"],
       default: "active",
+    },
+    isSystemAccount: {
+      type: Boolean,
+      default: false,
+    },
+    lockedAt: {
+      type: Date,
+      default: null,
     },
     avatarUrl: {
       type: String,

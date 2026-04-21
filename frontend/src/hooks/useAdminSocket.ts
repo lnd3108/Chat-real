@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { ADMIN_SOCKET_EVENTS } from "@/constants/adminSocketEvents";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 import { useAdminDashboardStore } from "@/stores/useAdminDashboardStore";
 import { useAdminNotificationStore } from "@/stores/useAdminNotificationStore";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
@@ -18,13 +19,23 @@ import type {
 const notificationId = (prefix: string, entityId?: string | null) =>
   `${prefix}-${entityId ?? Date.now()}`;
 
+const toNotificationActor = (value: unknown) =>
+  typeof value === "object" && value !== null
+    ? (value as {
+        _id?: string;
+        displayName?: string;
+        userName?: string;
+        avatarUrl?: string | null;
+      })
+    : null;
+
 export const useAdminSocket = () => {
   const socket = useSocketStore((state) => state.socket);
-  const userRole = useAuthStore((state) => state.user?.role);
+  const user = useAuthStore((state) => state.user);
   const boundSocketId = useAdminSocketStore((state) => state.boundSocketId);
 
   useEffect(() => {
-    if (!socket || userRole !== "admin") {
+    if (!socket || !hasAdminPanelAccess(user)) {
       return;
     }
 
@@ -35,6 +46,7 @@ export const useAdminSocket = () => {
     useAdminSocketStore.getState().setBoundSocketId(socket.id ?? "unknown");
 
     const addNotification = useAdminNotificationStore.getState().addNotification;
+    const setUser = useAuthStore.getState().setUser;
     const {
       upsertUser,
       removeUser,
@@ -48,12 +60,18 @@ export const useAdminSocket = () => {
     const handleSystemNotification = (payload: AdminSystemNotificationPayload) => {
       addNotification({
         id: payload.id ?? notificationId("admin-system", payload.entityId),
-        type: payload.type ?? "system",
+        type:
+          payload.type === "user" ||
+          payload.type === "report" ||
+          payload.type === "support" ||
+          payload.type === "system"
+            ? payload.type
+            : "system",
         title: payload.title ?? "Thông báo hệ thống",
         message: payload.message ?? "",
         link: payload.link,
         entityId: payload.entityId,
-        actor: payload.actor,
+        actor: toNotificationActor(payload.actor),
         severity: payload.severity ?? "info",
         metadata: payload.metadata,
       });
@@ -82,7 +100,7 @@ export const useAdminSocket = () => {
           : "Có thay đổi người dùng mới",
         link: payload.user?._id ? `/admin/users/${payload.user._id}` : "/admin/users",
         entityId: payload.user?._id,
-        actor: payload.actor ?? payload.user,
+        actor: toNotificationActor(payload.actor ?? payload.user),
       });
     };
 
@@ -108,6 +126,38 @@ export const useAdminSocket = () => {
       toast.warning("Một tài khoản vừa bị xóa");
     };
 
+    const onUserRoleUpdated = (payload: AdminUserRealtimePayload) => {
+      if (payload.user) {
+        upsertUser(payload.user);
+      }
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?._id && payload.user?._id === currentUser._id) {
+        setUser({
+          ...currentUser,
+          ...payload.user,
+        });
+      }
+
+      addNotification({
+        id: notificationId("user-role-updated", payload.user?._id ?? payload.userId),
+        type: "user",
+        title: "Quyền tài khoản đã thay đổi",
+        message: payload.user?.displayName
+          ? `${payload.user.displayName} đã được cập nhật quyền`
+          : "Có thay đổi quyền tài khoản",
+        link: payload.user?._id ? `/admin/users/${payload.user._id}` : "/admin/users",
+        entityId: payload.user?._id ?? payload.userId,
+        actor: toNotificationActor(payload.updatedBy ?? payload.actor),
+        severity: "warning",
+        metadata: {
+          oldRoles: payload.oldRoles,
+          newRoles: payload.newRoles,
+          reason: payload.reason,
+        },
+      });
+    };
+
     const onReportChanged = (
       payload: AdminReportRealtimePayload,
       title: string,
@@ -124,7 +174,7 @@ export const useAdminSocket = () => {
         message: payload.report.reason ?? "Báo cáo mới",
         link: `/admin/reports/${payload.report._id}`,
         entityId: payload.report._id,
-        actor: payload.report.reporterSnapshot,
+        actor: toNotificationActor(payload.report.reporterSnapshot),
         severity: payload.report.status === "pending" ? "warning" : "info",
       });
     };
@@ -154,7 +204,7 @@ export const useAdminSocket = () => {
           ? `/admin/support/${payload.conversationId}`
           : "/admin/support",
         entityId: payload.conversationId,
-        actor: payload.actor ?? payload.conversation?.supportCreatedByUser,
+        actor: toNotificationActor(payload.actor ?? payload.conversation?.supportCreatedByUser),
         isRead: Boolean(isActive),
       });
 
@@ -177,7 +227,7 @@ export const useAdminSocket = () => {
           message: payload.message ?? "",
           enabledAt: enabled ? payload.enabledAt ?? new Date().toISOString() : null,
           disabledAt: enabled ? null : payload.disabledAt ?? new Date().toISOString(),
-          actor: payload.actor ?? null,
+          actor: toNotificationActor(payload.actor),
         },
       });
 
@@ -202,6 +252,7 @@ export const useAdminSocket = () => {
     socket.off(ADMIN_SOCKET_EVENTS.USER_LOCKED);
     socket.off(ADMIN_SOCKET_EVENTS.USER_UNLOCKED);
     socket.off(ADMIN_SOCKET_EVENTS.USER_DELETED);
+    socket.off(ADMIN_SOCKET_EVENTS.USER_ROLE_UPDATED);
     socket.off(ADMIN_SOCKET_EVENTS.REPORT_NEW);
     socket.off(ADMIN_SOCKET_EVENTS.REPORT_UPDATED);
     socket.off(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE);
@@ -227,6 +278,7 @@ export const useAdminSocket = () => {
       toast.success("Một tài khoản vừa được mở khóa");
     });
     socket.on(ADMIN_SOCKET_EVENTS.USER_DELETED, onUserDeleted);
+    socket.on(ADMIN_SOCKET_EVENTS.USER_ROLE_UPDATED, onUserRoleUpdated);
     socket.on(ADMIN_SOCKET_EVENTS.REPORT_NEW, (payload: AdminReportRealtimePayload) => {
       onReportChanged(payload, "Báo cáo mới");
       toast.warning("Có báo cáo mới");
@@ -249,11 +301,12 @@ export const useAdminSocket = () => {
       socket.off(ADMIN_SOCKET_EVENTS.USER_NEW, onUserNew);
       socket.off(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, onUserStatusChanged);
       socket.off(ADMIN_SOCKET_EVENTS.USER_DELETED, onUserDeleted);
+      socket.off(ADMIN_SOCKET_EVENTS.USER_ROLE_UPDATED, onUserRoleUpdated);
       socket.off(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE, onSupportMessage);
       socket.off(ADMIN_SOCKET_EVENTS.DASHBOARD_STATS_UPDATED, onDashboardStatsUpdated);
       socket.off(ADMIN_SOCKET_EVENTS.SYSTEM_NOTIFICATION, handleSystemNotification);
       socket.off(ADMIN_SOCKET_EVENTS.MAINTENANCE_ON);
       socket.off(ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF);
     };
-  }, [boundSocketId, socket, userRole]);
+  }, [boundSocketId, socket, user]);
 };

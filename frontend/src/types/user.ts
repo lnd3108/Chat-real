@@ -4,8 +4,11 @@ export interface User {
   email: string;
   displayName: string;
   role?: "user" | "admin";
+  roles?: Array<"USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN">;
+  primaryRole?: "USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
+  permissions?: string[];
   status?: "active" | "inactive" | "suspended" | "banned";
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   authProvider?: "local" | "google";
   emailVerified?: boolean;
   bio?: string | null;

@@ -14,6 +14,7 @@ import { useChatStore } from "./useChatStore";
 import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { toast } from "sonner";
+import { hasAdminPanelAccess } from "@/lib/rbac";
 
 const baseURL =
   import.meta.env.VITE_SOCKET_URL ||
@@ -597,6 +598,23 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
     socket.on("account:banned", ({ message } = { message: undefined }) => {
       forceLogoutForBannedAccount(message);
+    });
+    socket.on("user:role-updated", ({ user, reason }) => {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser || !user?._id || currentUser._id !== user._id) {
+        return;
+      }
+
+      useAuthStore.getState().setUser({
+        ...currentUser,
+        ...user,
+      });
+
+      if (!hasAdminPanelAccess(user) && window.location.pathname.startsWith("/admin")) {
+        toast.warning(reason || "Quyền admin của bạn đã bị thu hồi.");
+      } else {
+        toast.success(reason || "Quyền tài khoản của bạn đã được cập nhật.");
+      }
     });
     socket.on("direct:block-status", ({ conversationId, blockerId, blockedUserId, isBlocked }) => {
       if (!conversationId || !blockerId || !blockedUserId) {

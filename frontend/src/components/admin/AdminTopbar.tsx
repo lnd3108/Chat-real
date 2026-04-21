@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSoundSettings } from "@/hooks/useSoundSettings";
+import { getPrimaryRole, getRoleLabel, hasAdminPanelAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { useAdminNotificationStore } from "@/stores/useAdminNotificationStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -45,8 +46,8 @@ const AdminTopbar = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const displayName = user?.displayName || "Admin";
-  const unreadCount = user?.role === "admin" ? adminUnreadCount : userUnreadCount;
-  const roleLabel = user?.role === "admin" ? "Quản trị viên" : "Người dùng";
+  const unreadCount = hasAdminPanelAccess(user) ? adminUnreadCount : userUnreadCount;
+  const roleLabel = user ? getRoleLabel(getPrimaryRole(user)) : "Người dùng";
 
   const handleLogout = async () => {
     try {
@@ -129,7 +130,7 @@ const AdminTopbar = () => {
                     <UserAvatar
                       type="chat"
                       name={displayName}
-                      avatarUrl={user?.avatarUrl}
+                      avatarUrl={user?.avatarUrl ?? undefined}
                       className="size-9"
                     />
                     <div className="hidden min-w-0 text-left sm:block">
@@ -151,7 +152,7 @@ const AdminTopbar = () => {
                     <UserAvatar
                       type="chat"
                       name={displayName}
-                      avatarUrl={user?.avatarUrl}
+                      avatarUrl={user?.avatarUrl ?? undefined}
                       className="size-10"
                     />
                     <div className="min-w-0">

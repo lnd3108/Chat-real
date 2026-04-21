@@ -1,8 +1,9 @@
 import { ADMIN_SOCKET_EVENTS, SOCKET_ROOMS } from "../constants/socketEvents.js";
+import { hasAdminPanelAccess } from "../services/rbacService.js";
 import { getIo } from "./index.js";
 
 export const joinAdminRoom = (socket) => {
-  if (socket?.user?.role === "admin") {
+  if (hasAdminPanelAccess(socket?.user)) {
     socket.join(SOCKET_ROOMS.ADMINS);
   }
 };
