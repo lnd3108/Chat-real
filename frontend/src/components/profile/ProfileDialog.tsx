@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import PersonalInForm from "./PersonalInForm";
 import PreferencesForm from "./PreferencesForm";
 import PrivacySetting from "./PrivacySetting";
+import { useProfileSettingsStore } from "@/stores/useProfileSettingsStore";
+import { toast } from "sonner";
 
 interface ProfileDialogProps {
   open: boolean;
@@ -14,56 +16,73 @@ interface ProfileDialogProps {
 
 const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
   const { user } = useAuthStore();
+  const { mode, cancelPendingVerification, reset } = useProfileSettingsStore();
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      if (mode === "verify_email_change") {
+        void cancelPendingVerification().then((result) => {
+          if (!result.ok) {
+            toast.error(result.message);
+          }
+        });
+      }
+
+      reset();
+    }
+
+    setOpen(nextOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-y-auto border-0 bg-transparent p-0 shadow-2xl">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[92vh] w-[min(94vw,72rem)] overflow-hidden border-0 bg-transparent p-0 shadow-2xl sm:max-w-none">
         <div className="bg-gradient-glass">
           <DialogTitle className="sr-only">Hồ sơ và cài đặt</DialogTitle>
 
-          <div className="mx-auto max-w-4xl p-4">
-            <div className="mb-6">
-              <h1 className="items-center text-2xl font-bold text-foreground">
-                Hồ sơ và cài đặt
-              </h1>
+          <div className="mx-auto max-w-5xl p-4 sm:p-5 lg:p-6">
+            <div className="mb-5">
+              <h1 className="text-2xl font-bold text-foreground">Hồ sơ và cài đặt</h1>
             </div>
 
-            <ProfileCard user={user} />
+            <div className="max-h-[calc(92vh-4rem)] overflow-y-auto pr-1">
+              <ProfileCard user={user} />
 
-            <Tabs className="my-4" defaultValue="personal">
-              <TabsList className="glass-light grid w-full grid-cols-3">
-                <TabsTrigger
-                  value="personal"
-                  className="data-[state=active]:glass-strong"
-                >
-                  Tài khoản
-                </TabsTrigger>
-                <TabsTrigger
-                  value="preferences"
-                  className="data-[state=active]:glass-strong"
-                >
-                  Tùy chỉnh
-                </TabsTrigger>
-                <TabsTrigger
-                  value="privacy"
-                  className="data-[state=active]:glass-strong"
-                >
-                  Bảo mật
-                </TabsTrigger>
-              </TabsList>
+              <Tabs className="my-4" defaultValue="personal">
+                <TabsList className="glass-light grid h-auto w-full grid-cols-3 gap-2 p-1">
+                  <TabsTrigger
+                    value="personal"
+                    className="min-w-0 data-[state=active]:glass-strong"
+                  >
+                    Tài khoản
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="preferences"
+                    className="min-w-0 data-[state=active]:glass-strong"
+                  >
+                    Tùy chỉnh
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="privacy"
+                    className="min-w-0 data-[state=active]:glass-strong"
+                  >
+                    Bảo mật
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="personal">
-                <PersonalInForm userInfo={user} />
-              </TabsContent>
+                <TabsContent value="personal" className="mt-4">
+                  <PersonalInForm userInfo={user} />
+                </TabsContent>
 
-              <TabsContent value="preferences">
-                <PreferencesForm />
-              </TabsContent>
+                <TabsContent value="preferences" className="mt-4">
+                  <PreferencesForm />
+                </TabsContent>
 
-              <TabsContent value="privacy">
-                <PrivacySetting />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="privacy" className="mt-4">
+                  <PrivacySetting />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         </div>
       </DialogContent>

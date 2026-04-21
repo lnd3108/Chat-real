@@ -18,6 +18,8 @@ export const sanitizeUser = (userLike) => {
     avatarUrl: user.avatarUrl ?? null,
     authProvider: user.authProvider,
     emailVerified: user.emailVerified,
+    phone: user.phone ?? null,
+    bio: user.bio ?? null,
     role: user.role,
     roleLabel: user.roleLabel,
     roleLevel: user.roleLevel,

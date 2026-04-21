@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import type { User } from "@/types/user";
 import {
   Card,
@@ -6,19 +7,17 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Heart, Save } from "lucide-react";
+import { Heart, Mail, Save } from "lucide-react";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { useEffect, useMemo, useState } from "react";
-import api from "@/lib/axios";
 import { toast } from "sonner";
-import { useAuthStore } from "@/stores/useAuthStore";
-import axios from "axios";
+import { useProfileSettingsStore } from "@/stores/useProfileSettingsStore";
+import VerifyNewEmailSection from "./VerifyNewEmailSection";
 
 type EditableField = {
-  key: keyof Pick<User, "displayName" | "userName" | "email" | "phone">;
+  key: "displayName" | "userName" | "email" | "phone";
   label: string;
   type?: string;
 };
@@ -34,116 +33,68 @@ type Props = {
   userInfo: User | null;
 };
 
-type FormState = {
-  displayName: string;
-  userName: string;
-  email: string;
-  phone: string;
-  bio: string;
-};
-
 const PersonalInForm = ({ userInfo }: Props) => {
-  const setUser = useAuthStore((s) => s.setUser);
-  const [form, setForm] = useState<FormState>({
-    displayName: "",
-    userName: "",
-    email: "",
-    phone: "",
-    bio: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const {
+    mode,
+    formValues,
+    originalValues,
+    isSaving,
+    errorMessage,
+    successMessage,
+    initialize,
+    setField,
+    saveChanges,
+  } = useProfileSettingsStore();
 
   useEffect(() => {
-    if (!userInfo) return;
+    initialize(userInfo);
+  }, [initialize, userInfo]);
 
-    setForm({
-      displayName: userInfo.displayName ?? "",
-      userName: userInfo.userName ?? "",
-      email: userInfo.email ?? "",
-      phone: userInfo.phone ?? "",
-      bio: userInfo.bio ?? "",
-    });
-  }, [userInfo]);
-
-  const isChanged = useMemo(() => {
-    if (!userInfo) return false;
-    return (
-      form.displayName !== (userInfo.displayName ?? "") ||
-      form.userName !== (userInfo.userName ?? "") ||
-      form.email !== (userInfo.email ?? "") ||
-      form.phone !== (userInfo.phone ?? "") ||
-      form.bio !== (userInfo.bio ?? "")
-    );
-  }, [form, userInfo]);
+  const isChanged = useMemo(
+    () =>
+      formValues.displayName !== originalValues.displayName ||
+      formValues.userName !== originalValues.userName ||
+      formValues.email !== originalValues.email ||
+      formValues.phone !== originalValues.phone ||
+      formValues.bio !== originalValues.bio,
+    [formValues, originalValues],
+  );
 
   if (!userInfo) return null;
 
-  const handleChange =
-    (key: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setMsg(null);
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
-    };
-
   const handleSave = async () => {
-    setLoading(true);
-    setMsg(null);
-
-    try {
-      const payload = {
-        displayName: form.displayName,
-        userName: form.userName,
-        email: form.email,
-        phone: form.phone.trim() === "" ? null : form.phone,
-        bio: form.bio.trim() === "" ? null : form.bio,
-      };
-
-      const res = await api.patch("/users/me", payload);
-
-      if (res.data?.user) {
-        setUser(res.data.user);
-      }
-
-      const message = res.data?.message || "Cập nhật thành công";
-      toast.success(message);
-      setMsg(message);
-    } catch (error: unknown) {
-      const message =
-        axios.isAxiosError(error) && error.response?.data?.message
-          ? error.response.data.message
-          : "Cập nhật thất bại, thử lại!";
-      console.error("Failed to update user info:", error);
-      toast.error(message);
-      setMsg(message);
-    } finally {
-      setLoading(false);
+    const result = await saveChanges();
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
     }
+
+    toast.success(result.message);
   };
 
   return (
     <Card className="glass-strong border-border/30">
-      <CardHeader>
+      <CardHeader className="space-y-2 pb-4">
         <CardTitle className="flex items-center gap-2">
           <Heart className="size-5 text-primary" />
-          Thông Tin Cá Nhân
+          Thông tin cá nhân
         </CardTitle>
-        <CardDescription>
-          Quản lý thông tin cá nhân của bạn như tên, email và số điện thoại.
+        <CardDescription className="leading-6">
+          Quản lý tên hiển thị, tên người dùng, email, số điện thoại và giới thiệu của bạn.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {PERSONAL_FIELDS.map(({ key, label, type }) => (
-            <div key={key} className="space-y-2">
+            <div key={key} className="min-w-0 space-y-2">
               <Label htmlFor={key}>{label}</Label>
               <Input
                 id={key}
                 type={type ?? "text"}
-                value={form[key] ?? ""}
-                onChange={handleChange(key)}
+                value={formValues[key] ?? ""}
+                onChange={(event) => setField(key, event.target.value)}
+                disabled={mode === "verify_email_change" && key === "email"}
                 className="glass-light border-border/30"
               />
             </div>
@@ -154,25 +105,38 @@ const PersonalInForm = ({ userInfo }: Props) => {
           <Label htmlFor="bio">Giới thiệu</Label>
           <Textarea
             id="bio"
-            rows={3}
-            value={form.bio}
-            onChange={handleChange("bio")}
-            className="glass-light resize-none border-border/30"
+            rows={4}
+            value={formValues.bio}
+            onChange={(event) => setField("bio", event.target.value)}
+            className="glass-light min-h-28 resize-none border-border/30"
           />
         </div>
 
-        {msg && <div className="text-sm text-muted-foreground">{msg}</div>}
+        {mode === "verify_email_change" ? <VerifyNewEmailSection /> : null}
 
-        <Button
-          disabled={!isChanged || loading}
-          onClick={handleSave}
-          className="w-full bg-gradient-primary transition-opacity hover:opacity-90 md:w-auto"
-          loading={loading}
-          loadingText="Đang lưu..."
-        >
-          <Save className="mr-2 size-4" />
-          {loading ? "Đang lưu..." : "Lưu thay đổi"}
-        </Button>
+        {successMessage ? <div className="text-sm text-muted-foreground">{successMessage}</div> : null}
+        {errorMessage ? <div className="text-sm text-destructive">{errorMessage}</div> : null}
+
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <Button
+            type="button"
+            disabled={!isChanged || isSaving || mode === "verify_email_change"}
+            onClick={() => void handleSave()}
+            className="w-full bg-gradient-primary transition-opacity hover:opacity-90 sm:w-auto"
+            loading={isSaving}
+            loadingText="Đang lưu..."
+          >
+            <Save className="size-4" />
+            Lưu thay đổi
+          </Button>
+
+          {mode === "verify_email_change" ? (
+            <div className="flex min-w-0 items-start gap-2 text-sm leading-6 text-muted-foreground xl:max-w-md">
+              <Mail className="mt-0.5 size-4 shrink-0" />
+              <span>Email mới sẽ chỉ được cập nhật sau khi xác minh OTP.</span>
+            </div>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );

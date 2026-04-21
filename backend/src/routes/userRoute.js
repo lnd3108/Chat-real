@@ -11,6 +11,9 @@ import {
   updateMe,
   updatePreferences,
   uploadAvatar,
+  sendEmailChangeOtp,
+  verifyMyEmailChange,
+  cancelMyEmailChange,
 } from "../controllers/userController.js";
 import { upload } from "../middlewares/uploadMiddleWare.js";
 
@@ -18,6 +21,10 @@ const router = express.Router();
 
 router.get("/me", authMe);
 router.patch("/me", updateMe);
+router.patch("/me/profile", updateMe);
+router.post("/me/email-change/send-otp", sendEmailChangeOtp);
+router.post("/me/email-change/verify", verifyMyEmailChange);
+router.post("/me/email-change/cancel", cancelMyEmailChange);
 router.delete("/me", deleteMyAccount);
 
 router.get("/test", test);

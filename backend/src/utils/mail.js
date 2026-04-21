@@ -138,6 +138,39 @@ export const sendPasswordResetOtpEmail = async ({
   });
 };
 
+export const sendEmailChangeVerificationEmail = async ({
+  email,
+  code,
+  displayName,
+}) => {
+  const appName = getAppName();
+
+  await sendMail({
+    to: email,
+    subject: `${appName} - Xác minh email mới`,
+    text: [
+      `Xin chào ${displayName || "bạn"},`,
+      "",
+      `Bạn đang yêu cầu đổi email cho tài khoản ${appName}.`,
+      `Mã xác minh của bạn là: ${code}`,
+      "",
+      "Mã có hiệu lực trong 5 phút.",
+      "Nếu không phải bạn, hãy bỏ qua email này.",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin-bottom:12px">${appName}</h2>
+        <p>Xin chào ${displayName || "bạn"},</p>
+        <p>Bạn đang yêu cầu đổi email cho tài khoản ${appName}.</p>
+        <p>Mã xác minh của bạn là:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
+        <p>Mã có hiệu lực trong <strong>5 phút</strong>.</p>
+        <p>Nếu không phải bạn, hãy bỏ qua email này.</p>
+      </div>
+    `,
+  });
+};
+
 export const sendAccountDeletionCodeEmail = async ({
   email,
   code,

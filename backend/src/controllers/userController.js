@@ -13,6 +13,12 @@ import { serializeUserAccess } from "../services/rbacService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import { logger } from "../utils/logger.js";
+import {
+  cancelEmailChangeVerification,
+  resendEmailChangeOtp,
+  updateMyProfile,
+  verifyEmailChangeOtp,
+} from "../services/emailChangeService.js";
 
 const formatBlockedUsers = async (blockedUsers = []) => {
   const targetIds = blockedUsers
@@ -149,70 +155,86 @@ export const uploadAvatar = async (req, res) => {
 
 export const updateMe = async (req, res) => {
   try {
-    const userId = req.user?._id;
-    const { displayName, userName, email, phone, bio } = req.body || {};
-
-    if (!req.body) {
-      return res.status(400).json({ message: "Thieu du lieu cap nhat" });
-    }
-
-    if (userName) {
-      const existedUserName = await User.findOne({
-        userName: userName.toLowerCase().trim(),
-        _id: { $ne: userId },
-      });
-
-      if (existedUserName) {
-        return res.status(409).json({ message: "Username da ton tai" });
-      }
-    }
-
-    if (email) {
-      const existedEmail = await User.findOne({
-        email: email.toLowerCase().trim(),
-        _id: { $ne: userId },
-      });
-
-      if (existedEmail) {
-        return res.status(409).json({ message: "Email da ton tai" });
-      }
-    }
-
-    const updates = {};
-
-    const normalizedDisplayName = normalizeString(displayName);
-    const normalizedUserName = normalizeString(userName);
-    const normalizedEmail = normalizeString(email);
-    const normalizedPhone = normalizeString(phone);
-    const normalizedBio = bio === undefined ? undefined : bio === "" ? null : bio;
-
-    if (normalizedDisplayName !== undefined) updates.displayName = normalizedDisplayName;
-    if (normalizedUserName !== undefined) {
-      updates.userName = normalizedUserName?.toLowerCase();
-    }
-    if (normalizedEmail !== undefined) updates.email = normalizedEmail?.toLowerCase();
-    if (normalizedPhone !== undefined) updates.phone = normalizedPhone;
-    if (normalizedBio !== undefined) updates.bio = normalizedBio;
-
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-      new: true,
-      runValidators: true,
-    }).select("-hashedPassword");
-
-    const userObject = updatedUser?.toObject?.() || updatedUser;
-    const safeUser = {
-      ...serializeUserAccess(userObject),
-      phone: userObject?.phone ?? null,
-      bio: userObject?.bio ?? null,
-    };
-
-    return res.status(200).json({
-      message: "Cap nhat thong tin thanh cong!",
-      user: safeUser,
+    const payload = await updateMyProfile({
+      userId: req.user?._id,
+      payload: req.body || {},
+      req,
     });
+
+    return res.status(200).json(payload);
   } catch (error) {
-    console.error("Loi updateMe:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    logger.warn("Loi updateMe", {
+      message: error?.message,
+      status: error?.status,
+    });
+    return res.status(error?.status || 500).json({
+      success: false,
+      message: error?.message || "Loi he thong",
+      resendAfter: error?.resendAfter,
+    });
+  }
+};
+
+export const sendEmailChangeOtp = async (req, res) => {
+  try {
+    const payload = await resendEmailChangeOtp({
+      userId: req.user?._id,
+      newEmail: req.body?.newEmail,
+      req,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi sendEmailChangeOtp", {
+      message: error?.message,
+      status: error?.status,
+    });
+    return res.status(error?.status || 500).json({
+      success: false,
+      message: error?.message || "Khong the gui ma xac minh email moi.",
+      resendAfter: error?.resendAfter,
+    });
+  }
+};
+
+export const verifyMyEmailChange = async (req, res) => {
+  try {
+    const payload = await verifyEmailChangeOtp({
+      userId: req.user?._id,
+      newEmail: req.body?.newEmail,
+      otp: req.body?.otp,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi verifyMyEmailChange", {
+      message: error?.message,
+      status: error?.status,
+    });
+    return res.status(error?.status || 500).json({
+      success: false,
+      message: error?.message || "Khong the xac minh email moi.",
+    });
+  }
+};
+
+export const cancelMyEmailChange = async (req, res) => {
+  try {
+    const payload = await cancelEmailChangeVerification({
+      userId: req.user?._id,
+      newEmail: req.body?.newEmail ?? null,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi cancelMyEmailChange", {
+      message: error?.message,
+      status: error?.status,
+    });
+    return res.status(error?.status || 500).json({
+      success: false,
+      message: error?.message || "Khong the huy xac minh email moi.",
+    });
   }
 };
 
