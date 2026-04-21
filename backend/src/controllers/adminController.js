@@ -55,7 +55,7 @@ import {
   getAdminReportSort,
   validateAdminReportStatusUpdate,
 } from "../services/adminReportService.js";
-import { serializeUserAccess } from "../services/rbacService.js";
+import { buildAdminStaffQuery, serializeUserAccess } from "../services/rbacService.js";
 import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
 
@@ -185,7 +185,7 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
 export const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const totalAdmins = await User.countDocuments({ role: "admin" });
+    const totalAdmins = await User.countDocuments(buildAdminStaffQuery());
     const totalConversations = await Conversation.countDocuments();
     const totalMessages = await Message.countDocuments();
     const totalFriendRequests = await FriendRequest.countDocuments();
@@ -672,6 +672,8 @@ export const getUserDetail = async (req, res) => {
           status: user.status,
           createdAt: user.createdAt,
           role: userAccess.role,
+          roleLabel: userAccess.roleLabel,
+          roleLevel: userAccess.roleLevel,
           roles: userAccess.roles,
           primaryRole: userAccess.primaryRole,
           permissions: userAccess.permissions,

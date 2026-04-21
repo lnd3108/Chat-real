@@ -10,26 +10,31 @@ import {
   Users,
 } from "lucide-react";
 
-import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import AdminDeleteUserDialog from "@/components/admin/AdminDeleteUserDialog";
+import RoleBadge from "@/components/admin/RoleBadge";
+import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { axiosInstance } from "@/lib/axios";
+import type { AppRole } from "@/lib/rbac";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 
 type UserStatus = "active" | "inactive" | "suspended" | "banned";
-type UserRole = "user" | "admin";
 
 interface AdminUserDetailData {
   _id: string;
   avatar: string | null;
+  avatarUrl?: string | null;
   username: string;
   displayName: string;
   email: string;
   status: UserStatus;
   createdAt: string;
-  role: UserRole;
+  role: AppRole;
+  roleLabel?: string;
+  roleLevel?: number;
+  permissions?: string[];
 }
 
 interface AdminUserStats {
@@ -57,17 +62,6 @@ const statusConfig: Record<UserStatus, { label: string; className: string }> = {
   suspended: {
     label: "Tạm khóa",
     className: "bg-amber-500/10 text-amber-700",
-  },
-};
-
-const roleConfig: Record<UserRole, { label: string; className: string }> = {
-  admin: {
-    label: "Admin",
-    className: "bg-amber-500/10 text-amber-700",
-  },
-  user: {
-    label: "User",
-    className: "bg-sky-500/10 text-sky-700",
   },
 };
 
@@ -119,8 +113,7 @@ const AdminUserDetail = () => {
       setStats(response.data.data.stats);
     } catch (err: any) {
       const statusCode = err?.response?.status;
-      const message =
-        err?.response?.data?.message ?? "Không thể tải thông tin người dùng.";
+      const message = err?.response?.data?.message ?? "Không thể tải thông tin người dùng.";
 
       if (statusCode === 404) {
         setNotFound(true);
@@ -160,7 +153,13 @@ const AdminUserDetail = () => {
             ...currentUser,
             status: realtimeUser.status,
             displayName: realtimeUser.displayName,
+            email: realtimeUser.email,
             role: realtimeUser.role,
+            roleLabel: realtimeUser.roleLabel,
+            roleLevel: realtimeUser.roleLevel,
+            permissions: realtimeUser.permissions,
+            avatarUrl: realtimeUser.avatarUrl,
+            avatar: realtimeUser.avatarUrl ?? currentUser.avatar,
           }
         : currentUser,
     );
@@ -239,7 +238,6 @@ const AdminUserDetail = () => {
   }
 
   const currentStatus = statusConfig[user.status] ?? statusConfig.active;
-  const currentRole = roleConfig[user.role] ?? roleConfig.user;
 
   return (
     <div className="space-y-6">
@@ -265,7 +263,7 @@ const AdminUserDetail = () => {
                 <UserAvatar
                   type="chat"
                   name={user.displayName}
-                  avatarUrl={user.avatar ?? undefined}
+                  avatarUrl={user.avatarUrl ?? user.avatar ?? undefined}
                   className="size-20"
                 />
                 <div className="space-y-2">
@@ -279,11 +277,7 @@ const AdminUserDetail = () => {
                     >
                       {currentStatus.label}
                     </span>
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${currentRole.className}`}
-                    >
-                      {currentRole.label}
-                    </span>
+                    <RoleBadge role={user.role} />
                   </div>
                 </div>
               </div>
@@ -316,9 +310,7 @@ const AdminUserDetail = () => {
                     <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                       Ngày tạo
                     </p>
-                    <p className="mt-1 text-sm text-foreground">
-                      {formatDateTime(user.createdAt)}
-                    </p>
+                    <p className="mt-1 text-sm text-foreground">{formatDateTime(user.createdAt)}</p>
                   </div>
                 </div>
               </div>
@@ -385,8 +377,8 @@ const AdminUserDetail = () => {
             </div>
 
             <div className="mt-4 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground">
-              Khi bị khóa, user sẽ không đăng nhập được, refresh token thất bại và
-              các socket đang online sẽ bị ngắt ngay.
+              Khi bị khóa, user sẽ không đăng nhập được, refresh token thất bại và các socket đang
+              online sẽ bị ngắt ngay.
             </div>
           </div>
         </aside>

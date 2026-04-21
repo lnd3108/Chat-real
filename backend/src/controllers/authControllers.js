@@ -19,6 +19,7 @@ import {
   emitAdminNotification,
 } from "../services/adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
+import { hasAdminPanelAccess } from "../services/rbacService.js";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
@@ -43,7 +44,7 @@ const buildBannedResponse = () => ({
 const isUserBanned = (user) => user?.status === "banned";
 
 const emitAdminUserLifecycle = (eventName, user, title, message, reason) => {
-  if (!user || user.role === "admin") {
+  if (!user || hasAdminPanelAccess(user)) {
     return;
   }
 
@@ -564,7 +565,7 @@ export const signIn = async (req, res) => {
     }
 
     // Check maintenance mode - but allow admins to login
-    if (user.role !== "admin") {
+    if (!hasAdminPanelAccess(user)) {
       const maintenanceEnabled = await isMaintenanceEnabled();
       if (maintenanceEnabled) {
         const message = await getMaintenanceMessage();
@@ -669,7 +670,7 @@ export const googleCallback = async (req, res) => {
     }
 
     // Check maintenance mode - but allow admins to login
-    if (user.role !== "admin") {
+    if (!hasAdminPanelAccess(user)) {
       const maintenanceEnabled = await isMaintenanceEnabled();
       if (maintenanceEnabled) {
         const message = await getMaintenanceMessage();
@@ -764,7 +765,7 @@ export const verifyEmailCode = async (req, res) => {
     }
 
     // Check maintenance mode for signin flows - but allow admins to login
-    if (user.role !== "admin") {
+    if (!hasAdminPanelAccess(user)) {
       const maintenanceEnabled = await isMaintenanceEnabled();
       if (maintenanceEnabled) {
         const message = await getMaintenanceMessage();
@@ -910,7 +911,7 @@ export const refreshToken = async (req, res) => {
     }
 
     // Check maintenance mode - but allow admins to refresh token
-    if (user.role !== "admin") {
+    if (!hasAdminPanelAccess(user)) {
       const maintenanceEnabled = await isMaintenanceEnabled();
       if (maintenanceEnabled) {
         const message = await getMaintenanceMessage();

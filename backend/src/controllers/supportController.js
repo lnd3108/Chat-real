@@ -1,6 +1,7 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
+import { APP_ROLES } from "../constants/rbac.js";
 import { emitToUser } from "../socket/index.js";
 import { emitSupportConversationRealtime } from "../services/supportRealtimeService.js";
 
@@ -99,7 +100,9 @@ export const getOrCreateSupportConversation = async (req, res) => {
 
     // Nếu chưa có cuộc trò chuyện đang mở thì tạo mới
     if (!supportConversation) {
-      const admin = await User.findOne({ role: "admin" }).select("_id");
+      const admin = await User.findOne({
+        role: { $in: [APP_ROLES.SUPER_ADMIN, APP_ROLES.ADMIN] },
+      }).select("_id");
 
       if (!admin) {
         return res.status(400).json({

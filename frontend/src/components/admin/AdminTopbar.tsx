@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSoundSettings } from "@/hooks/useSoundSettings";
-import { getPrimaryRole, getRoleLabel, hasAdminPanelAccess } from "@/lib/rbac";
+import { getRoleLabel, hasAdminPanelAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { useAdminNotificationStore } from "@/stores/useAdminNotificationStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -47,7 +47,7 @@ const AdminTopbar = () => {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const displayName = user?.displayName || "Admin";
   const unreadCount = hasAdminPanelAccess(user) ? adminUnreadCount : userUnreadCount;
-  const roleLabel = user ? getRoleLabel(getPrimaryRole(user)) : "Người dùng";
+  const roleLabel = user?.role ? getRoleLabel(user.role) : "Người dùng";
 
   const handleLogout = async () => {
     try {
@@ -137,9 +137,7 @@ const AdminTopbar = () => {
                       <p className="truncate text-sm font-medium text-foreground">
                         {displayName}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {roleLabel}
-                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </div>
@@ -171,10 +169,7 @@ const AdminTopbar = () => {
                   Hồ sơ admin
                 </DropdownMenuItem>
 
-                <DropdownMenuCheckboxItem
-                  checked={isDark}
-                  onCheckedChange={toggleTheme}
-                >
+                <DropdownMenuCheckboxItem checked={isDark} onCheckedChange={toggleTheme}>
                   {isDark ? (
                     <Sun className="h-4 w-4 text-muted-foreground" />
                   ) : (
@@ -210,10 +205,7 @@ const AdminTopbar = () => {
         </div>
       </header>
 
-      <AdminNotificationCenterDialog
-        open={notificationOpen}
-        setOpen={setNotificationOpen}
-      />
+      <AdminNotificationCenterDialog open={notificationOpen} setOpen={setNotificationOpen} />
       <ProfileDialog open={profileOpen} setOpen={setProfileOpen} />
     </>
   );

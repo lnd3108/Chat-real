@@ -38,9 +38,8 @@ export const isEligibleForFriendship = (user) =>
 export const getFriendshipDiscoveryUserFilter = () => {
   const protectedUserNames = Array.from(PROTECTED_ACCOUNT_USERNAMES).join("|");
   return {
-    role: { $ne: "admin" },
+    role: APP_ROLES.USER,
     isSystemAccount: { $ne: true },
-    $or: [{ roles: { $exists: false } }, { roles: { $size: 0 } }, { roles: APP_ROLES.USER }],
     status: ACTIVE_USER_STATUS,
     userName: {
       $not: {

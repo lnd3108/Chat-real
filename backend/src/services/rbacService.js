@@ -1,4 +1,11 @@
-import { APP_PERMISSIONS, APP_ROLES, ROLE_PERMISSION_MAP, ROLE_PRIORITY } from "../constants/rbac.js";
+import {
+  APP_PERMISSIONS,
+  APP_ROLES,
+  ROLE_LABEL_MAP,
+  ROLE_LEVEL_MAP,
+  ROLE_PERMISSION_MAP,
+  ROLE_PRIORITY,
+} from "../constants/rbac.js";
 
 const VALID_ROLES = new Set(Object.values(APP_ROLES));
 const VALID_PERMISSIONS = new Set(Object.values(APP_PERMISSIONS));
@@ -7,31 +14,62 @@ const LEGACY_ROLE_TO_APP_ROLE = {
   user: APP_ROLES.USER,
   support: APP_ROLES.SUPPORT,
   moderator: APP_ROLES.MODERATOR,
-  admin: APP_ROLES.SUPER_ADMIN,
+  admin: APP_ROLES.ADMIN,
   super_admin: APP_ROLES.SUPER_ADMIN,
 };
 
-export const normalizeRoles = (userLike) => {
-  const rawRoles = Array.isArray(userLike?.roles) ? userLike.roles : [];
-  const normalizedFromArray = rawRoles
-    .map((role) => String(role ?? "").trim().toUpperCase())
-    .filter((role) => VALID_ROLES.has(role));
-
-  if (normalizedFromArray.length > 0) {
-    return [...new Set(normalizedFromArray)].sort(
-      (left, right) => ROLE_PRIORITY.indexOf(left) - ROLE_PRIORITY.indexOf(right),
-    );
+export const normalizeRole = (userLike) => {
+  const canonicalRole = String(userLike?.role ?? "")
+    .trim()
+    .toUpperCase();
+  if (VALID_ROLES.has(canonicalRole)) {
+    return canonicalRole;
   }
 
-  const legacyRole = String(userLike?.role ?? "user").trim().toLowerCase();
-  const mappedRole = LEGACY_ROLE_TO_APP_ROLE[legacyRole] ?? APP_ROLES.USER;
-  return [mappedRole];
+  const fallbackRole = Array.isArray(userLike?.roles)
+    ? userLike.roles
+        .map((role) => String(role ?? "").trim().toUpperCase())
+        .find((role) => VALID_ROLES.has(role))
+    : null;
+  if (fallbackRole) {
+    return fallbackRole;
+  }
+
+  if (userLike?.isSuperAdmin === true) {
+    return APP_ROLES.SUPER_ADMIN;
+  }
+
+  if (userLike?.isAdmin === true) {
+    return APP_ROLES.ADMIN;
+  }
+
+  if (userLike?.isModerator === true) {
+    return APP_ROLES.MODERATOR;
+  }
+
+  if (userLike?.isSupport === true) {
+    return APP_ROLES.SUPPORT;
+  }
+
+  const legacyRole = String(userLike?.primaryRole ?? userLike?.role ?? "user")
+    .trim()
+    .toLowerCase();
+  return LEGACY_ROLE_TO_APP_ROLE[legacyRole] ?? APP_ROLES.USER;
 };
 
-export const getPrimaryRole = (userLike) => normalizeRoles(userLike)[0] ?? APP_ROLES.USER;
+export const normalizeRoles = (userLike) => [normalizeRole(userLike)];
 
-export const getLegacyRole = (userLike) =>
-  hasAdminPanelAccess(userLike) ? "admin" : "user";
+export const getPrimaryRole = (userLike) => normalizeRole(userLike);
+
+export const getRoleLevel = (roleOrUser) =>
+  ROLE_LEVEL_MAP[
+    typeof roleOrUser === "string" ? normalizeRole({ role: roleOrUser }) : normalizeRole(roleOrUser)
+  ] ?? ROLE_LEVEL_MAP[APP_ROLES.USER];
+
+export const getRoleLabel = (roleOrUser) =>
+  ROLE_LABEL_MAP[
+    typeof roleOrUser === "string" ? normalizeRole({ role: roleOrUser }) : normalizeRole(roleOrUser)
+  ] ?? ROLE_LABEL_MAP[APP_ROLES.USER];
 
 export const getPermissionsForRoles = (roles = []) => {
   const permissionSet = new Set();
@@ -46,7 +84,7 @@ export const getPermissionsForRoles = (roles = []) => {
 };
 
 export const getPermissionsForUser = (userLike) => {
-  const roles = normalizeRoles(userLike);
+  const roles = [normalizeRole(userLike)];
   const explicitPermissions = Array.isArray(userLike?.permissions)
     ? userLike.permissions
         .map((permission) => String(permission ?? "").trim().toUpperCase())
@@ -62,10 +100,10 @@ export const hasPermission = (userLike, permission) =>
 export const hasAnyPermission = (userLike, permissions = []) =>
   permissions.some((permission) => hasPermission(userLike, permission));
 
-export const hasRole = (userLike, role) => normalizeRoles(userLike).includes(role);
+export const hasRole = (userLike, role) => normalizeRole(userLike) === role;
 
 export const hasAdminPanelAccess = (userLike) =>
-  normalizeRoles(userLike).some((role) => role !== APP_ROLES.USER);
+  normalizeRole(userLike) !== APP_ROLES.USER;
 
 export const getAssignableRoles = (actorLike) => {
   if (hasRole(actorLike, APP_ROLES.SUPER_ADMIN)) {
@@ -86,36 +124,26 @@ export const getAssignableRoles = (actorLike) => {
 };
 
 export const serializeUserAccess = (userLike = {}) => {
-  const roles = normalizeRoles(userLike);
-  const primaryRole = roles[0] ?? APP_ROLES.USER;
+  const role = normalizeRole(userLike);
   const permissions = getPermissionsForUser(userLike);
 
   return {
     ...userLike,
-    role: getLegacyRole({ ...userLike, roles }),
-    roles,
-    primaryRole,
+    role,
+    roleLabel: getRoleLabel(role),
+    roleLevel: getRoleLevel(role),
+    roles: [role],
+    primaryRole: role,
     permissions,
   };
 };
 
 export const buildAdminStaffQuery = () => ({
-  $or: [
-    { roles: { $exists: true, $not: { $size: 0 } } },
-    { role: { $in: ["admin", "support", "moderator", "super_admin"] } },
-  ],
+  role: {
+    $in: ROLE_PRIORITY.filter((role) => role !== APP_ROLES.USER),
+  },
 });
 
 export const buildSuperAdminQuery = () => ({
-  $or: [
-    { roles: APP_ROLES.SUPER_ADMIN },
-    {
-      $and: [
-        {
-          $or: [{ roles: { $exists: false } }, { roles: { $size: 0 } }],
-        },
-        { role: { $in: ["admin", "super_admin"] } },
-      ],
-    },
-  ],
+  role: APP_ROLES.SUPER_ADMIN,
 });

@@ -29,9 +29,9 @@ export const adminRoleService = {
         userName: string;
         email: string;
         avatarUrl?: string | null;
-        role: "user" | "admin";
-        roles: AppRole[];
-        primaryRole: AppRole;
+        role: AppRole;
+        roleLabel?: string;
+        roleLevel?: number;
         permissions: string[];
         status: "active" | "inactive" | "suspended" | "banned";
         createdAt: string;
@@ -40,6 +40,8 @@ export const adminRoleService = {
       audit: {
         action: string;
         reason: string;
+        oldRole: AppRole;
+        newRole: AppRole;
         oldRoles: AppRole[];
         newRoles: AppRole[];
       };
@@ -54,18 +56,20 @@ export const adminRoleService = {
         action: string;
         reason?: string | null;
         actorRoles: AppRole[];
-        beforeData?: { roles?: AppRole[] };
-        afterData?: { roles?: AppRole[] };
+        beforeData?: { role?: AppRole; roleLabel?: string; roleLevel?: number };
+        afterData?: { role?: AppRole; roleLabel?: string; roleLevel?: number };
         createdAt: string;
         actor?: {
           _id: string;
           displayName: string;
           userName: string;
+          role?: AppRole;
         } | null;
         targetUser?: {
           _id: string;
           displayName: string;
           userName: string;
+          role?: AppRole;
         } | null;
       }>;
       pagination: {

@@ -9,7 +9,7 @@ import {
 import { socketAuthMiddleWare } from "../middlewares/socketMiddleWare.js";
 import User from "../models/User.js";
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
-import { hasAdminPanelAccess } from "../services/rbacService.js";
+import { hasAdminPanelAccess, serializeUserAccess } from "../services/rbacService.js";
 
 let io;
 
@@ -18,19 +18,23 @@ const visibleByUser = new Map();
 const activeConversationBySocket = new Map();
 const userMetaByUser = new Map();
 
-const buildSocketUserPayload = (user) => ({
-  _id: user._id,
-  displayName: user.displayName,
-  userName: user.userName,
-  email: user.email ?? null,
-  avatarUrl: user.avatarUrl ?? null,
-  role: user.role ?? "user",
-  roles: user.roles ?? [],
-  primaryRole: user.primaryRole ?? null,
-  permissions: user.permissions ?? [],
-  status: user.status ?? "active",
-  createdAt: user.createdAt ?? null,
-});
+const buildSocketUserPayload = (user) => {
+  const userAccess = serializeUserAccess(user);
+
+  return {
+    _id: user._id,
+    displayName: user.displayName,
+    userName: user.userName,
+    email: user.email ?? null,
+    avatarUrl: user.avatarUrl ?? null,
+    role: userAccess.role,
+    roleLabel: userAccess.roleLabel,
+    roleLevel: userAccess.roleLevel,
+    permissions: userAccess.permissions,
+    status: user.status ?? "active",
+    createdAt: user.createdAt ?? null,
+  };
+};
 
 const getOnlineVisibleUserIds = () => {
   const userIds = [];

@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/httpError";
-import { APP_ROLES, getPrimaryRole, type AppRole } from "@/lib/rbac";
+import { APP_ROLES, getRoleLabel, type AppRole } from "@/lib/rbac";
 import { adminRoleService } from "@/services/adminRoleService";
 import type { AdminUserRecord } from "@/types/admin";
 
@@ -38,7 +38,7 @@ const UpdateUserRoleModal = ({
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState("");
-  const [nextRole, setNextRole] = useState<AppRole>(getPrimaryRole(user));
+  const [nextRole, setNextRole] = useState<AppRole>(user.role);
   const [confirmed, setConfirmed] = useState(false);
   const [roleOptions, setRoleOptions] = useState<
     Array<{ key: AppRole; label: string; assignable: boolean }>
@@ -56,9 +56,8 @@ const UpdateUserRoleModal = ({
         const options = data.roles.filter((role) => role.assignable);
         setRoleOptions(options);
 
-        const currentRole = getPrimaryRole(user);
         const fallbackRole =
-          options.find((option) => option.key === currentRole)?.key ?? options[0]?.key ?? currentRole;
+          options.find((option) => option.key === user.role)?.key ?? options[0]?.key ?? user.role;
         setNextRole(fallbackRole);
       } catch (error) {
         toast.error(getErrorMessage(error, "Không thể tải danh sách role."));
@@ -68,9 +67,9 @@ const UpdateUserRoleModal = ({
     };
 
     void run();
-  }, [open, user]);
+  }, [open, user.role]);
 
-  const currentRole = useMemo(() => getPrimaryRole(user), [user]);
+  const currentRole = useMemo(() => user.role, [user.role]);
   const roleChanged = currentRole !== nextRole;
 
   const handleSubmit = async () => {
@@ -84,7 +83,7 @@ const UpdateUserRoleModal = ({
         role: nextRole,
         reason,
       });
-      onSuccess?.(result.user);
+      onSuccess?.(result.user as AdminUserRecord);
       toast.success("Cập nhật quyền tài khoản thành công.");
       setOpen(false);
       setReason("");
@@ -133,7 +132,7 @@ const UpdateUserRoleModal = ({
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <RoleBadge roles={user.roles} />
+                <RoleBadge role={user.role} />
                 <span className="text-xs text-muted-foreground">
                   Trạng thái: {user.status === "banned" ? "Bị khóa" : "Hoạt động"}
                 </span>
@@ -157,7 +156,7 @@ const UpdateUserRoleModal = ({
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Role hiện tại: <span className="font-medium">{currentRole}</span>
+              Role hiện tại: <span className="font-medium">{getRoleLabel(currentRole)}</span>
             </p>
           </div>
 
@@ -188,30 +187,21 @@ const UpdateUserRoleModal = ({
 
           {nextRole === APP_ROLES.ADMIN || nextRole === APP_ROLES.SUPER_ADMIN ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700">
-              Vai trò cấp cao chỉ nên gán khi thật sự cần thiết. Backend sẽ tiếp tục kiểm tra
-              quyền của tài khoản thao tác trước khi lưu.
+              Vai trò cấp cao chỉ nên gán khi thật sự cần thiết. Backend sẽ tiếp tục kiểm tra quyền
+              của tài khoản thao tác trước khi lưu.
             </div>
           ) : null}
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            disabled={submitting}
-          >
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={submitting}>
             Hủy
           </Button>
           <Button
             type="button"
             onClick={() => void handleSubmit()}
             disabled={
-              submitting ||
-              loadingOptions ||
-              !roleChanged ||
-              !confirmed ||
-              !String(reason).trim()
+              submitting || loadingOptions || !roleChanged || !confirmed || !String(reason).trim()
             }
           >
             {submitting ? "Đang cập nhật..." : "Xác nhận phân quyền"}

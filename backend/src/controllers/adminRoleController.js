@@ -30,7 +30,7 @@ export const getAdminUserPermissions = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).select(
-      "displayName userName email avatarUrl role roles permissions status createdAt updatedAt",
+      "displayName userName email avatarUrl role permissions status createdAt updatedAt",
     );
 
     if (!user) {

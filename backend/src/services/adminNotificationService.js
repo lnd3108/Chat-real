@@ -1,10 +1,13 @@
 import { ADMIN_SOCKET_EVENTS } from "../constants/socketEvents.js";
 import { emitToAdmins } from "../socket/adminSocket.js";
+import { serializeUserAccess } from "./rbacService.js";
 
 export const buildAdminActor = (user) => {
   if (!user) {
     return null;
   }
+
+  const userAccess = serializeUserAccess(user);
 
   return {
     _id: user._id,
@@ -12,7 +15,9 @@ export const buildAdminActor = (user) => {
     userName: user.userName,
     email: user.email ?? null,
     avatarUrl: user.avatarUrl ?? null,
-    role: user.role ?? "user",
+    role: userAccess.role,
+    roleLabel: userAccess.roleLabel,
+    roleLevel: userAccess.roleLevel,
     status: user.status ?? "active",
     createdAt: user.createdAt ?? null,
   };

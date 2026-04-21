@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { APP_ROLES } from "../constants/rbac.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -59,8 +60,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      enum: Object.values(APP_ROLES),
+      default: APP_ROLES.USER,
     },
     roles: {
       type: [String],

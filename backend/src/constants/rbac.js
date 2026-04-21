@@ -31,6 +31,22 @@ export const ROLE_PRIORITY = [
   APP_ROLES.USER,
 ];
 
+export const ROLE_LEVEL_MAP = {
+  [APP_ROLES.USER]: 20,
+  [APP_ROLES.SUPPORT]: 40,
+  [APP_ROLES.MODERATOR]: 60,
+  [APP_ROLES.ADMIN]: 80,
+  [APP_ROLES.SUPER_ADMIN]: 100,
+};
+
+export const ROLE_LABEL_MAP = {
+  [APP_ROLES.USER]: "Người dùng",
+  [APP_ROLES.SUPPORT]: "Hỗ trợ",
+  [APP_ROLES.MODERATOR]: "Kiểm duyệt",
+  [APP_ROLES.ADMIN]: "Admin",
+  [APP_ROLES.SUPER_ADMIN]: "Super Admin",
+};
+
 export const ROLE_PERMISSION_MAP = {
   [APP_ROLES.USER]: [],
   [APP_ROLES.SUPPORT]: [

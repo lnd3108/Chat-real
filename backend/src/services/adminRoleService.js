@@ -2,41 +2,30 @@ import User from "../models/User.js";
 import { ADMIN_SOCKET_EVENTS, USER_SOCKET_EVENTS } from "../constants/socketEvents.js";
 import { emitToAdmins } from "../socket/adminSocket.js";
 import { emitToUser } from "../socket/index.js";
-import { APP_PERMISSIONS, APP_ROLES, ROLE_PERMISSION_MAP } from "../constants/rbac.js";
+import {
+  APP_PERMISSIONS,
+  APP_ROLES,
+  ROLE_LABEL_MAP,
+  ROLE_PERMISSION_MAP,
+} from "../constants/rbac.js";
 import {
   buildSuperAdminQuery,
   getAssignableRoles,
-  getPermissionsForUser,
   hasPermission,
   hasRole,
-  normalizeRoles,
+  normalizeRole,
   serializeUserAccess,
 } from "./rbacService.js";
 import { AUDIT_ACTIONS, createAuditLog, listAuditLogs } from "./auditLogService.js";
 
-const VALID_ASSIGNABLE_ROLES = new Set([
-  APP_ROLES.USER,
-  APP_ROLES.SUPPORT,
-  APP_ROLES.MODERATOR,
-  APP_ROLES.ADMIN,
-  APP_ROLES.SUPER_ADMIN,
-]);
-
-const toRoleLabel = (role) =>
-  ({
-    [APP_ROLES.USER]: "Người dùng",
-    [APP_ROLES.SUPPORT]: "Hỗ trợ",
-    [APP_ROLES.MODERATOR]: "Kiểm duyệt viên",
-    [APP_ROLES.ADMIN]: "Quản trị viên",
-    [APP_ROLES.SUPER_ADMIN]: "Quản trị tối cao",
-  })[role] ?? role;
+const VALID_ASSIGNABLE_ROLES = new Set(Object.values(APP_ROLES));
 
 export const getRoleDefinitionsForActor = (actorLike) => {
   const assignableRoles = getAssignableRoles(actorLike);
 
   return Object.values(APP_ROLES).map((role) => ({
     key: role,
-    label: toRoleLabel(role),
+    label: ROLE_LABEL_MAP[role] ?? role,
     permissions:
       role === APP_ROLES.SUPER_ADMIN
         ? Object.values(APP_PERMISSIONS)
@@ -50,10 +39,10 @@ export const getPermissionSnapshotForUser = (userLike) => {
   return {
     userId: userLike?._id?.toString?.() ?? null,
     role: enriched.role,
-    primaryRole: enriched.primaryRole,
-    roles: enriched.roles,
+    roleLabel: enriched.roleLabel,
+    roleLevel: enriched.roleLevel,
     permissions: enriched.permissions,
-    hasAdminAccess: enriched.permissions.length > 0,
+    hasAdminAccess: enriched.role !== APP_ROLES.USER,
   };
 };
 
@@ -77,8 +66,7 @@ const ensureRoleAssignmentAllowed = async ({ actor, targetUser, nextRole }) => {
   }
 
   const actorIsSuperAdmin = hasRole(actor, APP_ROLES.SUPER_ADMIN);
-  const targetRoles = normalizeRoles(targetUser);
-  const targetIsSuperAdmin = targetRoles.includes(APP_ROLES.SUPER_ADMIN);
+  const targetRole = normalizeRole(targetUser);
 
   if (!actorIsSuperAdmin && [APP_ROLES.ADMIN, APP_ROLES.SUPER_ADMIN].includes(nextRole)) {
     const error = new Error("Chỉ SUPER_ADMIN mới được gán vai trò ADMIN hoặc SUPER_ADMIN.");
@@ -86,7 +74,7 @@ const ensureRoleAssignmentAllowed = async ({ actor, targetUser, nextRole }) => {
     throw error;
   }
 
-  if (!actorIsSuperAdmin && targetIsSuperAdmin) {
+  if (!actorIsSuperAdmin && targetRole === APP_ROLES.SUPER_ADMIN) {
     const error = new Error("ADMIN không được thay đổi quyền của SUPER_ADMIN.");
     error.status = 403;
     throw error;
@@ -99,10 +87,7 @@ const ensureRoleAssignmentAllowed = async ({ actor, targetUser, nextRole }) => {
     throw error;
   }
 
-  if (
-    targetIsSuperAdmin &&
-    nextRole !== APP_ROLES.SUPER_ADMIN
-  ) {
+  if (targetRole === APP_ROLES.SUPER_ADMIN && nextRole !== APP_ROLES.SUPER_ADMIN) {
     const totalSuperAdmins = await User.countDocuments(buildSuperAdminQuery());
 
     if (totalSuperAdmins <= 1) {
@@ -113,12 +98,7 @@ const ensureRoleAssignmentAllowed = async ({ actor, targetUser, nextRole }) => {
   }
 };
 
-export const updateUserRoleByAdmin = async ({
-  actor,
-  targetUserId,
-  nextRole,
-  reason,
-}) => {
+export const updateUserRoleByAdmin = async ({ actor, targetUserId, nextRole, reason }) => {
   const normalizedRole = String(nextRole ?? "").trim().toUpperCase();
   const trimmedReason = String(reason ?? "").trim();
 
@@ -129,7 +109,7 @@ export const updateUserRoleByAdmin = async ({
   }
 
   const targetUser = await User.findById(targetUserId).select(
-    "displayName userName email avatarUrl role roles status isSystemAccount createdAt updatedAt",
+    "displayName userName email avatarUrl role permissions status isSystemAccount createdAt updatedAt",
   );
 
   if (!targetUser) {
@@ -151,9 +131,8 @@ export const updateUserRoleByAdmin = async ({
   });
 
   const beforeSnapshot = serializeUserAccess(targetUser.toObject());
-  const beforeRoles = beforeSnapshot.roles;
 
-  if (beforeRoles.length === 1 && beforeRoles[0] === normalizedRole) {
+  if (beforeSnapshot.role === normalizedRole) {
     const error = new Error("Tài khoản này đã có role được chọn.");
     error.status = 400;
     throw error;
@@ -163,41 +142,45 @@ export const updateUserRoleByAdmin = async ({
     targetUserId,
     {
       $set: {
+        role: normalizedRole,
         roles: [normalizedRole],
-        role: normalizedRole === APP_ROLES.USER ? "user" : "admin",
       },
     },
     { new: true },
   ).select(
-    "displayName userName email avatarUrl role roles status isSystemAccount createdAt updatedAt",
+    "displayName userName email avatarUrl role permissions status isSystemAccount createdAt updatedAt",
   );
 
   const afterSnapshot = serializeUserAccess(updatedUser.toObject());
 
   await createAuditLog({
     actorId: actor._id,
-    actorRoles: normalizeRoles(actor),
+    actorRoles: [normalizeRole(actor)],
     targetUserId: updatedUser._id,
     action: AUDIT_ACTIONS.USER_ROLE_UPDATED,
     beforeData: {
-      roles: beforeSnapshot.roles,
-      primaryRole: beforeSnapshot.primaryRole,
+      role: beforeSnapshot.role,
+      roleLabel: beforeSnapshot.roleLabel,
+      roleLevel: beforeSnapshot.roleLevel,
     },
     afterData: {
-      roles: afterSnapshot.roles,
-      primaryRole: afterSnapshot.primaryRole,
+      role: afterSnapshot.role,
+      roleLabel: afterSnapshot.roleLabel,
+      roleLevel: afterSnapshot.roleLevel,
     },
     reason: trimmedReason,
     metadata: {
-      oldRoles: beforeSnapshot.roles,
-      newRoles: afterSnapshot.roles,
+      oldRole: beforeSnapshot.role,
+      newRole: afterSnapshot.role,
     },
   });
 
   const payload = {
     userId: updatedUser._id.toString(),
-    oldRoles: beforeSnapshot.roles,
-    newRoles: afterSnapshot.roles,
+    oldRole: beforeSnapshot.role,
+    newRole: afterSnapshot.role,
+    oldRoles: [beforeSnapshot.role],
+    newRoles: [afterSnapshot.role],
     updatedBy: {
       _id: actor._id?.toString?.() ?? actor._id,
       displayName: actor.displayName ?? null,
@@ -212,8 +195,8 @@ export const updateUserRoleByAdmin = async ({
       email: updatedUser.email,
       avatarUrl: updatedUser.avatarUrl ?? null,
       role: afterSnapshot.role,
-      roles: afterSnapshot.roles,
-      primaryRole: afterSnapshot.primaryRole,
+      roleLabel: afterSnapshot.roleLabel,
+      roleLevel: afterSnapshot.roleLevel,
       permissions: afterSnapshot.permissions,
       status: updatedUser.status,
       createdAt: updatedUser.createdAt,
@@ -229,8 +212,10 @@ export const updateUserRoleByAdmin = async ({
     audit: {
       action: AUDIT_ACTIONS.USER_ROLE_UPDATED,
       reason: trimmedReason,
-      oldRoles: beforeSnapshot.roles,
-      newRoles: afterSnapshot.roles,
+      oldRole: beforeSnapshot.role,
+      newRole: afterSnapshot.role,
+      oldRoles: [beforeSnapshot.role],
+      newRoles: [afterSnapshot.role],
     },
   };
 };

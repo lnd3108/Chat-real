@@ -1,6 +1,6 @@
 import AuditLog from "../models/AuditLog.js";
 import User from "../models/User.js";
-import { normalizeRoles } from "./rbacService.js";
+import { serializeUserAccess } from "./rbacService.js";
 
 export const AUDIT_ACTIONS = {
   USER_ROLE_UPDATED: "USER_ROLE_UPDATED",
@@ -102,8 +102,8 @@ export const listAuditLogs = async ({
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate("actorId", "displayName userName email avatarUrl role roles")
-      .populate("targetUserId", "displayName userName email avatarUrl role roles")
+      .populate("actorId", "displayName userName email avatarUrl role")
+      .populate("targetUserId", "displayName userName email avatarUrl role")
       .lean(),
     AuditLog.countDocuments(query),
   ]);
@@ -112,16 +112,10 @@ export const listAuditLogs = async ({
     logs: logs.map((log) => ({
       ...log,
       actor: log.actorId
-        ? {
-            ...log.actorId,
-            roles: normalizeRoles(log.actorId),
-          }
+        ? serializeUserAccess(log.actorId)
         : null,
       targetUser: log.targetUserId
-        ? {
-            ...log.targetUserId,
-            roles: normalizeRoles(log.targetUserId),
-          }
+        ? serializeUserAccess(log.targetUserId)
         : null,
     })),
     pagination: {

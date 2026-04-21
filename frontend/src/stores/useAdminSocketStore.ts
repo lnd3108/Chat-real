@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import { APP_ROLES } from "@/lib/rbac";
 import type {
   AdminReportRecord,
   AdminSupportConversationRecord,
@@ -205,7 +206,7 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
   upsertUser: (user) => {
     set((state) => ({
       users: upsertById(state.users, {
-        role: "user",
+        role: APP_ROLES.USER,
         status: "active",
         email: "",
         displayName: "",

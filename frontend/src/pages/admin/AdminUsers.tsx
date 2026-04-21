@@ -217,7 +217,7 @@ const AdminUsers = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <RoleBadge roles={user.roles} />
+                      <RoleBadge role={user.role} />
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {formatDate(user.createdAt)}

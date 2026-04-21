@@ -145,10 +145,10 @@ const AdminAuditLogs = () => {
                       <p className="text-muted-foreground">@{log.targetUser?.userName ?? "-"}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <RoleBadge role={log.beforeData?.roles?.[0]} />
+                      {log.beforeData?.role ? <RoleBadge role={log.beforeData.role} /> : "-"}
                     </td>
                     <td className="px-6 py-4">
-                      <RoleBadge role={log.afterData?.roles?.[0]} />
+                      {log.afterData?.role ? <RoleBadge role={log.afterData.role} /> : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {log.reason || "-"}

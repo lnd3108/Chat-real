@@ -1,11 +1,13 @@
+import type { AppRole } from "@/lib/rbac";
+
 export interface User {
   _id: string;
   userName: string;
   email: string;
   displayName: string;
-  role?: "user" | "admin";
-  roles?: Array<"USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN">;
-  primaryRole?: "USER" | "SUPPORT" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
+  role?: AppRole;
+  roleLabel?: string;
+  roleLevel?: number;
   permissions?: string[];
   status?: "active" | "inactive" | "suspended" | "banned";
   avatarUrl?: string | null;

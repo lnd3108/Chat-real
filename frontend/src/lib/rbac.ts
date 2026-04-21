@@ -26,7 +26,7 @@ export const APP_PERMISSIONS = {
 export type AppRole = (typeof APP_ROLES)[keyof typeof APP_ROLES];
 export type AppPermission = (typeof APP_PERMISSIONS)[keyof typeof APP_PERMISSIONS];
 
-const ROLE_PRIORITY: AppRole[] = [
+export const ROLE_PRIORITY: AppRole[] = [
   APP_ROLES.SUPER_ADMIN,
   APP_ROLES.ADMIN,
   APP_ROLES.MODERATOR,
@@ -34,40 +34,77 @@ const ROLE_PRIORITY: AppRole[] = [
   APP_ROLES.USER,
 ];
 
+export const ROLE_LEVEL_MAP: Record<AppRole, number> = {
+  [APP_ROLES.USER]: 20,
+  [APP_ROLES.SUPPORT]: 40,
+  [APP_ROLES.MODERATOR]: 60,
+  [APP_ROLES.ADMIN]: 80,
+  [APP_ROLES.SUPER_ADMIN]: 100,
+};
+
+export const ROLE_LABEL_MAP: Record<AppRole, string> = {
+  [APP_ROLES.USER]: "Người dùng",
+  [APP_ROLES.SUPPORT]: "Hỗ trợ",
+  [APP_ROLES.MODERATOR]: "Kiểm duyệt",
+  [APP_ROLES.ADMIN]: "Admin",
+  [APP_ROLES.SUPER_ADMIN]: "Super Admin",
+};
+
+export const ROLE_BADGE_CLASS_MAP: Record<AppRole, string> = {
+  [APP_ROLES.USER]: "border-sky-500/20 bg-sky-500/10 text-sky-700",
+  [APP_ROLES.SUPPORT]: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+  [APP_ROLES.MODERATOR]: "border-violet-500/20 bg-violet-500/10 text-violet-700",
+  [APP_ROLES.ADMIN]: "border-amber-500/20 bg-amber-500/10 text-amber-700",
+  [APP_ROLES.SUPER_ADMIN]: "border-rose-500/20 bg-rose-500/10 text-rose-700",
+};
+
 const LEGACY_TO_APP_ROLE: Record<string, AppRole> = {
   user: APP_ROLES.USER,
-  admin: APP_ROLES.ADMIN,
   support: APP_ROLES.SUPPORT,
   moderator: APP_ROLES.MODERATOR,
+  admin: APP_ROLES.ADMIN,
   super_admin: APP_ROLES.SUPER_ADMIN,
 };
 
 type AccessLike = {
-  roles?: unknown[];
-  primaryRole?: unknown;
   role?: unknown;
+  primaryRole?: unknown;
+  roles?: unknown[];
   permissions?: string[];
 };
 
-export const normalizeRoles = (user?: AccessLike | null): AppRole[] => {
-  const fromArray = Array.isArray(user?.roles)
-    ? user.roles
-        .map((role) => String(role ?? "").trim().toUpperCase())
-        .filter((role): role is AppRole => ROLE_PRIORITY.includes(role as AppRole))
-    : [];
-
-  if (fromArray.length > 0) {
-    return [...new Set(fromArray)].sort(
-      (left, right) => ROLE_PRIORITY.indexOf(left) - ROLE_PRIORITY.indexOf(right),
-    );
+export const normalizeRole = (user?: AccessLike | null): AppRole => {
+  const canonicalRole = String(user?.role ?? "")
+    .trim()
+    .toUpperCase();
+  if (ROLE_PRIORITY.includes(canonicalRole as AppRole)) {
+    return canonicalRole as AppRole;
   }
 
-  const legacyRole = String(user?.primaryRole ?? user?.role ?? "user").trim().toLowerCase();
-  return [LEGACY_TO_APP_ROLE[legacyRole] ?? APP_ROLES.USER];
+  const firstArrayRole = Array.isArray(user?.roles)
+    ? user.roles
+        .map((role) => String(role ?? "").trim().toUpperCase())
+        .find((role) => ROLE_PRIORITY.includes(role as AppRole))
+    : null;
+  if (firstArrayRole) {
+    return firstArrayRole as AppRole;
+  }
+
+  const fallbackRole = String(user?.primaryRole ?? user?.role ?? "user")
+    .trim()
+    .toLowerCase();
+  return LEGACY_TO_APP_ROLE[fallbackRole] ?? APP_ROLES.USER;
 };
 
-export const getPrimaryRole = (user?: AccessLike | null): AppRole =>
-  normalizeRoles(user)[0] ?? APP_ROLES.USER;
+export const normalizeRoles = (user?: AccessLike | null): AppRole[] => [normalizeRole(user)];
+
+export const getPrimaryRole = (user?: AccessLike | null): AppRole => normalizeRole(user);
+
+export const getRoleLabel = (role: AppRole) => ROLE_LABEL_MAP[role];
+
+export const getRoleLevel = (role: AppRole) => ROLE_LEVEL_MAP[role];
+
+export const getRoleBadgeClassName = (role: AppRole) => ROLE_BADGE_CLASS_MAP[role];
 
 export const hasPermission = (user: AccessLike | null | undefined, permission: AppPermission) =>
   Array.isArray(user?.permissions) && user.permissions.includes(permission);
@@ -78,22 +115,13 @@ export const hasAnyPermission = (
 ) => permissions.some((permission) => hasPermission(user, permission));
 
 export const hasAdminPanelAccess = (user?: AccessLike | null) =>
-  normalizeRoles(user).some((role) => role !== APP_ROLES.USER);
+  normalizeRole(user) !== APP_ROLES.USER;
 
-export const getRoleLabel = (role: AppRole) =>
-  ({
-    [APP_ROLES.USER]: "Người dùng",
-    [APP_ROLES.SUPPORT]: "Hỗ trợ",
-    [APP_ROLES.MODERATOR]: "Kiểm duyệt",
-    [APP_ROLES.ADMIN]: "Admin",
-    [APP_ROLES.SUPER_ADMIN]: "Super Admin",
-  })[role];
-
-export const getRoleBadgeClassName = (role: AppRole) =>
-  ({
-    [APP_ROLES.USER]: "border-sky-500/20 bg-sky-500/10 text-sky-700",
-    [APP_ROLES.SUPPORT]: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
-    [APP_ROLES.MODERATOR]: "border-violet-500/20 bg-violet-500/10 text-violet-700",
-    [APP_ROLES.ADMIN]: "border-amber-500/20 bg-amber-500/10 text-amber-700",
-    [APP_ROLES.SUPER_ADMIN]: "border-rose-500/20 bg-rose-500/10 text-rose-700",
-  })[role];
+export const canManageUser = (
+  currentUser: AccessLike | null | undefined,
+  targetUser: AccessLike | null | undefined,
+) => {
+  const currentRole = normalizeRole(currentUser);
+  const targetRole = normalizeRole(targetUser);
+  return getRoleLevel(currentRole) > getRoleLevel(targetRole);
+};

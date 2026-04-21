@@ -1,21 +1,18 @@
 import { Badge } from "@/components/ui/badge";
-import { getPrimaryRole, getRoleBadgeClassName, getRoleLabel, type AppRole } from "@/lib/rbac";
+import { getRoleBadgeClassName, getRoleLabel, type AppRole } from "@/lib/rbac";
 
 interface RoleBadgeProps {
-  role?: AppRole;
-  roles?: AppRole[];
+  role: AppRole;
   className?: string;
 }
 
-const RoleBadge = ({ role, roles, className }: RoleBadgeProps) => {
-  const resolvedRole = role ?? getPrimaryRole({ roles });
-
+const RoleBadge = ({ role, className }: RoleBadgeProps) => {
   return (
     <Badge
       variant="outline"
-      className={`${getRoleBadgeClassName(resolvedRole)} ${className ?? ""}`.trim()}
+      className={`${getRoleBadgeClassName(role)} ${className ?? ""}`.trim()}
     >
-      {getRoleLabel(resolvedRole)}
+      {getRoleLabel(role)}
     </Badge>
   );
 };
