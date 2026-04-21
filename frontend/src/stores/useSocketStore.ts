@@ -15,6 +15,7 @@ import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { toast } from "sonner";
 import { hasAdminPanelAccess } from "@/lib/rbac";
+import { logger } from "@/lib/logger";
 
 const baseURL =
   import.meta.env.VITE_SOCKET_URL ||
@@ -119,7 +120,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       isRefreshingSocketAuth = false;
-      console.log("Kết nối socket thành công");
+      logger.debug("Kết nối socket thành công");
       socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
       socket.emit(
         "conversation:active",
@@ -129,7 +130,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect_error", async (error: SocketConnectError) => {
       if (error?.message) {
-        console.warn("Lỗi kết nối socket:", error.message);
+        logger.warn("Lỗi kết nối socket", { message: error.message });
       }
 
       if (error?.data?.code === "ACCOUNT_BANNED") {
@@ -156,7 +157,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         socket.auth = { ...socket.auth, token: newAccessToken };
         socket.connect();
       } catch (refreshError) {
-        console.error("Không thể làm mới token cho socket:", refreshError);
+        logger.error("Không thể làm mới token cho socket", {
+          message: refreshError instanceof Error ? refreshError.message : String(refreshError),
+        });
         socket.disconnect();
         set({ socket: null, onlineUsers: [] });
       } finally {
@@ -657,7 +660,9 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       localStorage.setItem(SHOW_ONLINE_STATUS_KEY, String(value));
       set({ showOnlineStatus: value });
     } catch (error) {
-      console.error("Không thể tải trạng thái hiển thị online:", error);
+      logger.warn("Không thể tải trạng thái hiển thị online", {
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   },
 

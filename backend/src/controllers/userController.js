@@ -11,6 +11,8 @@ import {
 } from "../services/userDiscoveryService.js";
 import { serializeUserAccess } from "../services/rbacService.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
+import { sanitizeUser } from "../utils/sanitizeUser.js";
+import { logger } from "../utils/logger.js";
 
 const formatBlockedUsers = async (blockedUsers = []) => {
   const targetIds = blockedUsers
@@ -53,11 +55,15 @@ const normalizeString = (value) => {
 
 export const authMe = async (req, res) => {
   try {
-    const user = serializeUserAccess(req.user);
+    const user = sanitizeUser(serializeUserAccess(req.user));
 
     return res.status(200).json({ user });
   } catch (error) {
-    console.error("Loi khi goi authMe", error);
+    logger.error("Lỗi khi gọi authMe", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Loi he thong" });
   }
 };

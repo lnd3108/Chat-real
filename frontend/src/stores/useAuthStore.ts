@@ -9,6 +9,7 @@ import { useChatStore } from "./useChatStore";
 import { useFriendStore } from "./useFriendStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { useSuggestionStore } from "./useSuggestionStore";
+import { logger } from "@/lib/logger";
 
 const getAxiosMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -114,7 +115,11 @@ export const useAuthStore = create<AuthState>()(
           toast.success("Đăng ký thành công.");
           return true;
         } catch (error) {
-          console.error(error);
+          logger.error("Đăng ký thất bại", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
           toast.error(getAxiosMessage(error, "Đăng ký không thành công."));
           return false;
         } finally {
@@ -187,7 +192,11 @@ export const useAuthStore = create<AuthState>()(
           toast.success("Đăng nhập Google thành công.");
           return true;
         } catch (error) {
-          console.error(error);
+          logger.error("Đăng nhập Google thất bại", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
           toast.error(getAxiosMessage(error, "Đăng nhập Google không thành công."));
           return false;
         } finally {
@@ -221,7 +230,11 @@ export const useAuthStore = create<AuthState>()(
           toast.success(normalizeToastMessage(result.message));
           return "verified_only";
         } catch (error) {
-          console.error(error);
+          logger.warn("Xác minh email thất bại", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
           toast.error(
             getAxiosMessage(error, "Mã xác minh không đúng hoặc đã hết hạn."),
           );
@@ -250,7 +263,11 @@ export const useAuthStore = create<AuthState>()(
           toast.success(normalizeToastMessage(result.message));
           return true;
         } catch (error) {
-          console.error(error);
+          logger.warn("Gửi lại mã xác minh thất bại", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
 
           if (axios.isAxiosError(error)) {
             const resendAvailableAt = error.response?.data?.resendAvailableAt;
@@ -272,7 +289,11 @@ export const useAuthStore = create<AuthState>()(
           await authService.signOut();
           toast.success("Đăng xuất thành công.");
         } catch (error) {
-          console.error(error);
+          logger.warn("Đăng xuất gặp lỗi", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
           toast.error(
             getAxiosMessage(error, "Lỗi xảy ra khi đăng xuất. Hãy thử lại sau."),
           );
@@ -285,7 +306,11 @@ export const useAuthStore = create<AuthState>()(
           const user = await authService.fetchMe();
           set({ user });
         } catch (error) {
-          console.error(error);
+          logger.warn("Lấy hồ sơ người dùng thất bại", {
+            message: axios.isAxiosError(error)
+              ? error.response?.data?.message || error.message
+              : String(error),
+          });
           set({ user: null, accessToken: null });
           toast.error(
             getAxiosMessage(error, "Lỗi xảy ra khi lấy dữ liệu người dùng."),

@@ -20,6 +20,8 @@ import {
 } from "../services/adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
 import { hasAdminPanelAccess } from "../services/rbacService.js";
+import { logger } from "../utils/logger.js";
+import { sanitizeAuthResponse } from "../utils/sanitizeUser.js";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
@@ -82,21 +84,20 @@ const createSession = async (userId, res) => {
     maxAge: REFRESH_TOKEN_TTL,
   });
 
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 30 * 60 * 1000,
+  });
+
   return accessToken;
 };
 
 const buildAuthResponse = (user, accessToken) => ({
   message: `Người dùng ${user.displayName} đã đăng nhập`,
   accessToken,
-  user: {
-    id: user._id,
-    userName: user.userName,
-    displayName: user.displayName,
-    email: user.email,
-    avatarUrl: user.avatarUrl,
-    authProvider: user.authProvider,
-    emailVerified: user.emailVerified,
-  },
+  user: sanitizeAuthResponse(user),
 });
 
 const createPendingVerificationToken = (user, purpose) =>
@@ -536,7 +537,11 @@ export const signUp = async (req, res) => {
       });
     }
 
-    console.error("Lỗi khi gọi signUp", error);
+    logger.error("Lỗi khi gọi signUp", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -623,7 +628,11 @@ export const signIn = async (req, res) => {
       });
     }
 
-    console.error("Loi signIn", error);
+    logger.error("Lỗi signIn", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Loi he thong" });
   }
 };
@@ -642,7 +651,11 @@ export const startGoogleAuth = async (_req, res) => {
 
     return res.redirect(getGoogleAuthUrl());
   } catch (error) {
-    console.error("Lỗi startGoogleAuth", error);
+    logger.error("Lỗi startGoogleAuth", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Không thể bắt đầu đăng nhập Google" });
   }
 };
@@ -707,7 +720,11 @@ export const googleCallback = async (req, res) => {
     );
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
-    console.error("Lỗi googleCallback", error);
+    logger.error("Lỗi googleCallback", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Đăng nhập Google thất bại" });
   }
 };
@@ -786,7 +803,11 @@ export const verifyEmailCode = async (req, res) => {
     );
     return res.status(200).json(buildAuthResponse(user, accessToken));
   } catch (error) {
-    console.error("Lỗi verifyEmailCode", error);
+    logger.error("Lỗi verifyEmailCode", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Xác minh email thất bại" });
   }
 };
@@ -832,7 +853,11 @@ export const resendVerificationCode = async (req, res) => {
       message: "Đã gửi lại mã xác minh tới email của bạn.",
     });
   } catch (error) {
-    console.error("Lỗi resendVerificationCode", error);
+    logger.error("Lỗi resendVerificationCode", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Không thể gửi lại mã xác minh" });
   }
 };
@@ -861,6 +886,8 @@ export const signOut = async (req, res) => {
       res.clearCookie("refreshToken");
     }
 
+    res.clearCookie("accessToken");
+
     emitAdminUserLifecycle(
       ADMIN_SOCKET_EVENTS.USER_LOGOUT,
       signedOutUser,
@@ -873,7 +900,11 @@ export const signOut = async (req, res) => {
 
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Lỗi khi gọi signOut", error);
+    logger.error("Lỗi khi gọi signOut", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -923,9 +954,19 @@ export const refreshToken = async (req, res) => {
     }
 
     const accessToken = buildAccessToken(session.userId);
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 60 * 1000,
+    });
     return res.status(200).json({ accessToken });
   } catch (error) {
-    console.error("Lỗi khi gọi refreshToken", error);
+    logger.error("Lỗi khi gọi refreshToken", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -988,7 +1029,11 @@ export const changePassword = async (req, res) => {
       message: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
     });
   } catch (error) {
-    console.error("Lỗi khi gọi changePassword", error);
+    logger.error("Lỗi khi gọi changePassword", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -1015,7 +1060,11 @@ export const requestAccountDeletion = async (req, res) => {
 
     return res.status(200).json(deletion.payload);
   } catch (error) {
-    console.error("Lỗi requestAccountDeletion", error);
+    logger.error("Lỗi requestAccountDeletion", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({
       message: "Không thể bắt đầu yêu cầu xóa tài khoản.",
     });

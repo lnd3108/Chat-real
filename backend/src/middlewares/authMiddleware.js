@@ -8,6 +8,7 @@ import {
   hasPermission,
   serializeUserAccess,
 } from "../services/rbacService.js";
+import { logger } from "../utils/logger.js";
 
 const bannedResponse = {
   code: "ACCOUNT_BANNED",
@@ -17,7 +18,8 @@ const bannedResponse = {
 export const protectedRoute = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
+    const bearerToken = authHeader && authHeader.split(" ")[1];
+    const token = bearerToken || req.cookies?.accessToken;
 
     if (!token) {
       return res.status(401).json({ message: "Không tìm thấy access token." });
@@ -28,7 +30,10 @@ export const protectedRoute = (req, res, next) => {
       process.env.ACCESS_TOKEN_SECRET,
       async (err, decodedUser) => {
         if (err) {
-          console.error(err);
+          logger.warn("Access token không hợp lệ hoặc đã hết hạn", {
+            name: err?.name,
+            message: err?.message,
+          });
           return res.status(403).json({
             message: "Access token hết hạn hoặc không hợp lệ.",
           });
@@ -61,13 +66,21 @@ export const protectedRoute = (req, res, next) => {
           req.user = accessUser;
           return next();
         } catch (dbError) {
-          console.error("Lỗi trong protectedRoute callback:", dbError);
+          logger.error("Lỗi trong protectedRoute callback", {
+            name: dbError?.name,
+            message: dbError?.message,
+            code: dbError?.code,
+          });
           return res.status(500).json({ message: "Lỗi hệ thống." });
         }
       },
     );
   } catch (error) {
-    console.error("Lỗi xác minh jwt trong authMiddleware", error);
+    logger.error("Lỗi xác minh jwt trong authMiddleware", {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+    });
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };

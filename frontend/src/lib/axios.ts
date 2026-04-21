@@ -1,6 +1,7 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -41,6 +42,10 @@ api.interceptors.request.use((config) => {
 
   // Add global abort signal to all requests
   config.signal = globalAbortController.signal;
+  logger.debug("API request", {
+    method: config.method,
+    url: config.url,
+  });
 
   return config;
 });
@@ -48,6 +53,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    logger.warn("API response error", {
+      method: error.config?.method,
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+    });
+
     // Don't retry if account was deleted
     if (isAccountDeleted) {
       return Promise.reject(error);
@@ -104,6 +116,19 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
+        const refreshMessage = axios.isAxiosError(refreshError)
+          ? refreshError.response?.data?.message || refreshError.message
+          : refreshError instanceof Error
+            ? refreshError.message
+            : String(refreshError);
+        const refreshStatus = axios.isAxiosError(refreshError)
+          ? refreshError.response?.status
+          : undefined;
+
+        logger.warn("Không thể làm mới phiên đăng nhập", {
+          status: refreshStatus,
+          message: refreshMessage,
+        });
         // If refresh fails, clear state and reject
         useAuthStore.getState().clearState();
         return Promise.reject(refreshError);
