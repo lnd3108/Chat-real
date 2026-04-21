@@ -90,7 +90,7 @@ const buildSupportConversationSocketPayload = (conversation) => ({
 });
 
 /**
- * Get list of support conversations (admin)
+ * Lấy danh sách cuộc trò chuyện hỗ trợ cho quản trị viên
  * GET /admin/support/conversations
  */
 export const getSupportConversations = async (req, res) => {
@@ -110,19 +110,19 @@ export const getSupportConversations = async (req, res) => {
 
     const query = { type: "support" };
 
-    // Filter by status
+    // Lọc theo trạng thái
     if (status && SUPPORT_STATUS_SET.includes(status)) {
       query.supportStatus = status;
     }
 
-    // Filter by assigned admin
+    // Lọc theo quản trị viên được phân công
     if (assignedAdminId && assignedAdminId !== "unassigned") {
       query.assignedAdminId = assignedAdminId;
     } else if (assignedAdminId === "unassigned") {
       query.assignedAdminId = null;
     }
 
-    // Search by user username/displayName
+    // Tìm theo tên đăng nhập hoặc tên hiển thị của người dùng
     if (q && q.trim().length > 0) {
       const users = await User.find({
         $or: [
@@ -135,7 +135,7 @@ export const getSupportConversations = async (req, res) => {
       query.supportCreatedByUserId = { $in: userIds };
     }
 
-    // Sort
+    // Sắp xếp
     let sortObj = { updatedAt: -1 };
     if (sort === "createdAt-desc") {
       sortObj = { createdAt: -1 };
@@ -156,7 +156,7 @@ export const getSupportConversations = async (req, res) => {
     const total = await Conversation.countDocuments(query);
 
     res.json({
-      message: "Support conversations retrieved",
+      message: "Lấy danh sách cuộc trò chuyện hỗ trợ thành công",
       data: {
         conversations: conversations.map(formatSupportConversation),
         pagination: {
@@ -168,13 +168,13 @@ export const getSupportConversations = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching support conversations:", error);
-    res.status(500).json({ message: "Failed to fetch support conversations" });
+    console.error("Lỗi khi lấy danh sách cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể lấy danh sách cuộc trò chuyện hỗ trợ" });
   }
 };
 
 /**
- * Get support conversation detail (admin)
+ * Lấy chi tiết cuộc trò chuyện hỗ trợ cho quản trị viên
  * GET /admin/support/conversations/:id
  */
 export const getSupportConversationDetail = async (req, res) => {
@@ -187,31 +187,31 @@ export const getSupportConversationDetail = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
     await populateSupportConversation(conversation);
 
-    // Get messages
+    // Lấy danh sách tin nhắn
     const messages = await Message.find({ conversationId: id })
       .sort({ createdAt: 1 })
       .lean();
 
     res.json({
-      message: "Support conversation retrieved",
+      message: "Lấy chi tiết cuộc trò chuyện hỗ trợ thành công",
       data: {
         conversation: formatSupportConversation(conversation),
         messages,
       },
     });
   } catch (error) {
-    console.error("Error fetching support conversation detail:", error);
-    res.status(500).json({ message: "Failed to fetch support conversation" });
+    console.error("Lỗi khi lấy chi tiết cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể lấy chi tiết cuộc trò chuyện hỗ trợ" });
   }
 };
 
 /**
- * Send admin reply to support
+ * Gửi phản hồi hỗ trợ từ quản trị viên
  * POST /admin/support/messages
  */
 export const sendSupportReply = async (req, res) => {
@@ -220,11 +220,11 @@ export const sendSupportReply = async (req, res) => {
     const adminId = req.user._id;
 
     if (!conversationId) {
-      return res.status(400).json({ message: "Conversation ID is required" });
+      return res.status(400).json({ message: "Thiếu mã cuộc trò chuyện" });
     }
 
     if (!content || content.trim().length === 0) {
-      return res.status(400).json({ message: "Message content is required" });
+      return res.status(400).json({ message: "Vui lòng nhập nội dung tin nhắn" });
     }
 
     const conversation = await Conversation.findOne({
@@ -233,16 +233,16 @@ export const sendSupportReply = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
-    // Auto-assign admin if not assigned yet
+    // Tự động gán quản trị viên nếu cuộc trò chuyện chưa có người phụ trách
     if (!conversation.assignedAdminId) {
       conversation.assignedAdminId = adminId;
       conversation.supportStatus = "in_progress";
     }
 
-    // Create message
+    // Tạo tin nhắn
     const message = new Message({
       conversationId,
       senderId: adminId,
@@ -252,7 +252,7 @@ export const sendSupportReply = async (req, res) => {
 
     await message.save();
 
-    // Update conversation
+    // Cập nhật cuộc trò chuyện
     conversation.lastMessageAt = new Date();
     conversation.lastMessage = {
       _id: message._id.toString(),
@@ -264,7 +264,7 @@ export const sendSupportReply = async (req, res) => {
       createdAt: message.createdAt,
     };
 
-    // Reset unread for sender, increment for others
+    // Đặt lại số tin chưa đọc cho người gửi và tăng cho người còn lại
     const unreadCounts = new Map(conversation.unreadCounts || {});
     unreadCounts.set(adminId.toString(), 0);
 
@@ -322,20 +322,20 @@ export const sendSupportReply = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Support reply sent",
+      message: "Gửi phản hồi hỗ trợ thành công",
       data: {
         message,
         conversation: formattedConversation,
       },
     });
   } catch (error) {
-    console.error("Error sending support reply:", error);
-    res.status(500).json({ message: "Failed to send reply" });
+    console.error("Lỗi khi gửi phản hồi hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể gửi phản hồi hỗ trợ" });
   }
 };
 
 /**
- * Update support conversation status
+ * Cập nhật trạng thái cuộc trò chuyện hỗ trợ
  * PATCH /admin/support/conversations/:id/status
  */
 export const updateSupportStatus = async (req, res) => {
@@ -345,7 +345,7 @@ export const updateSupportStatus = async (req, res) => {
     const adminId = req.user._id;
 
     if (!status || !SUPPORT_STATUS_SET.includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
     }
 
     const conversation = await Conversation.findOne({
@@ -354,10 +354,10 @@ export const updateSupportStatus = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
-    // Auto-assign admin if not assigned and status is being changed
+    // Tự động gán quản trị viên nếu chưa có người phụ trách và trạng thái được thay đổi
     if (!conversation.assignedAdminId && status !== "open") {
       conversation.assignedAdminId = adminId;
     }
@@ -389,17 +389,17 @@ export const updateSupportStatus = async (req, res) => {
     await emitDashboardStatsUpdated({ reason: "support:status", conversationId: id });
 
     res.json({
-      message: "Support status updated",
+      message: "Cập nhật trạng thái hỗ trợ thành công",
       data: { conversation: formattedConversation },
     });
   } catch (error) {
-    console.error("Error updating support status:", error);
-    res.status(500).json({ message: "Failed to update support status" });
+    console.error("Lỗi khi cập nhật trạng thái hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể cập nhật trạng thái hỗ trợ" });
   }
 };
 
 /**
- * Assign admin to support conversation
+ * Gán quản trị viên cho cuộc trò chuyện hỗ trợ
  * PATCH /admin/support/conversations/:id/assign
  */
 export const assignSupportAdmin = async (req, res) => {
@@ -408,7 +408,7 @@ export const assignSupportAdmin = async (req, res) => {
     const { adminId } = req.body;
 
     if (!adminId) {
-      return res.status(400).json({ message: "Admin ID is required" });
+      return res.status(400).json({ message: "Thiếu mã quản trị viên" });
     }
 
     const conversation = await Conversation.findOne({
@@ -417,13 +417,13 @@ export const assignSupportAdmin = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
-    // Verify admin exists
+    // Kiểm tra quản trị viên có tồn tại hay không
     const admin = await User.findById(adminId);
     if (!admin || admin.role !== "admin") {
-      return res.status(400).json({ message: "Invalid admin ID" });
+      return res.status(400).json({ message: "Mã quản trị viên không hợp lệ" });
     }
 
     conversation.assignedAdminId = adminId;
@@ -452,11 +452,11 @@ export const assignSupportAdmin = async (req, res) => {
     await emitDashboardStatsUpdated({ reason: "support:assigned", conversationId: id });
 
     res.json({
-      message: "Admin assigned",
+      message: "Gán quản trị viên thành công",
       data: { conversation: formattedConversation },
     });
   } catch (error) {
-    console.error("Error assigning support admin:", error);
-    res.status(500).json({ message: "Failed to assign admin" });
+    console.error("Lỗi khi gán quản trị viên hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể gán quản trị viên" });
   }
 };

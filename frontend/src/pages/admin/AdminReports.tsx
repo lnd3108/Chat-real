@@ -17,21 +17,24 @@ import type {
 } from "@/types/admin";
 
 const statusConfig: Record<AdminReportStatus, { label: string; className: string }> = {
-  pending: { label: "Cho xu ly", className: "bg-yellow-500/10 text-yellow-700" },
-  reviewing: { label: "Dang xem xet", className: "bg-blue-500/10 text-blue-700" },
-  resolved: { label: "Da xu ly", className: "bg-emerald-500/10 text-emerald-700" },
-  rejected: { label: "Tu choi", className: "bg-red-500/10 text-red-700" },
+  pending: { label: "Chờ xử lý", className: "bg-yellow-500/10 text-yellow-700" },
+  reviewing: { label: "Đang xem xét", className: "bg-blue-500/10 text-blue-700" },
+  resolved: { label: "Đã xử lý", className: "bg-emerald-500/10 text-emerald-700" },
+  rejected: { label: "Từ chối", className: "bg-red-500/10 text-red-700" },
 };
 
 const typeConfig: Record<AdminReportTargetType, { label: string; className: string }> = {
-  user: { label: "Bao cao nguoi dung", className: "bg-purple-500/10 text-purple-700" },
-  message: { label: "Bao cao tin nhan", className: "bg-blue-500/10 text-blue-700" },
-  conversation: { label: "Bao cao cuoc tro chuyen", className: "bg-amber-500/10 text-amber-700" },
+  user: { label: "Báo cáo người dùng", className: "bg-purple-500/10 text-purple-700" },
+  message: { label: "Báo cáo tin nhắn", className: "bg-blue-500/10 text-blue-700" },
+  conversation: {
+    label: "Báo cáo cuộc trò chuyện",
+    className: "bg-amber-500/10 text-amber-700",
+  },
 };
 
 const formatDate = (dateString?: string | null) => {
   if (!dateString) {
-    return "Khong co ngay";
+    return "Không có ngày";
   }
 
   return new Date(dateString).toLocaleString("vi-VN", {
@@ -71,7 +74,7 @@ const AdminReports = () => {
       });
     } catch (err) {
       console.error("[report][admin-page][error]", err);
-      setError(getErrorMessage(err, "Khong the tai danh sach bao cao."));
+      setError(getErrorMessage(err, "Không thể tải danh sách báo cáo."));
     }
   }, [fetchReportsFromStore, page, searchQuery, sortBy, statusFilter, typeFilter]);
 
@@ -86,9 +89,9 @@ const AdminReports = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Quan ly bao cao</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
           <p className="mt-2 text-muted-foreground">
-            Quan ly va xem xet bao cao tu nguoi dung de kiem duyet noi dung.
+            Quản lý và xem xét báo cáo từ người dùng để kiểm duyệt nội dung.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -101,9 +104,9 @@ const AdminReports = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Quan ly bao cao</h1>
+        <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
         <p className="mt-2 text-muted-foreground">
-          Tong cong {pagination.total} bao cao can theo doi va xu ly.
+          Tổng cộng {pagination.total} báo cáo cần theo dõi và xử lý.
         </p>
       </div>
 
@@ -111,9 +114,10 @@ const AdminReports = () => {
         <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground">Luu y quyen rieng tu</p>
+            <p className="font-medium text-foreground">Lưu ý quyền riêng tư</p>
             <p className="text-sm text-muted-foreground">
-              Admin chi duoc xem noi dung lien quan den bao cao cu the. Khong duoc duyet hang loat tin nhan nguoi dung ngoai pham vi bao cao.
+              Admin chỉ được xem nội dung liên quan đến báo cáo cụ thể. Không được duyệt
+              hàng loạt tin nhắn người dùng ngoài phạm vi báo cáo.
             </p>
           </div>
         </div>
@@ -124,7 +128,7 @@ const AdminReports = () => {
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tim theo ly do hoac nguoi bao cao..."
+              placeholder="Tìm theo lý do hoặc người báo cáo..."
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
@@ -142,11 +146,11 @@ const AdminReports = () => {
             }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">Tat ca trang thai</option>
-            <option value="pending">Cho xu ly</option>
-            <option value="reviewing">Dang xem xet</option>
-            <option value="resolved">Da xu ly</option>
-            <option value="rejected">Tu choi</option>
+            <option value="">Tất cả trạng thái</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="reviewing">Đang xem xét</option>
+            <option value="resolved">Đã xử lý</option>
+            <option value="rejected">Từ chối</option>
           </select>
 
           <select
@@ -157,10 +161,10 @@ const AdminReports = () => {
             }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">Tat ca loai</option>
-            <option value="user">Nguoi dung</option>
-            <option value="message">Tin nhan</option>
-            <option value="conversation">Cuoc tro chuyen</option>
+            <option value="">Tất cả loại</option>
+            <option value="user">Người dùng</option>
+            <option value="message">Tin nhắn</option>
+            <option value="conversation">Cuộc trò chuyện</option>
           </select>
 
           <select
@@ -171,10 +175,10 @@ const AdminReports = () => {
             }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="createdAt-desc">Moi nhat</option>
-            <option value="createdAt-asc">Cu nhat</option>
-            <option value="updated">Cap nhat gan day</option>
-            <option value="status">Theo trang thai</option>
+            <option value="createdAt-desc">Mới nhất</option>
+            <option value="createdAt-asc">Cũ nhất</option>
+            <option value="updated">Cập nhật gần đây</option>
+            <option value="status">Theo trạng thái</option>
           </select>
         </div>
       </div>
@@ -188,9 +192,9 @@ const AdminReports = () => {
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
               <Flag className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-4 text-muted-foreground">Khong tim thay bao cao nao.</p>
+              <p className="mt-4 text-muted-foreground">Không tìm thấy báo cáo nào.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Thu dieu chinh bo loc hoac tu khoa tim kiem.
+                Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.
               </p>
             </div>
           </div>
@@ -200,12 +204,24 @@ const AdminReports = () => {
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Nguoi bao cao</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Loai</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Ly do</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Trang thai</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Tao luc</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Hanh dong</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Người báo cáo
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Loại
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Lý do
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Tạo lúc
+                    </th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
+                      Hành động
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -233,7 +249,9 @@ const AdminReports = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${typeConfig[report.targetType].className}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${typeConfig[report.targetType].className}`}
+                        >
                           {typeConfig[report.targetType].label}
                         </span>
                       </td>
@@ -241,7 +259,9 @@ const AdminReports = () => {
                         <span className="line-clamp-2">{report.reason}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[report.status].className}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[report.status].className}`}
+                        >
                           {statusConfig[report.status].label}
                         </span>
                       </td>

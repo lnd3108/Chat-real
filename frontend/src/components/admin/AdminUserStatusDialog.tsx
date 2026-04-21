@@ -66,12 +66,12 @@ const AdminUserStatusDialog = ({
       onSuccess(nextStatus);
       toast.success(
         nextStatus === "banned"
-          ? "Da khoa tai khoan nguoi dung."
-          : "Da mo khoa tai khoan nguoi dung.",
+          ? "Đã khóa tài khoản người dùng."
+          : "Đã mở khóa tài khoản người dùng.",
       );
       setOpen(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Khong the cap nhat trang thai tai khoan."));
+      toast.error(getErrorMessage(error, "Không thể cập nhật trạng thái tài khoản."));
     } finally {
       setSubmitting(false);
     }
@@ -86,7 +86,7 @@ const AdminUserStatusDialog = ({
           className={`${fullWidth ? "w-full justify-start" : ""} ${buttonClassName ?? ""}`.trim()}
         >
           <Ban className="mr-2 h-4 w-4 shrink-0" />
-          {isSelf ? "Khong the tu khoa" : isBanned ? "Mo khoa tai khoan" : "Khoa tai khoan"}
+          {isSelf ? "Không thể tự khóa" : isBanned ? "Mở khóa tài khoản" : "Khóa tài khoản"}
         </Button>
       </AlertDialogTrigger>
 
@@ -99,18 +99,18 @@ const AdminUserStatusDialog = ({
               <ShieldAlert className="text-rose-600" />
             )}
           </AlertDialogMedia>
-          <AlertDialogTitle>{isBanned ? "Mo khoa tai khoan" : "Khoa tai khoan"}</AlertDialogTitle>
+          <AlertDialogTitle>{isBanned ? "Mở khóa tài khoản" : "Khóa tài khoản"}</AlertDialogTitle>
           <AlertDialogDescription>
             {isBanned
-              ? `Tai khoan ${displayName} (@${userName}) se duoc mo khoa va co the dang nhap lai.`
-              : `Tai khoan ${displayName} (@${userName}) se bi khoa, khong the dang nhap, refresh token hay tiep tuc su dung app.`}
+              ? `Tài khoản ${displayName} (@${userName}) sẽ được mở khóa và có thể đăng nhập lại.`
+              : `Tài khoản ${displayName} (@${userName}) sẽ bị khóa, không thể đăng nhập, refresh token hay tiếp tục sử dụng app.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={submitting}>Huy</AlertDialogCancel>
+          <AlertDialogCancel disabled={submitting}>Hủy</AlertDialogCancel>
           <Button onClick={handleSubmit} disabled={submitting} variant={isBanned ? "default" : "destructive"}>
-            {submitting ? "Dang xu ly..." : isBanned ? "Mo khoa" : "Khoa tai khoan"}
+            {submitting ? "Đang xử lý..." : isBanned ? "Mở khóa" : "Khóa tài khoản"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

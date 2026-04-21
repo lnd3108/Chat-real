@@ -6,19 +6,19 @@ const REPORT_TARGET_TYPES = ["user", "message", "conversation"];
 
 export const validateReportInput = ({ targetType, reason, description }) => {
   if (!targetType || !REPORT_TARGET_TYPES.includes(targetType)) {
-    return "Invalid targetType";
+    return "Loại đối tượng báo cáo không hợp lệ";
   }
 
   if (!reason || reason.trim().length === 0) {
-    return "Reason is required";
+    return "Vui lòng nhập lý do báo cáo";
   }
 
   if (reason.trim().length > 500) {
-    return "Reason must be less than 500 characters";
+    return "Lý do báo cáo không được vượt quá 500 ký tự";
   }
 
   if (description && description.length > 2000) {
-    return "Description must be less than 2000 characters";
+    return "Mô tả chi tiết không được vượt quá 2000 ký tự";
   }
 
   return null;
@@ -33,27 +33,27 @@ export const validateReportTarget = async ({
 }) => {
   if (targetType === "user") {
     if (!targetUserId) {
-      return { status: 400, message: "targetUserId is required for user reports" };
+      return { status: 400, message: "Thiếu người dùng bị báo cáo" };
     }
 
     if (reporterId.toString() === targetUserId.toString()) {
-      return { status: 400, message: "Cannot report yourself" };
+      return { status: 400, message: "Bạn không thể tự báo cáo chính mình" };
     }
 
     const targetUser = await User.findById(targetUserId).lean();
     if (!targetUser) {
-      return { status: 404, message: "Target user not found" };
+      return { status: 404, message: "Không tìm thấy người dùng bị báo cáo" };
     }
   }
 
   if (targetType === "message") {
     if (!targetMessageId) {
-      return { status: 400, message: "targetMessageId is required for message reports" };
+      return { status: 400, message: "Thiếu tin nhắn bị báo cáo" };
     }
 
     const message = await Message.findById(targetMessageId).lean();
     if (!message) {
-      return { status: 404, message: "Target message not found" };
+      return { status: 404, message: "Không tìm thấy tin nhắn bị báo cáo" };
     }
   }
 
@@ -61,13 +61,13 @@ export const validateReportTarget = async ({
     if (!targetConversationId) {
       return {
         status: 400,
-        message: "targetConversationId is required for conversation reports",
+        message: "Thiếu cuộc trò chuyện bị báo cáo",
       };
     }
 
     const conversation = await Conversation.findById(targetConversationId).lean();
     if (!conversation) {
-      return { status: 404, message: "Target conversation not found" };
+      return { status: 404, message: "Không tìm thấy cuộc trò chuyện bị báo cáo" };
     }
   }
 

@@ -6,10 +6,10 @@ const router = express.Router();
 
 router.use(protectedRoute);
 
-// Create a new report
+// Tạo báo cáo mới
 router.post("/", createReport);
 
-// Get user's own reports
+// Lấy danh sách báo cáo của người dùng hiện tại
 router.get("/me", getMyReports);
 
 export default router;

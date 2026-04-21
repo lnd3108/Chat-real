@@ -245,7 +245,7 @@ const AdminReportDetail = () => {
       setReport(response.data.data.report);
       setResolutionNote(response.data.data.report.resolutionNote || note);
     } catch (error) {
-      console.error("Failed to auto resolve report after account action:", error);
+      console.error("Không thể tự động đánh dấu báo cáo đã xử lý sau thao tác tài khoản:", error);
     }
   };
 

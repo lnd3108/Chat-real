@@ -40,6 +40,31 @@ const sortByNewest = (items: AdminNotificationItem[]) =>
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
+const looksMojibake = (value: string) => /(?:Ã.|Æ.|Ä.|á»|áº|Â)/.test(value);
+
+const repairVietnameseText = (value?: string | null) => {
+  if (!value || !looksMojibake(value)) {
+    return value ?? "";
+  }
+
+  try {
+    const bytes = Uint8Array.from(
+      Array.from(value).map((char) => char.charCodeAt(0) & 0xff),
+    );
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+
+    return decoded.includes("�") ? value : decoded;
+  } catch {
+    return value;
+  }
+};
+
+const normalizeNotification = (item: AdminNotificationItem): AdminNotificationItem => ({
+  ...item,
+  title: repairVietnameseText(item.title),
+  message: repairVietnameseText(item.message),
+});
+
 export const useAdminNotificationStore = create<AdminNotificationState>()(
   persist(
     (set, get) => ({
@@ -60,7 +85,7 @@ export const useAdminNotificationStore = create<AdminNotificationState>()(
             : [nextItem, ...state.items];
 
           return {
-            items: sortByNewest(items).slice(0, 100),
+            items: sortByNewest(items).map(normalizeNotification).slice(0, 100),
           };
         });
       },
@@ -87,6 +112,16 @@ export const useAdminNotificationStore = create<AdminNotificationState>()(
     {
       name: "admin-notification-storage",
       partialize: (state) => ({ items: state.items }),
+      merge: (persisted, current) => {
+        const typedPersisted = persisted as Partial<AdminNotificationState> | undefined;
+        const items = (typedPersisted?.items ?? []).map(normalizeNotification);
+
+        return {
+          ...current,
+          ...typedPersisted,
+          items,
+        };
+      },
     },
   ),
 );

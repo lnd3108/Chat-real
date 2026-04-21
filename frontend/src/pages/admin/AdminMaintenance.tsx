@@ -52,7 +52,7 @@ const AdminMaintenance = () => {
         setStatus(data);
         setNewMessage(data.message);
       } catch (error) {
-        console.error("Failed to fetch maintenance status:", error);
+        console.error("Không thể lấy trạng thái bảo trì:", error);
         toast.error("Không thể tải trạng thái bảo trì");
       } finally {
         setLoading(false);

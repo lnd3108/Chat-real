@@ -609,8 +609,8 @@ export const signIn = async (req, res) => {
     emitAdminUserLifecycle(
       ADMIN_SOCKET_EVENTS.USER_LOGIN,
       user,
-      "Nguoi dung dang nhap",
-      `${user.displayName} vua dang nhap`,
+      "Người dùng đăng nhập",
+      `${user.displayName} vừa đăng nhập`,
       "user:login",
     );
     return res.status(200).json(buildAuthResponse(user, accessToken));
@@ -700,8 +700,8 @@ export const googleCallback = async (req, res) => {
     emitAdminUserLifecycle(
       ADMIN_SOCKET_EVENTS.USER_LOGIN,
       user,
-      "Nguoi dung dang nhap",
-      `${user.displayName} vua dang nhap`,
+      "Người dùng đăng nhập",
+      `${user.displayName} vừa đăng nhập`,
       "user:login",
     );
     return res.status(200).json(buildAuthResponse(user, accessToken));
@@ -779,8 +779,8 @@ export const verifyEmailCode = async (req, res) => {
     emitAdminUserLifecycle(
       ADMIN_SOCKET_EVENTS.USER_LOGIN,
       user,
-      "Nguoi dung dang nhap",
-      `${user.displayName} vua dang nhap`,
+      "Người dùng đăng nhập",
+      `${user.displayName} vừa đăng nhập`,
       "user:login",
     );
     return res.status(200).json(buildAuthResponse(user, accessToken));

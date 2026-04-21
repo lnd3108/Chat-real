@@ -12,19 +12,19 @@ const router = express.Router();
 
 router.use(protectedRoute, requireAdmin);
 
-// Get list of support conversations
+// Lấy danh sách cuộc trò chuyện hỗ trợ
 router.get("/conversations", getSupportConversations);
 
-// Get support conversation detail
+// Lấy chi tiết cuộc trò chuyện hỗ trợ
 router.get("/conversations/:id", getSupportConversationDetail);
 
-// Send admin reply to support
+// Gửi phản hồi hỗ trợ từ quản trị viên
 router.post("/messages", sendSupportReply);
 
-// Update support conversation status
+// Cập nhật trạng thái cuộc trò chuyện hỗ trợ
 router.patch("/conversations/:id/status", updateSupportStatus);
 
-// Assign admin to support conversation
+// Gán quản trị viên phụ trách cuộc trò chuyện hỗ trợ
 router.patch("/conversations/:id/assign", assignSupportAdmin);
 
 export default router;

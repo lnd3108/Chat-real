@@ -109,13 +109,13 @@ export const sendConfirmationCode = async (adminEmail) => {
       expiresAt: config.confirmationExpiresAt.getTime(),
     };
   } catch (error) {
-    console.error("Error sending confirmation code:", {
+    console.error("Lỗi khi gửi mã xác nhận:", {
       error: error.message,
       code: error.code,
       stack: error.stack,
     });
     
-    // Check if it's an SMTP configuration issue
+    // Kiểm tra có phải lỗi cấu hình SMTP hay không
     const message = 
       error.message?.includes("SMTP") || error.message?.includes("configured")
         ? "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên."

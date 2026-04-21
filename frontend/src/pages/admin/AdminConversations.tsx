@@ -76,15 +76,15 @@ interface PaginationData {
 
 const typeConfig: Record<ConversationType, { label: string; className: string }> = {
   direct: {
-    label: "Direct",
+    label: "Trực tiếp",
     className: "bg-sky-500/10 text-sky-700",
   },
   group: {
-    label: "Group",
+    label: "Nhóm",
     className: "bg-amber-500/10 text-amber-700",
   },
   support: {
-    label: "Support",
+    label: "Hỗ trợ",
     className: "bg-emerald-500/10 text-emerald-700",
   },
 };
@@ -133,7 +133,7 @@ const MemberCell = ({
     <div className="flex items-center gap-3">
       <UserAvatar
         type="chat"
-        name={member.displayName ?? member.userName ?? "User"}
+        name={member.displayName ?? member.userName ?? "Người dùng"}
         avatarUrl={member.avatarUrl ?? undefined}
         className="size-10"
       />
@@ -163,7 +163,9 @@ const AdminConversations = () => {
   });
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(
+    null,
+  );
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
@@ -197,7 +199,7 @@ const AdminConversations = () => {
       setPagination(response.data.data.pagination);
     } catch (err) {
       console.error(err);
-      setError("Không thể tải danh sách conversations.");
+      setError("Không thể tải danh sách cuộc trò chuyện.");
     } finally {
       setLoading(false);
     }
@@ -241,9 +243,9 @@ const AdminConversations = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Conversations</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quản lý cuộc trò chuyện</h1>
           <p className="mt-2 text-muted-foreground">
-            Tra cứu direct conversations và group conversations.
+            Tra cứu hội thoại trực tiếp và nhóm.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -256,7 +258,7 @@ const AdminConversations = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Conversations</h1>
+        <h1 className="text-3xl font-bold text-foreground">Quản lý cuộc trò chuyện</h1>
         <p className="mt-2 text-muted-foreground">
           Tổng cộng {pagination.total} cuộc trò chuyện để tra cứu và audit.
         </p>
@@ -268,8 +270,8 @@ const AdminConversations = () => {
           <div className="space-y-1">
             <p className="font-medium text-foreground">Lưu ý về block trong group</p>
             <p className="text-sm text-muted-foreground">
-              Nếu 2 user block nhau nhưng vẫn cùng group, admin vẫn xem group hoạt động bình thường.
-              Block direct không phải lỗi của group chat.
+              Nếu 2 user block nhau nhưng vẫn cùng group, admin vẫn xem group hoạt động
+              bình thường. Block direct không phải lỗi của group chat.
             </p>
           </div>
         </div>
@@ -293,8 +295,8 @@ const AdminConversations = () => {
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
             <option value="">Tất cả loại</option>
-            <option value="direct">Direct</option>
-            <option value="group">Group</option>
+            <option value="direct">Trực tiếp</option>
+            <option value="group">Nhóm</option>
           </select>
 
           <select
@@ -318,7 +320,7 @@ const AdminConversations = () => {
         ) : conversations.length === 0 ? (
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
-              <p className="text-muted-foreground">Không tìm thấy conversation nào phù hợp.</p>
+              <p className="text-muted-foreground">Không tìm thấy cuộc trò chuyện nào phù hợp.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
               </p>
@@ -331,19 +333,19 @@ const AdminConversations = () => {
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Conversation
+                      Cuộc trò chuyện
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Members
+                      Thành viên
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Messages
+                      Tin nhắn
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Last message
+                      Tin nhắn cuối
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Updated at
+                      Cập nhật lúc
                     </th>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
                       Hành động
@@ -368,7 +370,7 @@ const AdminConversations = () => {
                           <p className="font-medium text-foreground">
                             {conversation.type === "group"
                               ? conversation.groupName ?? "Nhóm"
-                              : "Direct conversation"}
+                              : "Cuộc trò chuyện trực tiếp"}
                           </p>
                           <p className="font-mono text-xs text-muted-foreground">
                             {conversation._id}
@@ -382,7 +384,9 @@ const AdminConversations = () => {
                         {conversation.messagesCount}
                       </td>
                       <td className="max-w-[320px] px-6 py-4 text-sm text-muted-foreground">
-                        <span className="line-clamp-2">{getLastMessagePreview(conversation.lastMessage)}</span>
+                        <span className="line-clamp-2">
+                          {getLastMessagePreview(conversation.lastMessage)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
                         {formatShortDate(conversation.updatedAt)}
@@ -426,7 +430,7 @@ const AdminConversations = () => {
       >
         <DialogContent className="border-border/40 bg-card/95 sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Chi tiết conversation</DialogTitle>
+            <DialogTitle>Chi tiết cuộc trò chuyện</DialogTitle>
             <DialogDescription>
               Dùng để kiểm tra direct và group hoạt động thế nào trong hệ thống.
             </DialogDescription>
@@ -456,7 +460,7 @@ const AdminConversations = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Conversation ID
+                    Mã cuộc trò chuyện
                   </p>
                   <p className="mt-2 break-all font-mono text-sm text-foreground">
                     {selectedConversation._id}
@@ -464,7 +468,7 @@ const AdminConversations = () => {
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Messages count
+                    Số tin nhắn
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {selectedConversation.messagesCount}
@@ -472,7 +476,7 @@ const AdminConversations = () => {
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Members count
+                    Số thành viên
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {selectedConversation.membersCount}
@@ -480,7 +484,7 @@ const AdminConversations = () => {
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Updated at
+                    Cập nhật lúc
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {formatDate(selectedConversation.updatedAt)}
@@ -489,7 +493,7 @@ const AdminConversations = () => {
               </div>
 
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                <p className="text-sm font-medium text-foreground">Last message</p>
+                <p className="text-sm font-medium text-foreground">Tin nhắn cuối</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {getLastMessagePreview(selectedConversation.lastMessage)}
                 </p>
@@ -510,7 +514,7 @@ const AdminConversations = () => {
                       >
                         <p className="text-sm font-medium text-foreground">Thành viên {index + 1}</p>
                         <div className="mt-3">
-                          <MemberCell member={member} fallback="User đã bị xóa" />
+                          <MemberCell member={member} fallback="Người dùng đã bị xóa" />
                         </div>
                         {member.email && (
                           <p className="mt-3 text-sm text-muted-foreground">{member.email}</p>
@@ -523,7 +527,7 @@ const AdminConversations = () => {
                     <div className="flex items-start gap-3">
                       <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-700" />
                       <div className="space-y-2">
-                        <p className="font-medium text-foreground">Direct block status</p>
+                        <p className="font-medium text-foreground">Trạng thái block direct</p>
                         <p className="text-sm text-muted-foreground">
                           {selectedConversation.directBlockStatus?.note ??
                             "Không có dữ liệu block status."}
@@ -559,23 +563,26 @@ const AdminConversations = () => {
                     <div className="flex items-start gap-3">
                       <MessagesSquare className="mt-0.5 h-5 w-5 text-sky-700" />
                       <div className="space-y-1">
-                        <p className="font-medium text-foreground">Group note</p>
+                        <p className="font-medium text-foreground">Ghi chú nhóm</p>
                         <p className="text-sm text-muted-foreground">{selectedConversation.note}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                    <p className="text-sm font-medium text-foreground">Creator / Owner</p>
+                    <p className="text-sm font-medium text-foreground">Người tạo / Chủ sở hữu</p>
                     <div className="mt-3">
-                      <MemberCell member={selectedConversation.creator} fallback="Creator đã bị xóa" />
+                      <MemberCell
+                        member={selectedConversation.creator}
+                        fallback="Người tạo đã bị xóa"
+                      />
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-border/50 bg-card/70 p-4">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Members</p>
+                      <p className="text-sm font-medium text-foreground">Thành viên</p>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       {selectedConversation.members.map((member, index) => (
@@ -583,9 +590,9 @@ const AdminConversations = () => {
                           key={member._id ?? `group-member-${index}`}
                           className="rounded-xl border border-border/50 bg-background/50 p-3"
                         >
-                          <MemberCell member={member} fallback="User đã bị xóa" />
+                          <MemberCell member={member} fallback="Người dùng đã bị xóa" />
                           <p className="mt-2 text-xs text-muted-foreground">
-                            Joined: {formatShortDate(member.joinedAt)}
+                            Tham gia: {formatShortDate(member.joinedAt)}
                           </p>
                         </div>
                       ))}

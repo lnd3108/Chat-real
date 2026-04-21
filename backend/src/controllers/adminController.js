@@ -13,9 +13,8 @@ import {
   getIo,
 } from "../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../services/accountDeletionService.js";
-import { sendAccountDeletedEmail } from "../utils/mail.js";
+import { isMailConfigured, sendAccountDeletedEmail } from "../utils/mail.js";
 import { emitDirectBlockStatusChanged } from "./conversationController.js";
-import bcrypt from "bcrypt";
 import {
   getMaintenanceStatus,
   requestPasswordVerification,
@@ -37,269 +36,28 @@ import {
 } from "../services/dashboardRealtimeService.js";
 import { emitReportUpdated } from "../services/reportRealtimeService.js";
 import { escapeRegex } from "../utils/regex.js";
+import {
+  buildAdminBlockFilter,
+  buildAdminFriendFilter,
+  buildAdminFriendRequestFilter,
+  getAdminBlockSort,
+  getAdminFriendRequestSort,
+  getAdminFriendSort,
+  mapAdminBlockRelation,
+  mapAdminFriendRelation,
+  mapAdminFriendRequestRelation,
+  mapAdminLastMessage,
+  syncBlockingDocumentsFromEmbeddedState,
+} from "../services/adminQueryHelpers.js";
+import {
+  buildAdminReportQuery,
+  buildModerationTargetUser,
+  getAdminReportSort,
+  validateAdminReportStatusUpdate,
+} from "../services/adminReportService.js";
+import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
-const mapAdminUserSummary = (user) => {
-  if (!user) return null;
 
-  return {
-    _id: user._id,
-    displayName: user.displayName,
-    userName: user.userName,
-    email: user.email ?? null,
-    avatarUrl: user.avatarUrl ?? null,
-  };
-};
-
-const mapAdminBlockRelation = (block) => ({
-  _id: block._id,
-  blocker: mapAdminUserSummary(block.userId),
-  blockedUser: mapAdminUserSummary(block.blockedUserId),
-  isActive: block.isActive !== false,
-  createdAt: block.createdAt,
-  unblockedAt: block.unblockedAt ?? null,
-  type: block.type ?? BLOCKING_TYPE_DIRECT_ONLY,
-  reason: block.reason ?? null,
-});
-
-const getAdminBlockSort = (sort = "createdAt-desc") => {
-  switch (sort) {
-    case "createdAt-asc":
-      return { createdAt: 1 };
-    case "blocker-asc":
-      return { userId: 1, createdAt: -1 };
-    case "blocked-asc":
-      return { blockedUserId: 1, createdAt: -1 };
-    case "status":
-      return { isActive: -1, createdAt: -1 };
-    case "createdAt-desc":
-    default:
-      return { createdAt: -1 };
-  }
-};
-
-const syncBlockingDocumentsFromEmbeddedState = async () => {
-  const usersWithBlocks = await User.find({
-    "blockedUsers.0": { $exists: true },
-  })
-    .select("_id blockedUsers")
-    .lean();
-
-  if (!usersWithBlocks.length) {
-    return;
-  }
-
-  const operations = [];
-
-  usersWithBlocks.forEach((user) => {
-    (user.blockedUsers ?? []).forEach((entry) => {
-      if (!entry?.userId) {
-        return;
-      }
-
-      operations.push({
-        updateOne: {
-          filter: {
-            userId: user._id,
-            blockedUserId: entry.userId,
-          },
-          update: {
-            $set: {
-              reason: entry.reason ?? null,
-              isActive: true,
-              unblockedAt: null,
-              type: BLOCKING_TYPE_DIRECT_ONLY,
-              createdAt: entry.createdAt ?? new Date(),
-            },
-          },
-          upsert: true,
-        },
-      });
-    });
-  });
-
-  if (!operations.length) {
-    return;
-  }
-
-  await Blocking.bulkWrite(operations, { ordered: false });
-};
-
-const buildAdminBlockFilter = async ({ q = "", status = "" }) => {
-  const filter = {};
-
-  if (status === "active") {
-    filter.isActive = { $ne: false };
-  } else if (status === "inactive") {
-    filter.isActive = false;
-  }
-
-  const trimmedQuery = String(q || "").trim();
-  if (!trimmedQuery) {
-    return filter;
-  }
-
-  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
-  const matchedUsers = await User.find({
-    $or: [
-      { userName: regex },
-      { displayName: regex },
-      { email: regex },
-    ],
-  })
-    .select("_id")
-    .lean();
-
-  const matchedUserIds = matchedUsers.map((user) => user._id);
-
-  if (!matchedUserIds.length) {
-    filter._id = null;
-    return filter;
-  }
-
-  filter.$or = [
-    { userId: { $in: matchedUserIds } },
-    { blockedUserId: { $in: matchedUserIds } },
-  ];
-
-  return filter;
-};
-
-const mapAdminFriendRelation = (friendship) => ({
-  _id: friendship._id,
-  userA: mapAdminUserSummary(friendship.userA),
-  userB: mapAdminUserSummary(friendship.userB),
-  status: "accepted",
-  createdAt: friendship.createdAt,
-});
-
-const getAdminFriendSort = (sort = "createdAt-desc") => {
-  switch (sort) {
-    case "createdAt-asc":
-      return { createdAt: 1 };
-    case "createdAt-desc":
-    default:
-      return { createdAt: -1 };
-  }
-};
-
-const buildAdminFriendFilter = async ({ q = "" }) => {
-  const filter = {};
-  const trimmedQuery = String(q || "").trim();
-
-  if (!trimmedQuery) {
-    return filter;
-  }
-
-  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
-  const matchedUsers = await User.find({
-    $or: [{ userName: regex }, { displayName: regex }],
-  })
-    .select("_id")
-    .lean();
-
-  const matchedUserIds = matchedUsers.map((user) => user._id);
-
-  if (!matchedUserIds.length) {
-    filter._id = null;
-    return filter;
-  }
-
-  filter.$or = [
-    { userA: { $in: matchedUserIds } },
-    { userB: { $in: matchedUserIds } },
-  ];
-
-  return filter;
-};
-
-const mapAdminFriendRequestRelation = (request) => ({
-  _id: request._id,
-  fromUser: mapAdminUserSummary(request.from),
-  toUser: mapAdminUserSummary(request.to),
-  message: request.message ?? "",
-  status: request.status ?? "pending",
-  createdAt: request.createdAt,
-  updatedAt: request.updatedAt,
-});
-
-const getAdminFriendRequestSort = (sort = "createdAt-desc") => {
-  switch (sort) {
-    case "createdAt-asc":
-      return { createdAt: 1 };
-    case "updatedAt-desc":
-      return { updatedAt: -1 };
-    case "status":
-      return { status: 1, createdAt: -1 };
-    case "createdAt-desc":
-    default:
-      return { createdAt: -1 };
-  }
-};
-
-const buildAdminFriendRequestFilter = async ({ q = "", status = "" }) => {
-  const filter = {};
-  const trimmedStatus = String(status || "").trim();
-  const trimmedQuery = String(q || "").trim();
-
-  if (trimmedStatus && ["pending", "accepted", "rejected", "cancelled"].includes(trimmedStatus)) {
-    if (trimmedStatus === "pending") {
-      filter.$and = [
-        {
-          $or: [{ status: "pending" }, { status: { $exists: false } }, { status: null }],
-        },
-      ];
-    } else {
-      filter.status = trimmedStatus;
-    }
-  }
-
-  if (!trimmedQuery) {
-    return filter;
-  }
-
-  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
-  const matchedUsers = await User.find({
-    $or: [{ userName: regex }, { displayName: regex }, { email: regex }],
-  })
-    .select("_id")
-    .lean();
-
-  const matchedUserIds = matchedUsers.map((user) => user._id);
-
-  if (!matchedUserIds.length) {
-    filter._id = null;
-    return filter;
-  }
-
-  const participantFilter = {
-    $or: [
-    { from: { $in: matchedUserIds } },
-    { to: { $in: matchedUserIds } },
-    ],
-  };
-
-  if (filter.$and) {
-    filter.$and.push(participantFilter);
-  } else {
-    Object.assign(filter, participantFilter);
-  }
-
-  return filter;
-};
-
-const mapAdminLastMessage = (lastMessage) => {
-  if (!lastMessage) return null;
-
-  return {
-    _id: lastMessage._id ?? null,
-    content: lastMessage.content ?? null,
-    imgUrl: lastMessage.imgUrl ?? null,
-    senderId: lastMessage.senderId ?? null,
-    senderDisplayName: lastMessage.senderDisplayName ?? null,
-    senderAvatar: lastMessage.senderAvatar ?? null,
-    createdAt: lastMessage.createdAt ?? null,
-  };
-};
 
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
   _id: conversation._id,
@@ -1553,7 +1311,7 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
   }
 };
 
-// ========== REPORT MANAGEMENT ==========
+// ========== QUAN LY BAO CAO ==========
 
 export const getReports = async (req, res) => {
   try {
@@ -1563,40 +1321,8 @@ export const getReports = async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
     const skip = (pageNum - 1) * limitNum;
 
-    const query = {};
-
-    // Filter by status
-    if (status && ["pending", "reviewing", "resolved", "rejected"].includes(status)) {
-      query.status = status;
-    }
-
-    // Filter by targetType
-    if (targetType && ["user", "message", "conversation"].includes(targetType)) {
-      query.targetType = targetType;
-    }
-
-    // Search by reason
-    if (q && q.trim().length > 0) {
-      const searchRegex = new RegExp(escapeRegex(q.trim()), "i");
-      query.$or = [
-        { reason: searchRegex },
-        { description: searchRegex },
-        { "reporterSnapshot.displayName": searchRegex },
-        { "reporterSnapshot.userName": searchRegex },
-        { "targetUserSnapshot.displayName": searchRegex },
-        { "targetUserSnapshot.userName": searchRegex },
-      ];
-    }
-
-    // Sort logic
-    let sortObj = { createdAt: -1 };
-    if (sort === "createdAt-asc") {
-      sortObj = { createdAt: 1 };
-    } else if (sort === "status") {
-      sortObj = { status: 1, createdAt: -1 };
-    } else if (sort === "updated") {
-      sortObj = { updatedAt: -1 };
-    }
+    const query = buildAdminReportQuery({ status, targetType, q });
+    const sortObj = getAdminReportSort(sort);
 
     const reports = await Report.find(query)
       .sort(sortObj)
@@ -1610,7 +1336,7 @@ export const getReports = async (req, res) => {
     const total = await Report.countDocuments(query);
 
     res.json({
-      message: "Reports retrieved successfully",
+      message: "Lấy danh sách báo cáo thành công",
       data: {
         reports,
         pagination: {
@@ -1622,8 +1348,10 @@ export const getReports = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching reports:", error);
-    res.status(500).json({ message: "Failed to fetch reports" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi lấy danh sách báo cáo:",
+      message: "Không thể lấy danh sách báo cáo",
+    });
   }
 };
 
@@ -1647,7 +1375,7 @@ export const getReportDetail = async (req, res) => {
       .lean();
 
     if (!report) {
-      return res.status(404).json({ message: "Report not found" });
+      return sendError(res, 404, "Không tìm thấy báo cáo");
     }
 
     let moderationTargetUser = null;
@@ -1695,16 +1423,20 @@ export const getReportDetail = async (req, res) => {
       }
     }
 
+    moderationTargetUser = buildModerationTargetUser(report) ?? moderationTargetUser;
+
     res.json({
-      message: "Report retrieved successfully",
+      message: "Lấy chi tiết báo cáo thành công",
       data: {
         report,
         moderationTargetUser,
       },
     });
   } catch (error) {
-    console.error("Error fetching report detail:", error);
-    res.status(500).json({ message: "Failed to fetch report detail" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi lấy chi tiết báo cáo:",
+      message: "Không thể lấy chi tiết báo cáo",
+    });
   }
 };
 
@@ -1714,13 +1446,9 @@ export const updateReportStatus = async (req, res) => {
     const { status, resolutionNote } = req.body;
     const adminId = req.user._id;
 
-    // Validate status
-    if (!status || !["pending", "reviewing", "resolved", "rejected"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    if (resolutionNote && resolutionNote.length > 2000) {
-      return res.status(400).json({ message: "Resolution note must be less than 2000 characters" });
+    const validationError = validateAdminReportStatusUpdate({ status, resolutionNote });
+    if (validationError) {
+      return sendError(res, 400, validationError);
     }
 
     const updateData = {
@@ -1740,7 +1468,7 @@ export const updateReportStatus = async (req, res) => {
       .lean();
 
     if (!report) {
-      return res.status(404).json({ message: "Report not found" });
+      return sendError(res, 404, "Không tìm thấy báo cáo");
     }
 
     await emitReportUpdated(report._id, {
@@ -1749,12 +1477,14 @@ export const updateReportStatus = async (req, res) => {
     });
 
     res.json({
-      message: "Report status updated successfully",
+      message: "Cập nhật trạng thái báo cáo thành công",
       data: { report },
     });
   } catch (error) {
-    console.error("Error updating report status:", error);
-    res.status(500).json({ message: "Failed to update report status" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi cập nhật trạng thái báo cáo:",
+      message: "Không thể cập nhật trạng thái báo cáo",
+    });
   }
 };
 
@@ -1766,28 +1496,28 @@ export const resolveReportWithAction = async (req, res) => {
 
     const report = await Report.findById(id);
     if (!report) {
-      return res.status(404).json({ message: "Report not found" });
+      return sendError(res, 404, "Không tìm thấy báo cáo");
     }
 
     let actionResult = null;
 
-    // Handle different actions
+    // Xử lý hành động tương ứng với báo cáo
     if (action === "ban-user" && report.targetUserId) {
       await User.findByIdAndUpdate(report.targetUserId, { status: "banned" });
-      actionResult = "User banned";
+      actionResult = "Đã khóa người dùng";
     } else if (action === "unban-user" && report.targetUserId) {
       await User.findByIdAndUpdate(report.targetUserId, { status: "active" });
-      actionResult = "User unbanned";
+      actionResult = "Đã mở khóa người dùng";
     } else if (action === "delete-account" && report.targetUserId) {
-      // Note: You may want to call permanentlyDeleteUserAccount service here
+      // Tạm thời đánh dấu tài khoản để xử lý tiếp theo
       await User.findByIdAndUpdate(report.targetUserId, { status: "inactive" });
-      actionResult = "Account marked for deletion";
+      actionResult = "Đã đánh dấu tài khoản để xóa";
     } else if (action === "delete-message" && report.targetMessageId) {
       await Message.findByIdAndUpdate(report.targetMessageId, { isDeletedForEveryone: true });
-      actionResult = "Message deleted";
+      actionResult = "Đã xóa tin nhắn";
     }
 
-    // Update report status
+    // Cập nhật trạng thái báo cáo
     const updateData = {
       status: "resolved",
       reviewedByAdminId: adminId,
@@ -1797,7 +1527,7 @@ export const resolveReportWithAction = async (req, res) => {
     if (resolutionNote) {
       updateData.resolutionNote = `[${action}] ${resolutionNote.trim()}`;
     } else {
-      updateData.resolutionNote = `[${action}] Resolved with action`;
+      updateData.resolutionNote = `[${action}] Đã xử lý theo hành động`;
     }
 
     const updatedReport = await Report.findByIdAndUpdate(id, updateData, { new: true })
@@ -1812,15 +1542,17 @@ export const resolveReportWithAction = async (req, res) => {
     });
 
     res.json({
-      message: "Report resolved with action successfully",
+      message: "Xử lý báo cáo bằng hành động thành công",
       data: {
         report: updatedReport,
         action: actionResult,
       },
     });
   } catch (error) {
-    console.error("Error resolving report with action:", error);
-    res.status(500).json({ message: "Failed to resolve report with action" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi xử lý báo cáo bằng hành động:",
+      message: "Không thể xử lý báo cáo bằng hành động",
+    });
   }
 };
 
@@ -1828,8 +1560,6 @@ export const resolveReportWithAction = async (req, res) => {
 
 export const getSystemHealth = async (req, res) => {
   try {
-    const { isMailConfigured } = await import("../utils/mail.js");
-    
     const health = {
       status: "healthy",
       checks: {
@@ -1858,7 +1588,7 @@ export const getMaintenanceInfo = async (req, res) => {
     const status = await getMaintenanceStatus();
     return res.status(200).json(status);
   } catch (error) {
-    console.error("Error getting maintenance info:", error);
+    console.error("Lỗi khi lấy thông tin bảo trì:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -1880,7 +1610,7 @@ export const requestMaintenancePasswordVerification = async (req, res) => {
       email: admin.email,
     });
   } catch (error) {
-    console.error("Error requesting password verification:", error);
+    console.error("Lỗi khi yêu cầu xác minh mật khẩu:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -1900,7 +1630,7 @@ export const verifyMaintenancePassword = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy quản trị viên" });
     }
 
-    // Verify password
+    // Kiểm tra mật khẩu
     const isPasswordValid = await verifyPasswordAndPrepareConfirmation(
       password,
       admin.hashedPassword
@@ -1910,7 +1640,7 @@ export const verifyMaintenancePassword = async (req, res) => {
       return res.status(401).json({ message: "Mật khẩu không chính xác" });
     }
 
-    // Send confirmation code
+    // Gửi mã xác nhận
     const result = await sendConfirmationCode(admin.email);
     if (!result.ok) {
       return res.status(500).json({ message: result.message });
@@ -1921,14 +1651,14 @@ export const verifyMaintenancePassword = async (req, res) => {
       expiresAt: result.expiresAt,
     });
   } catch (error) {
-    console.error("Error verifying maintenance password:", {
+    console.error("Lỗi khi xác minh mật khẩu bảo trì:", {
       adminId: req.user?._id,
       error: error.message,
       code: error.code,
       stack: error.stack,
     });
     
-    // Provide specific error message based on the type of error
+    // Trả về thông báo cụ thể theo loại lỗi
     if (error.message?.includes("SMTP")) {
       return res.status(500).json({ message: "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên." });
     }
@@ -1937,7 +1667,7 @@ export const verifyMaintenancePassword = async (req, res) => {
   }
 };
 
-// Step 3: Verify confirmation code and toggle maintenance
+// Bước 3: Xác minh mã xác nhận và bật/tắt chế độ bảo trì
 export const confirmMaintenanceToggle = async (req, res) => {
   try {
     const adminId = req.user._id;
@@ -1949,7 +1679,7 @@ export const confirmMaintenanceToggle = async (req, res) => {
         .json({ message: "Thiếu code hoặc giá trị enable" });
     }
 
-    // Verify confirmation code
+    // Kiểm tra mã xác nhận
     const verifyResult = await verifyConfirmationCode(code);
     if (!verifyResult.ok) {
       return res.status(400).json({
@@ -1959,10 +1689,10 @@ export const confirmMaintenanceToggle = async (req, res) => {
       });
     }
 
-    // Toggle maintenance mode
+    // Bật hoặc tắt chế độ bảo trì
     const result = await toggleMaintenanceMode(adminId, enable);
 
-    // If enabling maintenance, disconnect all non-admin users
+    // Nếu bật bảo trì thì ngắt kết nối toàn bộ người dùng không phải admin
     if (enable) {
       const message = result.message;
       disconnectAllUserSockets(message);
@@ -2012,12 +1742,12 @@ export const confirmMaintenanceToggle = async (req, res) => {
       disabledAt: result.disabledAt,
     });
   } catch (error) {
-    console.error("Error confirming maintenance toggle:", error);
+    console.error("Lỗi khi xác nhận thay đổi trạng thái bảo trì:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
-// Update maintenance message
+// Cập nhật thông báo bảo trì
 export const updateMaintenanceMessage = async (req, res) => {
   try {
     const { message } = req.body;
@@ -2034,7 +1764,7 @@ export const updateMaintenanceMessage = async (req, res) => {
       maintenanceMessage: result.message,
     });
   } catch (error) {
-    console.error("Error updating maintenance message:", error);
+    console.error("Lỗi khi cập nhật thông báo bảo trì:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

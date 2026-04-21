@@ -8,9 +8,10 @@ import {
   validateReportInput,
   validateReportTarget,
 } from "../services/reportService.js";
+import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
 /**
- * Create a new report
+ * Tạo báo cáo mới
  * POST /reports
  */
 export const createReport = async (req, res) => {
@@ -21,7 +22,7 @@ export const createReport = async (req, res) => {
 
     const inputError = validateReportInput({ targetType, reason, description });
     if (inputError) {
-      return res.status(400).json({ message: inputError });
+      return sendError(res, 400, inputError);
     }
 
     const targetError = await validateReportTarget({
@@ -32,7 +33,7 @@ export const createReport = async (req, res) => {
       targetConversationId,
     });
     if (targetError) {
-      return res.status(targetError.status).json({ message: targetError.message });
+      return sendError(res, targetError.status, targetError.message);
     }
 
     const reporterSnapshot = buildReporterSnapshot(req.user);
@@ -43,7 +44,7 @@ export const createReport = async (req, res) => {
         buildTargetConversationSnapshot(targetType, targetConversationId),
       ]);
 
-    // Create report
+    // Tạo báo cáo
     const report = new Report({
       reporterId,
       targetType,
@@ -62,17 +63,19 @@ export const createReport = async (req, res) => {
     await emitNewReportCreated(report._id);
 
     res.status(201).json({
-      message: "Report created successfully",
+      message: "Tạo báo cáo thành công",
       data: { report },
     });
   } catch (error) {
-    console.error("Error creating report:", error);
-    res.status(500).json({ message: "Failed to create report" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi tạo báo cáo:",
+      message: "Không thể tạo báo cáo",
+    });
   }
 };
 
 /**
- * Get user's own reports
+ * Lấy danh sách báo cáo của người dùng hiện tại
  * GET /reports/me
  */
 export const getMyReports = async (req, res) => {
@@ -103,7 +106,7 @@ export const getMyReports = async (req, res) => {
     const total = await Report.countDocuments(query);
 
     res.json({
-      message: "Reports retrieved successfully",
+      message: "Lấy danh sách báo cáo thành công",
       data: {
         reports,
         pagination: {
@@ -115,7 +118,9 @@ export const getMyReports = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching user reports:", error);
-    res.status(500).json({ message: "Failed to fetch reports" });
+    return sendServerError(res, error, {
+      logMessage: "Lỗi khi lấy danh sách báo cáo của người dùng:",
+      message: "Không thể lấy danh sách báo cáo",
+    });
   }
 };

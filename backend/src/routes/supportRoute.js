@@ -13,20 +13,20 @@ const router = express.Router();
 
 router.use(protectedRoute);
 
-// Get or create current open support conversation
+// Lấy hoặc tạo cuộc trò chuyện hỗ trợ đang mở hiện tại
 router.post("/conversations", getOrCreateSupportConversation);
 router.get("/conversations/me/current", getCurrentSupportConversation);
 
-// Get all support conversations for the user
+// Lấy toàn bộ cuộc trò chuyện hỗ trợ của người dùng
 router.get("/conversations/me", getUserSupportConversations);
 
-// Get support conversation detail with messages
+// Lấy chi tiết cuộc trò chuyện hỗ trợ kèm danh sách tin nhắn
 router.get("/conversations/:id", getSupportConversationDetail);
 
-// Delete support conversation for user (soft delete)
+// Xóa cuộc trò chuyện hỗ trợ phía người dùng
 router.delete("/conversations/:id", deleteSupportConversation);
 
-// Send support message
+// Gửi tin nhắn hỗ trợ
 router.post("/messages", sendSupportMessage);
 
 export default router;

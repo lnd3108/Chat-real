@@ -83,27 +83,27 @@ const buildSocketConversationPayload = (conversation) => ({
 });
 
 /**
- * Get or create current support conversation for user
+ * Lấy hoặc tạo cuộc trò chuyện hỗ trợ hiện tại cho người dùng
  * POST /support/conversations
  */
 export const getOrCreateSupportConversation = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Check if user already has an open support conversation
+    // Kiểm tra người dùng đã có cuộc trò chuyện hỗ trợ đang mở hay chưa
     let supportConversation = await Conversation.findOne({
       type: "support",
       supportCreatedByUserId: userId,
       supportStatus: { $in: SUPPORT_STATUS_OPEN_SET },
     });
 
-    // If no open conversation, create a new one
+    // Nếu chưa có cuộc trò chuyện đang mở thì tạo mới
     if (!supportConversation) {
       const admin = await User.findOne({ role: "admin" }).select("_id");
 
       if (!admin) {
         return res.status(400).json({
-          message: "No admin available. Please try again later.",
+          message: "Hiện không có quản trị viên hỗ trợ. Vui lòng thử lại sau.",
         });
       }
 
@@ -132,7 +132,7 @@ export const getOrCreateSupportConversation = async (req, res) => {
       });
 
       return res.json({
-        message: "Support conversation retrieved",
+        message: "Lấy cuộc trò chuyện hỗ trợ thành công",
         data: { conversation: formattedConversation },
       });
     }
@@ -141,19 +141,19 @@ export const getOrCreateSupportConversation = async (req, res) => {
     const formattedConversation = formatSupportConversation(supportConversation);
 
     res.json({
-      message: "Support conversation retrieved",
+      message: "Lấy cuộc trò chuyện hỗ trợ thành công",
       data: { conversation: formattedConversation },
     });
   } catch (error) {
-    console.error("Error getting/creating support conversation:", error);
-    res.status(500).json({ message: "Failed to get support conversation" });
+    console.error("Lỗi khi lấy hoặc tạo cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể lấy cuộc trò chuyện hỗ trợ" });
   }
 };
 
 export const getCurrentSupportConversation = getOrCreateSupportConversation;
 
 /**
- * Get all support conversations for user (excludes deleted ones)
+ * Lấy danh sách cuộc trò chuyện hỗ trợ của người dùng
  * GET /support/conversations/me
  */
 export const getUserSupportConversations = async (req, res) => {
@@ -191,7 +191,7 @@ export const getUserSupportConversations = async (req, res) => {
     });
 
     res.json({
-      message: "Support conversations retrieved",
+      message: "Lấy danh sách cuộc trò chuyện hỗ trợ thành công",
       data: {
         conversations: conversations.map(formatSupportConversation),
         pagination: {
@@ -203,13 +203,13 @@ export const getUserSupportConversations = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching user support conversations:", error);
-    res.status(500).json({ message: "Failed to fetch support conversations" });
+    console.error("Lỗi khi lấy danh sách cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể lấy danh sách cuộc trò chuyện hỗ trợ" });
   }
 };
 
 /**
- * Send a message in support conversation
+ * Gửi tin nhắn trong cuộc trò chuyện hỗ trợ
  * POST /support/messages
  */
 export const sendSupportMessage = async (req, res) => {
@@ -218,14 +218,14 @@ export const sendSupportMessage = async (req, res) => {
     const userId = req.user._id;
 
     if (!conversationId) {
-      return res.status(400).json({ message: "Conversation ID is required" });
+      return res.status(400).json({ message: "Thiếu mã cuộc trò chuyện" });
     }
 
     if (!content || content.trim().length === 0) {
-      return res.status(400).json({ message: "Message content is required" });
+      return res.status(400).json({ message: "Vui lòng nhập nội dung tin nhắn" });
     }
 
-    // Verify user has access to this support conversation
+    // Kiểm tra người dùng có quyền truy cập cuộc trò chuyện hỗ trợ này hay không
     const conversation = await Conversation.findOne({
       _id: conversationId,
       type: "support",
@@ -234,17 +234,17 @@ export const sendSupportMessage = async (req, res) => {
 
     if (!conversation) {
       return res.status(403).json({
-        message: "You don't have access to this support conversation",
+        message: "Bạn không có quyền truy cập cuộc trò chuyện hỗ trợ này",
       });
     }
 
-    // If conversation was resolved/closed and user sends new message, reopen it
+    // Nếu cuộc trò chuyện đã đóng/xử lý xong mà người dùng gửi tin nhắn mới thì mở lại
     if (conversation.supportStatus === "resolved" || conversation.supportStatus === "closed") {
       conversation.supportStatus = "open";
       conversation.lastMessageAt = new Date();
     }
 
-    // Create message
+    // Tạo tin nhắn
     const message = new Message({
       conversationId,
       senderId: userId,
@@ -254,7 +254,7 @@ export const sendSupportMessage = async (req, res) => {
 
     await message.save();
 
-    // Update conversation
+    // Cập nhật cuộc trò chuyện
     conversation.lastMessageAt = new Date();
     conversation.lastMessage = {
       _id: message._id.toString(),
@@ -266,7 +266,7 @@ export const sendSupportMessage = async (req, res) => {
       createdAt: message.createdAt,
     };
 
-    // Reset unread for sender, increment for others
+    // Đặt lại số tin chưa đọc cho người gửi và tăng cho người còn lại
     const unreadCounts = new Map(conversation.unreadCounts || {});
     unreadCounts.set(userId.toString(), 0);
 
@@ -311,20 +311,20 @@ export const sendSupportMessage = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Support message sent",
+      message: "Gửi tin nhắn hỗ trợ thành công",
       data: {
         message,
         conversation: formattedConversation,
       },
     });
   } catch (error) {
-    console.error("Error sending support message:", error);
-    res.status(500).json({ message: "Failed to send message" });
+    console.error("Lỗi khi gửi tin nhắn hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể gửi tin nhắn" });
   }
 };
 
 /**
- * Get support conversation detail with messages
+ * Lấy chi tiết cuộc trò chuyện hỗ trợ kèm danh sách tin nhắn
  * GET /support/conversations/:id
  */
 export const getSupportConversationDetail = async (req, res) => {
@@ -339,37 +339,37 @@ export const getSupportConversationDetail = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
     await populateSupportConversation(conversation);
 
-    // Get messages
+    // Lấy danh sách tin nhắn
     const messages = await Message.find({ conversationId: id })
       .sort({ createdAt: 1 })
       .lean();
 
-    // Mark as read
+    // Đánh dấu đã đọc
     const unreadCounts = new Map(conversation.unreadCounts || {});
     unreadCounts.set(userId.toString(), 0);
     conversation.unreadCounts = unreadCounts;
     await conversation.save();
 
     res.json({
-      message: "Support conversation retrieved",
+      message: "Lấy chi tiết cuộc trò chuyện hỗ trợ thành công",
       data: {
         conversation: formatSupportConversation(conversation),
         messages,
       },
     });
   } catch (error) {
-    console.error("Error fetching support conversation detail:", error);
-    res.status(500).json({ message: "Failed to fetch support conversation" });
+    console.error("Lỗi khi lấy chi tiết cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể lấy chi tiết cuộc trò chuyện hỗ trợ" });
   }
 };
 
 /**
- * Delete support conversation for user (soft delete - saves history for admin)
+ * Xóa cuộc trò chuyện hỗ trợ phía người dùng
  * DELETE /support/conversations/:id
  */
 export const deleteSupportConversation = async (req, res) => {
@@ -384,19 +384,19 @@ export const deleteSupportConversation = async (req, res) => {
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Support conversation not found" });
+      return res.status(404).json({ message: "Không tìm thấy cuộc trò chuyện hỗ trợ" });
     }
 
-    // Mark as deleted by user (soft delete - keeps history for admin)
+    // Đánh dấu người dùng đã xóa, nhưng vẫn giữ lịch sử cho admin
     conversation.userDeletedAt = new Date();
     await conversation.save();
 
     res.json({
-      message: "Support conversation deleted successfully",
+      message: "Xóa cuộc trò chuyện hỗ trợ thành công",
       data: { conversationId: id },
     });
   } catch (error) {
-    console.error("Error deleting support conversation:", error);
-    res.status(500).json({ message: "Failed to delete support conversation" });
+    console.error("Lỗi khi xóa cuộc trò chuyện hỗ trợ:", error);
+    res.status(500).json({ message: "Không thể xóa cuộc trò chuyện hỗ trợ" });
   }
 };

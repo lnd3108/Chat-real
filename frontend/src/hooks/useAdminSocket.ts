@@ -49,7 +49,7 @@ export const useAdminSocket = () => {
       addNotification({
         id: payload.id ?? notificationId("admin-system", payload.entityId),
         type: payload.type ?? "system",
-        title: payload.title ?? "ThÃ´ng bÃ¡o há»‡ thá»‘ng",
+        title: payload.title ?? "Thông báo hệ thống",
         message: payload.message ?? "",
         link: payload.link,
         entityId: payload.entityId,
@@ -79,7 +79,7 @@ export const useAdminSocket = () => {
         title,
         message: payload.user?.displayName
           ? `${payload.user.displayName} (${payload.user.userName})`
-          : "CÃ³ thay Ä‘á»•i ngÆ°á»i dÃ¹ng má»›i",
+          : "Có thay đổi người dùng mới",
         link: payload.user?._id ? `/admin/users/${payload.user._id}` : "/admin/users",
         entityId: payload.user?._id,
         actor: payload.actor ?? payload.user,
@@ -87,8 +87,8 @@ export const useAdminSocket = () => {
     };
 
     const onUserNew = (payload: AdminUserRealtimePayload) => {
-      handleUserRealtime(payload, "NgÆ°á»i dÃ¹ng má»›i");
-      toast.success("CÃ³ ngÆ°á»i dÃ¹ng má»›i Ä‘Äƒng kÃ½");
+      handleUserRealtime(payload, "Người dùng mới");
+      toast.success("Có người dùng mới đăng ký");
     };
 
     const onUserStatusChanged = (payload: AdminUserRealtimePayload) => {
@@ -104,8 +104,8 @@ export const useAdminSocket = () => {
       if (payload.user?._id) {
         removeUser(payload.user._id);
       }
-      handleUserRealtime(payload, "TÃ i khoáº£n Ä‘Ã£ bá»‹ xÃ³a");
-      toast.warning("Má»™t tÃ i khoáº£n vá»«a bá»‹ xÃ³a");
+      handleUserRealtime(payload, "Tài khoản đã bị xóa");
+      toast.warning("Một tài khoản vừa bị xóa");
     };
 
     const onReportChanged = (
@@ -121,7 +121,7 @@ export const useAdminSocket = () => {
         id: notificationId("report", payload.report._id),
         type: "report",
         title,
-        message: payload.report.reason ?? "BÃ¡o cÃ¡o má»›i",
+        message: payload.report.reason ?? "Báo cáo mới",
         link: `/admin/reports/${payload.report._id}`,
         entityId: payload.report._id,
         actor: payload.report.reporterSnapshot,
@@ -145,11 +145,11 @@ export const useAdminSocket = () => {
       addNotification({
         id: notificationId("support", payload.conversationId),
         type: "support",
-        title: "Tin nháº¯n há»— trá»£ má»›i",
+        title: "Tin nhắn hỗ trợ mới",
         message:
           payload.message?.content ??
           payload.conversation?.lastMessage?.content ??
-          "CÃ³ cáº­p nháº­t há»— trá»£ má»›i",
+          "Có cập nhật hỗ trợ mới",
         link: payload.conversationId
           ? `/admin/support/${payload.conversationId}`
           : "/admin/support",
@@ -159,7 +159,7 @@ export const useAdminSocket = () => {
       });
 
       if (!isActive) {
-        toast.message("CÃ³ tin nháº¯n há»— trá»£ má»›i");
+        toast.message("Có tin nhắn hỗ trợ mới");
       }
     };
 
@@ -184,14 +184,14 @@ export const useAdminSocket = () => {
       addNotification({
         id: notificationId("maintenance", payload.createdAt),
         type: "system",
-        title: enabled ? "ÄÃ£ báº­t báº£o trÃ¬" : "ÄÃ£ táº¯t báº£o trÃ¬",
+        title: enabled ? "Đã bật bảo trì" : "Đã tắt bảo trì",
         message: payload.message ?? "",
         link: "/admin/maintenance",
         severity: enabled ? "warning" : "success",
       });
 
       toast[enabled ? "warning" : "success"](
-        enabled ? "Há»‡ thá»‘ng Ä‘Ã£ báº­t báº£o trÃ¬" : "Há»‡ thá»‘ng Ä‘Ã£ táº¯t báº£o trÃ¬",
+        enabled ? "Hệ thống đã bật bảo trì" : "Hệ thống đã tắt bảo trì",
       );
     };
 
@@ -212,27 +212,27 @@ export const useAdminSocket = () => {
 
     socket.on(ADMIN_SOCKET_EVENTS.USER_NEW, onUserNew);
     socket.on(ADMIN_SOCKET_EVENTS.USER_LOGIN, (payload: AdminUserRealtimePayload) =>
-      handleUserRealtime(payload, "NgÆ°á»i dÃ¹ng Ä‘ang nháº­p"),
+      handleUserRealtime(payload, "Người dùng đang nhập"),
     );
     socket.on(ADMIN_SOCKET_EVENTS.USER_LOGOUT, (payload: AdminUserRealtimePayload) =>
-      handleUserRealtime(payload, "NgÆ°á»i dÃ¹ng Ä‘Äƒng xuáº¥t"),
+      handleUserRealtime(payload, "Người dùng đăng xuất"),
     );
     socket.on(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, onUserStatusChanged);
     socket.on(ADMIN_SOCKET_EVENTS.USER_LOCKED, (payload: AdminUserRealtimePayload) => {
-      handleUserRealtime(payload, "TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a");
-      toast.warning("Má»™t tÃ i khoáº£n vá»«a bá»‹ khÃ³a");
+      handleUserRealtime(payload, "Tài khoản đã bị khóa");
+      toast.warning("Một tài khoản vừa bị khóa");
     });
     socket.on(ADMIN_SOCKET_EVENTS.USER_UNLOCKED, (payload: AdminUserRealtimePayload) => {
-      handleUserRealtime(payload, "TÃ i khoáº£n Ä‘Ã£ Ä‘Æ°á»£c má»Ÿ khÃ³a");
-      toast.success("Má»™t tÃ i khoáº£n vá»«a Ä‘Æ°á»£c má»Ÿ khÃ³a");
+      handleUserRealtime(payload, "Tài khoản đã được mở khóa");
+      toast.success("Một tài khoản vừa được mở khóa");
     });
     socket.on(ADMIN_SOCKET_EVENTS.USER_DELETED, onUserDeleted);
     socket.on(ADMIN_SOCKET_EVENTS.REPORT_NEW, (payload: AdminReportRealtimePayload) => {
-      onReportChanged(payload, "BÃ¡o cÃ¡o má»›i");
-      toast.warning("CÃ³ bÃ¡o cÃ¡o má»›i");
+      onReportChanged(payload, "Báo cáo mới");
+      toast.warning("Có báo cáo mới");
     });
     socket.on(ADMIN_SOCKET_EVENTS.REPORT_UPDATED, (payload: AdminReportRealtimePayload) => {
-      onReportChanged(payload, "BÃ¡o cÃ¡o Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t");
+      onReportChanged(payload, "Báo cáo đã được cập nhật");
     });
     socket.on(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE, onSupportMessage);
     socket.on(ADMIN_SOCKET_EVENTS.DASHBOARD_STATS_UPDATED, onDashboardStatsUpdated);

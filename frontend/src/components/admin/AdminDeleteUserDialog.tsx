@@ -100,7 +100,7 @@ const AdminDeleteUserDialog = ({
             <p>- Direct chat se bi xoa sach cung toan bo direct messages.</p>
             <p>- Group chat khong bi xoa chi vi user nay, nhung user se bi remove khoi nhom.</p>
             <p>
-              - Group messages cu van duoc giu lai, sender se duoc an danh thanh <strong>"Nguoi dung da xoa"</strong>.
+              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành <strong>"Người dùng đã xóa"</strong>.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -119,7 +119,7 @@ const AdminDeleteUserDialog = ({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={submitting}>Huy</AlertDialogCancel>
+          <AlertDialogCancel disabled={submitting}>Hủy</AlertDialogCancel>
           <Button variant="destructive" disabled={submitting} onClick={handleDelete}>
             {submitting ? "Dang xoa..." : "Xac nhan xoa tai khoan"}
           </Button>
