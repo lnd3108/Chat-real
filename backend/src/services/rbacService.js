@@ -18,6 +18,14 @@ const LEGACY_ROLE_TO_APP_ROLE = {
   super_admin: APP_ROLES.SUPER_ADMIN,
 };
 
+const APP_ROLE_TO_DB_ROLE_VALUES = {
+  [APP_ROLES.USER]: [APP_ROLES.USER, "user", null],
+  [APP_ROLES.SUPPORT]: [APP_ROLES.SUPPORT, "support"],
+  [APP_ROLES.MODERATOR]: [APP_ROLES.MODERATOR, "moderator"],
+  [APP_ROLES.ADMIN]: [APP_ROLES.ADMIN, "admin"],
+  [APP_ROLES.SUPER_ADMIN]: [APP_ROLES.SUPER_ADMIN, "super_admin"],
+};
+
 export const normalizeRole = (userLike) => {
   const canonicalRole = String(userLike?.role ?? "")
     .trim()
@@ -105,6 +113,40 @@ export const hasRole = (userLike, role) => normalizeRole(userLike) === role;
 export const hasAdminPanelAccess = (userLike) =>
   normalizeRole(userLike) !== APP_ROLES.USER;
 
+export const getManageableRoles = (actorLike) => {
+  const actorLevel = getRoleLevel(actorLike);
+
+  return ROLE_PRIORITY.filter((role) => getRoleLevel(role) < actorLevel);
+};
+
+export const canManageUser = (actorLike, targetLike) => {
+  if (!actorLike || !targetLike) {
+    return false;
+  }
+
+  const actorId = actorLike?._id?.toString?.() ?? String(actorLike?._id ?? "");
+  const targetId = targetLike?._id?.toString?.() ?? String(targetLike?._id ?? "");
+
+  if (actorId && targetId && actorId === targetId) {
+    return false;
+  }
+
+  return getRoleLevel(actorLike) > getRoleLevel(targetLike);
+};
+
+export const buildManageableUserFilter = (actorLike) => {
+  const manageableRoles = getManageableRoles(actorLike);
+  const actorId = actorLike?._id?.toString?.() ?? actorLike?._id;
+  const manageableRoleValues = manageableRoles.flatMap(
+    (role) => APP_ROLE_TO_DB_ROLE_VALUES[role] ?? [role],
+  );
+
+  return {
+    _id: { $ne: actorId },
+    role: { $in: [...new Set(manageableRoleValues)] },
+  };
+};
+
 export const getAssignableRoles = (actorLike) => {
   if (hasRole(actorLike, APP_ROLES.SUPER_ADMIN)) {
     return [
@@ -140,10 +182,12 @@ export const serializeUserAccess = (userLike = {}) => {
 
 export const buildAdminStaffQuery = () => ({
   role: {
-    $in: ROLE_PRIORITY.filter((role) => role !== APP_ROLES.USER),
+    $in: ROLE_PRIORITY.filter((role) => role !== APP_ROLES.USER).flatMap(
+      (role) => APP_ROLE_TO_DB_ROLE_VALUES[role] ?? [role],
+    ),
   },
 });
 
 export const buildSuperAdminQuery = () => ({
-  role: APP_ROLES.SUPER_ADMIN,
+  role: { $in: APP_ROLE_TO_DB_ROLE_VALUES[APP_ROLES.SUPER_ADMIN] },
 });

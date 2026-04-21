@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Eye, Search } from "lucide-react";
 
+import AdminDeleteUserDialog from "@/components/admin/AdminDeleteUserDialog";
 import AdminPagination from "@/components/admin/AdminPagination";
 import RoleBadge from "@/components/admin/RoleBadge";
 import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getErrorMessage } from "@/lib/httpError";
-import { APP_PERMISSIONS, hasPermission } from "@/lib/rbac";
+import { APP_PERMISSIONS, canManageUser, hasPermission } from "@/lib/rbac";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { AdminUserRecord, AdminUserStatus, PaginationData } from "@/types/admin";
@@ -34,13 +35,17 @@ const AdminUsers = () => {
   const navigate = useNavigate();
   const users = useAdminSocketStore((state) => state.users as AdminUserRecord[]);
   const loading = useAdminSocketStore((state) => state.usersLoading);
-  const pagination = useAdminSocketStore(
-    (state) => state.usersPagination as PaginationData,
-  );
+  const pagination = useAdminSocketStore((state) => state.usersPagination as PaginationData);
   const fetchUsersFromStore = useAdminSocketStore((state) => state.fetchUsers);
   const upsertUser = useAdminSocketStore((state) => state.upsertUser);
+  const removeUser = useAdminSocketStore((state) => state.removeUser);
   const currentUser = useAuthStore((state) => state.user);
+
   const canAssignRole = hasPermission(currentUser, APP_PERMISSIONS.ROLE_ASSIGN);
+  const canDeleteUser = hasPermission(currentUser, APP_PERMISSIONS.USER_DELETE);
+  const canToggleUserStatus =
+    hasPermission(currentUser, APP_PERMISSIONS.USER_LOCK) ||
+    hasPermission(currentUser, APP_PERMISSIONS.USER_UNLOCK);
 
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -90,13 +95,19 @@ const AdminUsers = () => {
     upsertUser({ _id: userId, status });
   };
 
+  const visibleUsers = useMemo(
+    () =>
+      users.filter((user) => currentUser?._id !== user._id && canManageUser(currentUser, user)),
+    [currentUser, users],
+  );
+
   if (error && !loading) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
           <p className="mt-2 text-muted-foreground">
-            Xem danh sách người dùng và cập nhật trạng thái tài khoản.
+            Chỉ hiển thị các tài khoản thuộc phạm vi quản lý của bạn.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -111,7 +122,9 @@ const AdminUsers = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
-          <p className="mt-2 text-muted-foreground">Tổng cộng {pagination.total} người dùng</p>
+          <p className="mt-2 text-muted-foreground">
+            Tổng cộng {pagination.total} tài khoản thuộc phạm vi quản lý hiện tại.
+          </p>
         </div>
       </div>
 
@@ -156,10 +169,10 @@ const AdminUsers = () => {
           <div className="flex h-96 items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </div>
-        ) : users.length === 0 ? (
+        ) : visibleUsers.length === 0 ? (
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
-              <p className="text-muted-foreground">Không tìm thấy người dùng nào</p>
+              <p className="text-muted-foreground">Không có tài khoản nào trong phạm vi quản lý.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
               </p>
@@ -170,104 +183,137 @@ const AdminUsers = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Người dùng</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Email</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Trạng thái</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Vai trò</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Ngày tạo</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Hành động</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                    Người dùng
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                    Email
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                    Trạng thái
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                    Vai trò
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                    Ngày tạo
+                  </th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
+                    Hành động
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr
-                    key={user._id}
-                    className="border-b border-border/50 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          type="chat"
-                          name={user.displayName}
-                          avatarUrl={user.avatarUrl ?? undefined}
-                          className="size-10"
-                        />
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/admin/users/${user._id}`)}
-                            className="text-left"
-                          >
-                            <p className="font-medium text-foreground hover:underline">
-                              {user.displayName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">@{user.userName}</p>
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                          statusConfig[user.status]?.className ?? statusConfig.active.className
-                        }`}
-                      >
-                        {statusConfig[user.status]?.label ?? user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <RoleBadge role={user.role} />
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="ml-auto flex w-[188px] flex-col items-stretch gap-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-10 justify-start rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
-                          onClick={() => navigate(`/admin/users/${user._id}`)}
-                          aria-label={`Xem chi tiết ${user.displayName}`}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Xem chi tiết
-                        </Button>
-                        <AdminUserStatusDialog
-                          userId={user._id}
-                          userName={user.userName}
-                          displayName={user.displayName}
-                          currentStatus={user.status}
-                          fullWidth
-                          buttonClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
-                          onSuccess={(status) => updateUserStatusLocally(user._id, status)}
-                        />
-                        {canAssignRole ? (
-                          <UpdateUserRoleModal
-                            user={user}
-                            fullWidth
-                            triggerClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
-                            onSuccess={(updatedUser) =>
-                              upsertUser({
-                                ...updatedUser,
-                                _id: user._id,
-                              })
-                            }
+                {visibleUsers.map((user) => {
+                  const manageable = canManageUser(currentUser, user);
+
+                  return (
+                    <tr
+                      key={user._id}
+                      className="border-b border-border/50 transition-colors hover:bg-muted/30"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            type="chat"
+                            name={user.displayName}
+                            avatarUrl={user.avatarUrl ?? undefined}
+                            className="size-10"
                           />
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/users/${user._id}`)}
+                              className="text-left"
+                            >
+                              <p className="font-medium text-foreground hover:underline">
+                                {user.displayName}
+                              </p>
+                              <p className="text-sm text-muted-foreground">@{user.userName}</p>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{user.email}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            statusConfig[user.status]?.className ?? statusConfig.active.className
+                          }`}
+                        >
+                          {statusConfig[user.status]?.label ?? user.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="ml-auto flex w-[188px] flex-col items-stretch gap-2">
+                          {manageable ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-10 justify-start rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                              onClick={() => navigate(`/admin/users/${user._id}`)}
+                              aria-label={`Xem chi tiết ${user.displayName}`}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Xem chi tiết
+                            </Button>
+                          ) : null}
+
+                          {manageable && canToggleUserStatus ? (
+                            <AdminUserStatusDialog
+                              userId={user._id}
+                              userName={user.userName}
+                              displayName={user.displayName}
+                              currentStatus={user.status}
+                              fullWidth
+                              buttonClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
+                              onSuccess={(status) => updateUserStatusLocally(user._id, status)}
+                            />
+                          ) : null}
+
+                          {manageable && canAssignRole ? (
+                            <UpdateUserRoleModal
+                              user={user}
+                              fullWidth
+                              triggerClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
+                              onSuccess={(updatedUser) =>
+                                upsertUser({
+                                  ...updatedUser,
+                                  _id: user._id,
+                                })
+                              }
+                            />
+                          ) : null}
+
+                          {manageable && canDeleteUser ? (
+                            <AdminDeleteUserDialog
+                              userId={user._id}
+                              userName={user.userName}
+                              displayName={user.displayName}
+                              fullWidth
+                              redirectToUsers={false}
+                              onSuccess={() => removeUser(user._id)}
+                            />
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
             <AdminPagination
               page={pagination.page}
               pages={pagination.pages}
-              onPrevious={() => setPage(page - 1)}
-              onNext={() => setPage(page + 1)}
+              onPrevious={() => setPage((current) => current - 1)}
+              onNext={() => setPage((current) => current + 1)}
             />
           </>
         )}

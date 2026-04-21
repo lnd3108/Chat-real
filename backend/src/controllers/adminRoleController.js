@@ -5,6 +5,7 @@ import {
   listAuditLogs,
   updateUserRoleByAdmin,
 } from "../services/adminRoleService.js";
+import { canManageUser } from "../services/rbacService.js";
 import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
 export const getAdminRoles = async (req, res) => {
@@ -35,6 +36,10 @@ export const getAdminUserPermissions = async (req, res) => {
 
     if (!user) {
       return sendError(res, 404, "Không tìm thấy người dùng.");
+    }
+
+    if (!canManageUser(req.user, user)) {
+      return sendError(res, 403, "Bạn không có quyền thao tác trên tài khoản này.");
     }
 
     return res.status(200).json({

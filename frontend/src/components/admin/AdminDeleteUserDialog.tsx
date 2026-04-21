@@ -27,6 +27,7 @@ interface AdminDeleteUserDialogProps {
   fullWidth?: boolean;
   redirectToUsers?: boolean;
   onSuccess?: () => void;
+  disabled?: boolean;
 }
 
 const AdminDeleteUserDialog = ({
@@ -36,6 +37,7 @@ const AdminDeleteUserDialog = ({
   fullWidth = false,
   redirectToUsers = true,
   onSuccess,
+  disabled = false,
 }: AdminDeleteUserDialogProps) => {
   const navigate = useNavigate();
   const currentAdminId = useAuthStore((state) => state.user?._id);
@@ -44,9 +46,10 @@ const AdminDeleteUserDialog = ({
   const [reason, setReason] = useState("");
 
   const isSelf = currentAdminId === userId;
+  const isDisabled = disabled || isSelf;
 
   const handleDelete = async () => {
-    if (isSelf) {
+    if (isDisabled) {
       return;
     }
 
@@ -59,7 +62,7 @@ const AdminDeleteUserDialog = ({
         },
       });
 
-      toast.success("Da xoa tai khoan nguoi dung.");
+      toast.success("Đã xóa tài khoản người dùng.");
       setOpen(false);
       onSuccess?.();
 
@@ -67,7 +70,7 @@ const AdminDeleteUserDialog = ({
         navigate("/admin/users", { replace: true });
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Khong the xoa tai khoan."));
+      toast.error(getErrorMessage(error, "Không thể xóa tài khoản."));
     } finally {
       setSubmitting(false);
     }
@@ -78,11 +81,11 @@ const AdminDeleteUserDialog = ({
       <AlertDialogTrigger asChild>
         <Button
           variant="destructive"
-          disabled={isSelf}
+          disabled={isDisabled}
           className={fullWidth ? "w-full justify-start" : ""}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          {isSelf ? "Khong the tu xoa" : "Xoa tai khoan"}
+          {isDisabled ? "Không thể thao tác" : "Xóa tài khoản"}
         </Button>
       </AlertDialogTrigger>
 
@@ -91,29 +94,30 @@ const AdminDeleteUserDialog = ({
           <AlertDialogMedia className="bg-destructive/10 text-destructive">
             <Trash2 />
           </AlertDialogMedia>
-          <AlertDialogTitle>Xoa tai khoan nguoi dung</AlertDialogTitle>
+          <AlertDialogTitle>Xóa tài khoản người dùng</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2 text-left">
             <p>
-              Ban sap xoa vinh vien tai khoan <strong>{displayName}</strong> (@{userName}).
+              Bạn sắp xóa vĩnh viễn tài khoản <strong>{displayName}</strong> (@{userName}).
             </p>
-            <p>Quy tac ap dung:</p>
-            <p>- Direct chat se bi xoa sach cung toan bo direct messages.</p>
-            <p>- Group chat khong bi xoa chi vi user nay, nhung user se bi remove khoi nhom.</p>
+            <p>Quy tắc áp dụng:</p>
+            <p>- Direct chat sẽ bị xóa sạch cùng toàn bộ direct messages.</p>
+            <p>- Group chat không bị xóa chỉ vì user này, nhưng user sẽ bị remove khỏi nhóm.</p>
             <p>
-              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành <strong>"Người dùng đã xóa"</strong>.
+              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành{" "}
+              <strong>"Người dùng đã xóa"</strong>.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground" htmlFor="admin-delete-reason">
-            Ly do xoa
+            Lý do xóa
           </label>
           <Input
             id="admin-delete-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Vi du: Vi pham chinh sach"
+            placeholder="Ví dụ: Vi phạm chính sách"
             maxLength={300}
           />
         </div>
@@ -121,7 +125,7 @@ const AdminDeleteUserDialog = ({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={submitting}>Hủy</AlertDialogCancel>
           <Button variant="destructive" disabled={submitting} onClick={handleDelete}>
-            {submitting ? "Dang xoa..." : "Xac nhan xoa tai khoan"}
+            {submitting ? "Đang xóa..." : "Xác nhận xóa tài khoản"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

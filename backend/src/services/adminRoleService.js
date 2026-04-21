@@ -9,6 +9,7 @@ import {
   ROLE_PERMISSION_MAP,
 } from "../constants/rbac.js";
 import {
+  canManageUser,
   buildSuperAdminQuery,
   getAssignableRoles,
   hasPermission,
@@ -76,6 +77,12 @@ const ensureRoleAssignmentAllowed = async ({ actor, targetUser, nextRole }) => {
 
   if (!actorIsSuperAdmin && targetRole === APP_ROLES.SUPER_ADMIN) {
     const error = new Error("ADMIN không được thay đổi quyền của SUPER_ADMIN.");
+    error.status = 403;
+    throw error;
+  }
+
+  if (!canManageUser(actor, targetUser)) {
+    const error = new Error("Bạn không có quyền thao tác trên tài khoản này.");
     error.status = 403;
     throw error;
   }

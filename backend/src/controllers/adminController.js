@@ -55,7 +55,12 @@ import {
   getAdminReportSort,
   validateAdminReportStatusUpdate,
 } from "../services/adminReportService.js";
-import { buildAdminStaffQuery, serializeUserAccess } from "../services/rbacService.js";
+import {
+  buildAdminStaffQuery,
+  buildManageableUserFilter,
+  canManageUser,
+  serializeUserAccess,
+} from "../services/rbacService.js";
 import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
 
@@ -554,7 +559,7 @@ export const getUsers = async (req, res) => {
     const sort = req.query.sort || "createdAt";
 
     // Build filter object
-    const filter = {};
+    const filter = buildManageableUserFilter(req.user);
 
     // Search by username, displayName, or email
     if (searchQuery.trim()) {
@@ -626,6 +631,13 @@ export const getUserDetail = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Người dùng không tồn tại",
+      });
+    }
+
+    if (!canManageUser(req.user, user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thao tác trên tài khoản này.",
       });
     }
 
@@ -785,6 +797,13 @@ export const updateUserStatus = async (req, res) => {
       });
     }
 
+    if (!canManageUser(req.user, user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thao tác trên tài khoản này.",
+      });
+    }
+
     user.status = status;
     await user.save();
 
@@ -879,6 +898,21 @@ export const deleteUserAsAdmin = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
+      });
+    }
+
+    const targetUser = await User.findById(id).select("role");
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Người dùng không tồn tại.",
+      });
+    }
+
+    if (!canManageUser(req.user, targetUser)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thao tác trên tài khoản này.",
       });
     }
 
