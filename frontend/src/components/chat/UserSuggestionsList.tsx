@@ -142,7 +142,6 @@ const UserSuggestionsList = ({
   const handleRefresh = useCallback(async () => {
     if (isRefreshing || !onRefresh) return;
 
-    // Debounce: prevent rapid successive clicks
     const now = Date.now();
     if (now - lastRefreshTimeRef.current < REFRESH_DEBOUNCE_MS) {
       return;
