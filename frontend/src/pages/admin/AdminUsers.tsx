@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, Search } from "lucide-react";
+import { Eye, MoreHorizontal, Search } from "lucide-react";
 
 import AdminDeleteUserDialog from "@/components/admin/AdminDeleteUserDialog";
 import AdminPagination from "@/components/admin/AdminPagination";
@@ -9,6 +9,14 @@ import AdminUserStatusDialog from "@/components/admin/AdminUserStatusDialog";
 import UpdateUserRoleModal from "@/components/admin/UpdateUserRoleModal";
 import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getErrorMessage } from "@/lib/httpError";
@@ -198,7 +206,7 @@ const AdminUsers = () => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
                     Ngày tạo
                   </th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
+                  <th className="w-[140px] px-6 py-4 text-right text-sm font-semibold text-foreground">
                     Hành động
                   </th>
                 </tr>
@@ -251,55 +259,97 @@ const AdminUsers = () => {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="ml-auto flex w-[188px] flex-col items-stretch gap-2">
+                        <div className="ml-auto flex justify-end gap-2">
                           {manageable ? (
                             <Button
                               type="button"
                               variant="ghost"
-                              className="h-10 justify-start rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                              size="sm"
+                              className="h-9 rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
                               onClick={() => navigate(`/admin/users/${user._id}`)}
                               aria-label={`Xem chi tiết ${user.displayName}`}
                             >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Xem chi tiết
+                              <Eye className="h-4 w-4" />
                             </Button>
                           ) : null}
 
-                          {manageable && canToggleUserStatus ? (
-                            <AdminUserStatusDialog
-                              userId={user._id}
-                              userName={user.userName}
-                              displayName={user.displayName}
-                              currentStatus={user.status}
-                              fullWidth
-                              buttonClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
-                              onSuccess={(status) => updateUserStatusLocally(user._id, status)}
-                            />
-                          ) : null}
+                          {manageable && (canToggleUserStatus || canAssignRole || canDeleteUser) ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 rounded-xl border-border/50 bg-background/40 px-3"
+                                  aria-label={`Thao tác với ${user.displayName}`}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
 
-                          {manageable && canAssignRole ? (
-                            <UpdateUserRoleModal
-                              user={user}
-                              fullWidth
-                              triggerClassName="h-10 rounded-xl border-border/50 bg-background/40 px-3"
-                              onSuccess={(updatedUser) =>
-                                upsertUser({
-                                  ...updatedUser,
-                                  _id: user._id,
-                                })
-                              }
-                            />
-                          ) : null}
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-56 rounded-xl border-border/60 bg-card/95 p-2 backdrop-blur-xl"
+                              >
+                                <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
 
-                          {manageable && canDeleteUser ? (
-                            <AdminDeleteUserDialog
-                              userId={user._id}
-                              userName={user.userName}
-                              displayName={user.displayName}
-                              fullWidth
-                              redirectToUsers={false}
-                              onSuccess={() => removeUser(user._id)}
-                            />
+                                <DropdownMenuItem
+                                  onSelect={() => navigate(`/admin/users/${user._id}`)}
+                                  className="rounded-lg"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  Xem chi tiết
+                                </DropdownMenuItem>
+
+                                {canToggleUserStatus ? (
+                                  <div className="mt-1">
+                                    <AdminUserStatusDialog
+                                      userId={user._id}
+                                      userName={user.userName}
+                                      displayName={user.displayName}
+                                      currentStatus={user.status}
+                                      fullWidth
+                                      buttonVariant="ghost"
+                                      buttonClassName="h-9 w-full justify-start rounded-lg border-0 bg-transparent px-2 text-sm font-normal shadow-none hover:bg-accent"
+                                      onSuccess={(status) => updateUserStatusLocally(user._id, status)}
+                                    />
+                                  </div>
+                                ) : null}
+
+                                {canAssignRole ? (
+                                  <div className="mt-1">
+                                    <UpdateUserRoleModal
+                                      user={user}
+                                      fullWidth
+                                      triggerClassName="h-9 w-full justify-start rounded-lg border-0 bg-transparent px-2 text-sm font-normal shadow-none hover:bg-accent"
+                                      onSuccess={(updatedUser) =>
+                                        upsertUser({
+                                          ...updatedUser,
+                                          _id: user._id,
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                ) : null}
+
+                                {canDeleteUser ? (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <div className="mt-1">
+                                      <AdminDeleteUserDialog
+                                        userId={user._id}
+                                        userName={user.userName}
+                                        displayName={user.displayName}
+                                        fullWidth
+                                        redirectToUsers={false}
+                                        onSuccess={() => removeUser(user._id)}
+                                      />
+                                    </div>
+                                  </>
+                                ) : null}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           ) : null}
                         </div>
                       </td>
