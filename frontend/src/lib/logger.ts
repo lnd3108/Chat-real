@@ -1,8 +1,9 @@
 import { maskSensitiveObject } from "@/lib/maskSensitiveData";
 
 const isProduction = import.meta.env.PROD;
+type LogLevel = "debug" | "info" | "warn" | "error";
 
-const shouldLog = (level: "debug" | "info" | "warn" | "error") => {
+const shouldLog = (level: LogLevel) => {
   if (!isProduction) {
     return true;
   }
@@ -10,8 +11,29 @@ const shouldLog = (level: "debug" | "info" | "warn" | "error") => {
   return level === "warn" || level === "error";
 };
 
+export const getErrorMeta = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+    };
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+
+    return {
+      message: typeof message === "string" ? message : "Unknown error",
+    };
+  }
+
+  return {
+    message: typeof error === "string" ? error : "Unknown error",
+  };
+};
+
 const write = (
-  level: "debug" | "info" | "warn" | "error",
+  level: LogLevel,
   message: string,
   meta?: unknown,
 ) => {
@@ -25,7 +47,9 @@ const write = (
       ? console.error
       : level === "warn"
         ? console.warn
-        : console.log;
+        : level === "info"
+          ? console.info
+          : console.debug;
 
   if (payload === undefined) {
     method(message);

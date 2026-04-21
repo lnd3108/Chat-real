@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -93,7 +94,7 @@ const NewGroupChatModal = () => {
       setOpen(false);
       toast.success("Tao nhom chat thanh cong!");
     } catch (error) {
-      console.error("Loi khi tao nhom chat:", error);
+      logger.error("Loi khi tao nhom chat", getErrorMeta(error));
       toast.error("Khong the tao nhom chat. Vui long thu lai.");
     }
   };

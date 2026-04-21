@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSoundSettings } from "@/hooks/useSoundSettings";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useSocketStore } from "@/stores/useSocketStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 
@@ -31,7 +32,7 @@ const PreferencesForm = () => {
     try {
       await updateShowOnlineStatus(checked);
     } catch (error) {
-      console.error("Failed to update showOnlineStatus:", error);
+      logger.error("Khong the cap nhat trang thai online", getErrorMeta(error));
     }
   };
 

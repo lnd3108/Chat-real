@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getErrorMessage } from "@/lib/httpError";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { APP_PERMISSIONS, canManageUser, hasPermission } from "@/lib/rbac";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -72,7 +73,7 @@ const AdminUsers = () => {
       });
       setError(null);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai danh sach nguoi dung admin", getErrorMeta(err));
       setError(getErrorMessage(err, "Không thể tải danh sách người dùng."));
     }
   }, [fetchUsersFromStore, page, searchQuery, sortBy, statusFilter]);

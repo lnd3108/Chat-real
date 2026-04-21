@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { axiosInstance } from "@/lib/axios";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAdminDashboardStore } from "@/stores/useAdminDashboardStore";
@@ -520,7 +521,7 @@ const AdminDashboard = () => {
       const response = await axiosInstance.get("/admin/dashboard/overview");
       setOverview(response.data.data);
     } catch (err: unknown) {
-      console.error("Không thể tải overview admin:", err);
+      logger.error("Khong the tai overview admin", getErrorMeta(err));
       setOverview(null);
       setOverviewError(
         axios.isAxiosError(err) && typeof err.response?.data?.message === "string"

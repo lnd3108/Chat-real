@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { APP_ROLES } from "@/lib/rbac";
 import type {
   AdminReportRecord,
@@ -138,7 +139,7 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
         usersLoading: false,
       });
     } catch (error) {
-      console.error("Failed to fetch admin users:", error);
+      logger.error("Khong the tai danh sach nguoi dung admin", getErrorMeta(error));
       set({ usersLoading: false });
       throw error;
     }
@@ -157,7 +158,7 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
         reportsLoading: false,
       });
     } catch (error) {
-      console.error("Failed to fetch admin reports:", error);
+      logger.error("Khong the tai danh sach bao cao admin", getErrorMeta(error));
       set({ reportsLoading: false });
       throw error;
     }
@@ -176,7 +177,7 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
         supportLoading: false,
       });
     } catch (error) {
-      console.error("Failed to fetch admin support conversations:", error);
+      logger.error("Khong the tai danh sach hoi thoai ho tro admin", getErrorMeta(error));
       set({ supportLoading: false });
       throw error;
     }

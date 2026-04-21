@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { getErrorMeta, logger } from "@/lib/logger";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -49,7 +50,7 @@ const SupportChatCard = ({ convo }: { convo: Conversation }) => {
         await fetchMessages(id);
       }
     } catch (error) {
-      console.error("Không thể mở cuộc trò chuyện hỗ trợ:", error);
+      logger.error("Khong the mo cuoc tro chuyen ho tro", getErrorMeta(error));
       toast.error("Không thể mở cuộc trò chuyện hỗ trợ lúc này.");
     }
   };
@@ -62,7 +63,7 @@ const SupportChatCard = ({ convo }: { convo: Conversation }) => {
       toast.success("Đã xóa cuộc trò chuyện hỗ trợ");
       setShowDeleteDialog(false);
     } catch (error) {
-      console.error("Lỗi xóa cuộc trò chuyện hỗ trợ:", error);
+      logger.error("Khong the xoa cuoc tro chuyen ho tro", getErrorMeta(error));
       toast.error("Không thể xóa cuộc trò chuyện hỗ trợ lúc này.");
     } finally {
       setIsDeleting(false);

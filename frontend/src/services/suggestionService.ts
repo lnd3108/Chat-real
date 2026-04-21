@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import { isAbortLikeError } from "@/lib/httpError";
+import { getErrorMeta, logger } from "@/lib/logger";
 import type { DiscoverUser } from "@/types/user";
 
 class SuggestionService {
@@ -13,7 +14,6 @@ class SuggestionService {
     force: boolean = false,
   ): Promise<DiscoverUser[]> {
     if (this.isFetching && !force) {
-      console.warn("[SuggestionService] Dang fetching, bo qua request moi");
       return this.cachedResults || [];
     }
 
@@ -34,7 +34,7 @@ class SuggestionService {
       return users;
     } catch (error) {
       if (!isAbortLikeError(error)) {
-        console.error("[SuggestionService] Loi fetch suggestions:", error);
+        logger.error("Khong the tai goi y ket ban", getErrorMeta(error));
       }
       return [];
     } finally {

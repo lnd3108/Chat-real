@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { Eye, MessagesSquare, Search, ShieldAlert, Users } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
@@ -198,7 +199,7 @@ const AdminConversations = () => {
       setConversations(response.data.data.conversations ?? []);
       setPagination(response.data.data.pagination);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai du lieu cuoc tro chuyen admin", getErrorMeta(err));
       setError("Không thể tải danh sách cuộc trò chuyện.");
     } finally {
       setLoading(false);
@@ -211,7 +212,7 @@ const AdminConversations = () => {
       const response = await axiosInstance.get(`/admin/conversations/${conversationId}`);
       setSelectedConversation(response.data.data.conversation);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai du lieu cuoc tro chuyen admin", getErrorMeta(err));
       setSelectedConversation(null);
     } finally {
       setDetailLoading(false);

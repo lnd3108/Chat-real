@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { getErrorMessage } from "@/lib/httpError";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { suggestionService } from "@/services/suggestionService";
 import type { DiscoverUser } from "@/types/user";
 
@@ -27,12 +28,10 @@ export const useSuggestionStore = create<SuggestionState>((set, get) => ({
     const state = get();
 
     if (state.isFetching && !force) {
-      console.warn("[useSuggestionStore] Äang fetching, bá» qua request má»›i");
       return;
     }
 
     if (state.hasFetched && !force) {
-      console.info("[useSuggestionStore] DÃ¹ng cached suggestions");
       return;
     }
 
@@ -54,9 +53,9 @@ export const useSuggestionStore = create<SuggestionState>((set, get) => ({
     } catch (error) {
       const message = getErrorMessage(
         error,
-        "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch gá»£i Ã½ káº¿t báº¡n. Vui lÃ²ng thá»­ láº¡i sau.",
+        "Khong the tai danh sach goi y ket ban. Vui long thu lai sau.",
       );
-      console.error("[useSuggestionStore] Lá»—i fetch:", error);
+      logger.error("Khong the tai danh sach goi y", getErrorMeta(error));
 
       set({
         isFetching: false,
@@ -66,12 +65,10 @@ export const useSuggestionStore = create<SuggestionState>((set, get) => ({
   },
 
   refreshSuggestions: async (limit = 5) => {
-    console.info("[useSuggestionStore] LÃ m má»›i suggestions (force fetch)");
     await get().fetchSuggestions(limit, true);
   },
 
   resetSuggestions: () => {
-    console.info("[useSuggestionStore] Reset suggestions");
     suggestionService.cancel();
 
     set({

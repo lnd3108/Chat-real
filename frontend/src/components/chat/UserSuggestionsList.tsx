@@ -3,6 +3,7 @@ import { RotateCw, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/chat/UserAvatar";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useFriendStore } from "@/stores/useFriendStore";
 import type { DiscoverUser } from "@/types/user";
 import DirectProfileDialog from "./DirectProfileDialog";
@@ -132,7 +133,7 @@ const UserSuggestionsList = ({
       await cancelSentRequest(user.sentRequestId, user._id);
       toast.success("Đã hủy lời mời kết bạn");
     } catch (error) {
-      console.error("Failed to cancel friend request:", error);
+      logger.error("Khong the huy loi moi ket ban tu danh sach goi y", getErrorMeta(error));
       toast.error("Không thể hủy lời mời kết bạn");
     } finally {
       setSubmittingIds((current) => current.filter((currentUserId) => currentUserId !== user._id));
@@ -153,7 +154,7 @@ const UserSuggestionsList = ({
       await onRefresh();
       toast.success("Đã làm mới gợi ý");
     } catch (error) {
-      console.error("Failed to refresh suggestions:", error);
+      logger.error("Khong the lam moi danh sach goi y", getErrorMeta(error));
       toast.error("Không thể làm mới gợi ý");
     } finally {
       setIsRefreshing(false);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { Search } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
@@ -106,7 +107,7 @@ const AdminFriends = () => {
       setFriendships(response.data.data.friendships ?? []);
       setPagination(response.data.data.pagination);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai danh sach ban be admin", getErrorMeta(err));
       setError("Không thể tải danh sách quan hệ bạn bè.");
     } finally {
       setLoading(false);

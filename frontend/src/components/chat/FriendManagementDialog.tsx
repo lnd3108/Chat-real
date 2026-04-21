@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import {
   Loader2,
   MessageCircle,
@@ -55,7 +56,7 @@ const FriendManagementDialog = () => {
         const nextBlockedUsers = await userService.getBlockedUsers();
         setBlockedUsers(nextBlockedUsers);
       } catch (error) {
-        console.error("Lỗi khi tải danh sách chặn:", error);
+        logger.error("Loi tai danh sach chan", getErrorMeta(error));
       } finally {
         setLoadingBlocked(false);
       }
@@ -81,7 +82,7 @@ const FriendManagementDialog = () => {
         isBlocked ? `Đã bỏ chặn @${friend.userName}` : `Đã chặn @${friend.userName}`,
       );
     } catch (error) {
-      console.error("Lỗi khi cập nhật trạng thái chặn:", error);
+      logger.error("Loi cap nhat trang thai chan", getErrorMeta(error));
       toast.error("Không thể cập nhật trạng thái chặn lúc này.");
     } finally {
       setProcessingBlockId(null);
@@ -93,7 +94,7 @@ const FriendManagementDialog = () => {
       await createConversation("direct", "", [friend._id]);
       setOpen(false);
     } catch (error) {
-      console.error("Lỗi khi mở đoạn chat direct:", error);
+      logger.error("Loi mo doan chat direct", getErrorMeta(error));
       toast.error("Không thể mở đoạn chat lúc này.");
     }
   };
@@ -104,7 +105,7 @@ const FriendManagementDialog = () => {
       const message = await removeFriend(friend._id);
       toast.success(message);
     } catch (error) {
-      console.error("Lỗi khi hủy kết bạn:", error);
+      logger.error("Loi huy ket ban", getErrorMeta(error));
       toast.error("Không thể hủy kết bạn lúc này.");
     } finally {
       setProcessingRemoveId(null);

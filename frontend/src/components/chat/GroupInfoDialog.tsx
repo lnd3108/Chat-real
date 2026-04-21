@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import {
   Camera,
   ChevronDown,
@@ -191,7 +192,7 @@ const GroupInfoDialog = ({
 
       toast.success("Đã cập nhật ảnh đại diện nhóm");
     } catch (error) {
-      console.error("uploadGroupAvatar failed", error);
+      logger.error("Khong the cap nhat anh dai dien nhom", getErrorMeta(error));
       toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);
@@ -225,7 +226,7 @@ const GroupInfoDialog = ({
       setEditingGroupName(false);
       toast.success("Đã cập nhật tên nhóm");
     } catch (error) {
-      console.error("updateGroupName failed", error);
+      logger.error("Khong the cap nhat ten nhom", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
@@ -244,7 +245,7 @@ const GroupInfoDialog = ({
       toast.success(`Đã thêm ${friend.displayName} vào nhóm`);
       setSearch("");
     } catch (error) {
-      console.error("addGroupMembers failed", error);
+      logger.error("Khong the them thanh vien vao nhom", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
@@ -261,7 +262,7 @@ const GroupInfoDialog = ({
       await chatServices.removeGroupMember(chat._id, memberId);
       toast.success(`Đã xóa ${displayName} khỏi nhóm`);
     } catch (error) {
-      console.error("removeGroupMember failed", error);
+      logger.error("Khong the xoa thanh vien khoi nhom", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message

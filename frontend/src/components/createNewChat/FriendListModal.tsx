@@ -47,17 +47,14 @@ const FriendListModal = ({
     refreshSuggestions,
   } = useSuggestionStore();
   const { createConversation } = useChatStore();
-  
-  // Ref để chặn fetch lặp lại khi modal mở
+
   const modalOpenedRef = useRef(false);
-  // Ref để chặn effect chạy 2 lần trong StrictMode
   const effectRunRef = useRef(false);
 
   const friends = friendsProp ?? friendsStore;
   const loading = loadingProp ?? loadingStore;
   const shouldShowSuggestions = !loading && (!friends || friends.length === 0);
 
-  // 🔥 Reset state khi modal close
   useEffect(() => {
     if (!open) {
       modalOpenedRef.current = false;
@@ -65,31 +62,24 @@ const FriendListModal = ({
     }
   }, [open]);
 
-  // 🔥 Fetch suggestions khi modal mở và chưa có danh sách bạn
   useEffect(() => {
-    // Điều kiện: modal mở + có user + cần hiển thị suggestions
     if (!open || !currentUserId || !shouldShowSuggestions) {
       return;
     }
 
-    // 🔥 CHỐNG SPAM: StrictMode dev chạy 2 lần → check ref
     if (effectRunRef.current) {
-      console.info("[FriendListModal] Effect đã chạy, skip lần 2");
       return;
     }
     effectRunRef.current = true;
 
-    // 🔥 CHỐNG SPAM: Chỉ fetch khi modal mở lần đầu tiên
     if (!modalOpenedRef.current) {
       modalOpenedRef.current = true;
-      
-      // Nếu chưa fetch, fetch lần đầu
+
       if (!hasFetched) {
-        console.info("[FriendListModal] Fetching suggestions...");
         void fetchSuggestions(5, false);
       }
     }
-  }, [open, currentUserId]); // ✅ Dependency: CHỈ open, userId (ổn định)
+  }, [open, currentUserId, shouldShowSuggestions, hasFetched, fetchSuggestions]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
@@ -97,7 +87,6 @@ const FriendListModal = ({
   };
 
   const handleRefreshSuggestions = useCallback(async () => {
-    console.info("[FriendListModal] User bấm reload");
     await refreshSuggestions(5);
   }, [refreshSuggestions]);
 
@@ -106,23 +95,23 @@ const FriendListModal = ({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl capitalize">
           <MessageCircle className="size-5" />
-          Bắt đầu hội thoại mới
+          Bat dau hoi thoai moi
         </DialogTitle>
         <DialogDescription className="sr-only">
-          Chọn một người bạn để mở cuộc trò chuyện trực tiếp hoặc xem các gợi ý kết bạn.
+          Chon mot nguoi ban de mo cuoc tro chuyen truc tiep hoac xem cac goi y ket ban.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-5">
         <div className="space-y-2">
           <h1 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Danh sách bạn bè
+            Danh sach ban be
           </h1>
 
           <div className="max-h-60 space-y-2 overflow-y-auto">
             {loading ? (
               <div className="py-8 text-center text-muted-foreground">
-                Đang tải danh sách bạn bè...
+                Dang tai danh sach ban be...
               </div>
             ) : null}
 
@@ -151,7 +140,7 @@ const FriendListModal = ({
             {shouldShowSuggestions ? (
               <div className="py-2 text-center text-muted-foreground">
                 <Users className="mx-auto mb-3 size-12 opacity-50" />
-                Chưa có bạn bè nào. Bạn có thể gửi lời mời từ các gợi ý bên dưới.
+                Chua co ban be nao. Ban co the gui loi moi tu cac goi y ben duoi.
               </div>
             ) : null}
           </div>
@@ -162,8 +151,8 @@ const FriendListModal = ({
             users={suggestions}
             loading={Boolean(currentUserId) && isFetching}
             compact
-            title="Bạn có thể biết"
-            emptyText="Chưa có gợi ý phù hợp để bắt đầu."
+            title="Ban co the biet"
+            emptyText="Chua co goi y phu hop de bat dau."
             onRefresh={handleRefreshSuggestions}
           />
         ) : null}

@@ -1,9 +1,11 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useFriendStore } from "@/stores/useFriendStore";
-import SentRequest from "./SentRequest";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import ReceivedRequests from "./ReceivedRequests";
+import SentRequest from "./SentRequest";
 
 interface FriendRequestDialogProps {
   open: boolean;
@@ -26,7 +28,7 @@ const FriendRequestDialog = ({
       try {
         await getAllFriendRequests();
       } catch (error) {
-        console.error("Loi xay ra khi load requests", error);
+        logger.error("Loi xay ra khi tai loi moi ket ban", getErrorMeta(error));
       }
     };
 

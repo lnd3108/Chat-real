@@ -55,7 +55,6 @@ const AddFriendModal = () => {
     }
 
     if (effectRunRef.current && !trimmedQuery) {
-      console.info("[AddFriendModal] Effect đã chạy, bỏ qua lần 2");
       return;
     }
 
@@ -64,7 +63,6 @@ const AddFriendModal = () => {
 
       if (!modalFirstOpenRef.current && !hasFetchedSuggestions) {
         modalFirstOpenRef.current = true;
-        console.info("[AddFriendModal] Fetch suggestions khi modal mở lần đầu");
         void fetchSuggestions(5, false);
       }
 
@@ -79,7 +77,6 @@ const AddFriendModal = () => {
     }
 
     searchTimeoutRef.current = window.setTimeout(() => {
-      console.info("[AddFriendModal] Searching with query:", trimmedQuery);
       void searchUsers(trimmedQuery, 10).then(setSearchResults);
     }, 250);
 
@@ -98,11 +95,10 @@ const AddFriendModal = () => {
 
   const currentLoading = trimmedQuery ? searchLoading : isFetchingSuggestions;
   const emptyText = trimmedQuery
-    ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
-    : "Chưa có gợi ý phù hợp.";
+    ? `Khong tim thay user gan dung voi "${trimmedQuery}".`
+    : "Chua co goi y phu hop.";
 
   const handleRefreshSuggestions = useCallback(async () => {
-    console.info("[AddFriendModal] User bấm reload suggestions");
     await refreshSuggestions(5);
   }, [refreshSuggestions]);
 
@@ -134,15 +130,15 @@ const AddFriendModal = () => {
           className="z-10 flex size-5 cursor-pointer items-center justify-center rounded-full transition hover:bg-sidebar-accent"
         >
           <UserPlus className="size-4" />
-          <span className="sr-only">Kết bạn</span>
+          <span className="sr-only">Ket ban</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-border/40 bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">
         <DialogHeader className="border-b border-border/40 px-5 py-4">
-          <DialogTitle className="text-xl">Kết bạn</DialogTitle>
+          <DialogTitle className="text-xl">Ket ban</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Tìm người dùng rồi gửi lời mời kết bạn.
+            Tim nguoi dung roi gui loi moi ket ban.
           </DialogDescription>
         </DialogHeader>
 
@@ -152,7 +148,7 @@ const AddFriendModal = () => {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ví dụ: vanhle"
+              placeholder="Vi du: vanhle"
               className="h-11 rounded-xl pl-11"
             />
           </div>
@@ -167,7 +163,7 @@ const AddFriendModal = () => {
             users={displayedUsers}
             loading={Boolean(currentUserId) && currentLoading}
             compact
-            title={trimmedQuery ? "Kết quả tìm kiếm" : "Bạn có thể biết"}
+            title={trimmedQuery ? "Ket qua tim kiem" : "Ban co the biet"}
             emptyText={emptyText}
             onRefresh={!trimmedQuery ? handleRefreshSuggestions : undefined}
           />
@@ -175,7 +171,7 @@ const AddFriendModal = () => {
 
         <div className="flex justify-end border-t border-border/40 px-5 py-4">
           <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
-            Đóng
+            Dong
           </Button>
         </div>
       </DialogContent>

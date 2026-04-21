@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { create } from "zustand";
 
 export interface AdminDashboardOverview {
@@ -65,7 +66,7 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
         error: null,
       });
     } catch (error) {
-      console.error("Failed to fetch admin dashboard overview:", error);
+      logger.error("Khong the tai tong quan dashboard admin", getErrorMeta(error));
       set({
         loading: false,
         error: "Khong the tai du lieu tong quan dashboard.",

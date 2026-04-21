@@ -1,4 +1,5 @@
-﻿import axios from "axios";
+import axios from "axios";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
@@ -133,7 +134,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       await userService.unblockUser(targetUserId);
       toast.success(`Đã bỏ chặn @${targetLabel}`);
     } catch (error) {
-      console.error("Lỗi bỏ chặn người dùng từ khung chat:", error);
+      logger.error("Loi bo chan nguoi dung tu khung chat", getErrorMeta(error));
       toast.error("Không thể bỏ chặn người dùng lúc này.");
     } finally {
       setIsUnblocking(false);
@@ -253,7 +254,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
       setValue("");
       resetImage();
     } catch (error) {
-      console.error(error);
+      logger.error("Loi gui tin nhan hoac tep dinh kem", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message

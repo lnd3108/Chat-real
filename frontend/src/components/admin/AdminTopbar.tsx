@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSoundSettings } from "@/hooks/useSoundSettings";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { getRoleLabel, hasAdminPanelAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import { useAdminNotificationStore } from "@/stores/useAdminNotificationStore";
@@ -54,7 +55,7 @@ const AdminTopbar = () => {
       await signOut();
       navigate("/signin");
     } catch (error) {
-      console.error(error);
+      logger.error("Khong the dang xuat khoi admin", getErrorMeta(error));
     }
   };
 

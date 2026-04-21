@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useNavigate, useParams } from "react-router";
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, Clock, Send } from "lucide-react";
 
@@ -138,7 +139,7 @@ const AdminSupportDetail = () => {
       setMessages((response.messages as SupportMessage[]) ?? []);
       setNewStatus(response.conversation?.supportStatus ?? "");
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly chi tiet ho tro admin", getErrorMeta(err));
       setError("Không thể tải chi tiết hỗ trợ.");
     } finally {
       setLoading(false);
@@ -163,7 +164,7 @@ const AdminSupportDetail = () => {
 
       setReplyContent("");
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly chi tiet ho tro admin", getErrorMeta(err));
       alert("Không thể gửi phản hồi.");
     } finally {
       setSending(false);
@@ -185,7 +186,7 @@ const AdminSupportDetail = () => {
         setConversation({ ...conversation, supportStatus: status });
       }
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly chi tiet ho tro admin", getErrorMeta(err));
       alert("Không thể cập nhật trạng thái.");
     }
   };

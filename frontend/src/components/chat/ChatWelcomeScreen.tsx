@@ -15,40 +15,25 @@ const ChatWelcomeScreen = () => {
     fetchSuggestions,
     refreshSuggestions,
   } = useSuggestionStore();
-  
-  // Ref để chặn effect chạy 2 lần trong StrictMode (dev)
+
   const effectRunRef = useRef(false);
 
   useEffect(() => {
-    // 🔥 CHỐNG SPAM: Chỉ chạy khi có user ID và chưa có conversation
     if (!currentUserId || conversations.length > 0) {
       return;
     }
 
-    // 🔥 CHỐNG SPAM: StrictMode dev chạy 2 lần → check ref
     if (effectRunRef.current) {
-      console.info("[ChatWelcomeScreen] Effect đã chạy, skip lần 2");
       return;
     }
     effectRunRef.current = true;
 
-    // 🔥 CHỐNG SPAM: Nếu chưa fetch, fetch lần đầu
     if (!hasFetched) {
-      console.info("[ChatWelcomeScreen] Fetching suggestions...");
       void fetchSuggestions(5, false);
     }
-
-    // 🔥 Cleanup: Hủy ref khi component unmount hoặc user thay đổi
-    return () => {
-      if (currentUserId === useAuthStore.getState().user?._id) {
-        // Chỉ reset nếu user ID không thay đổi
-        // (nếu logout → user ID thay đổi → component unmount)
-      }
-    };
-  }, [currentUserId]); // ✅ Dependency: CHỈ user ID (ổn định)
+  }, [currentUserId, conversations.length, fetchSuggestions, hasFetched]);
 
   const handleRefreshSuggestions = useCallback(async () => {
-    console.info("[ChatWelcomeScreen] User bấm reload");
     await refreshSuggestions(5);
   }, [refreshSuggestions]);
 
@@ -65,19 +50,19 @@ const ChatWelcomeScreen = () => {
               <span className="text-3xl">💬</span>
             </div>
             <h2 className="mb-2 bg-gradient-chat bg-clip-text text-2xl font-bold text-transparent">
-              Chào mừng bạn đến với ChatRealTime
+              Chao mung ban den voi ChatRealTime
             </h2>
             <p className="text-muted-foreground">
-              Tài khoản mới chưa có hội thoại nào. Bạn có thể bắt đầu bằng cách kết bạn với
-              một vài người bên dưới.
+              Tai khoan moi chua co hoi thoai nao. Ban co the bat dau bang cach ket ban voi
+              mot vai nguoi ben duoi.
             </p>
           </div>
 
           <UserSuggestionsList
             users={suggestions}
             loading={Boolean(currentUserId) && isFetching}
-            title="Bạn có thể biết"
-            emptyText="Chưa tìm thấy người phù hợp để gợi ý."
+            title="Ban co the biet"
+            emptyText="Chua tim thay nguoi phu hop de goi y."
             onRefresh={handleRefreshSuggestions}
           />
         </div>

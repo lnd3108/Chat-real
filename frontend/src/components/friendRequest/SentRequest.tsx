@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
+
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useFriendStore } from "@/stores/useFriendStore";
-import FriendRequestItem from "./FriendRequestItem";
 import { Button } from "../ui/button";
+import FriendRequestItem from "./FriendRequestItem";
 
 const SentRequest = () => {
   const { sentList, cancelSentRequest } = useFriendStore();
@@ -11,7 +13,7 @@ const SentRequest = () => {
   if (!sentList || sentList.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Bạn chưa gửi lời mời kết bạn nào.
+        Ban chua gui loi moi ket ban nao.
       </p>
     );
   }
@@ -20,10 +22,10 @@ const SentRequest = () => {
     try {
       setPendingRequestId(requestId);
       await cancelSentRequest(requestId, targetUserId);
-      toast.success("Đã hủy lời mời kết bạn");
+      toast.success("Da huy loi moi ket ban");
     } catch (error) {
-      console.error(error);
-      toast.error("Không thể hủy lời mời kết bạn");
+      logger.error("Khong the huy loi moi ket ban", getErrorMeta(error));
+      toast.error("Khong the huy loi moi ket ban");
     } finally {
       setPendingRequestId(null);
     }
@@ -38,16 +40,16 @@ const SentRequest = () => {
           type="sent"
           actions={
             <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">Đang chờ trả lời...</p>
+              <p className="text-sm text-muted-foreground">Dang cho tra loi...</p>
               <Button
                 size="sm"
                 variant="destructiveOutline"
                 disabled={pendingRequestId !== null}
                 loading={pendingRequestId === request._id}
-                loadingText="Đang hủy..."
+                loadingText="Dang huy..."
                 onClick={() => void handleCancel(request._id, request.to?._id)}
               >
-                Hủy lời mời
+                Huy loi moi
               </Button>
             </div>
           }

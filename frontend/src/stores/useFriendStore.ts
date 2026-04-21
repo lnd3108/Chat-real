@@ -1,4 +1,5 @@
 import { friendService } from "@/services/friendService";
+import { getErrorMeta, logger } from "@/lib/logger";
 import type { FriendState } from "@/types/store";
 import { create } from "zustand";
 import { useNotificationStore } from "./useNotificationStore";
@@ -27,7 +28,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ loading: true });
       return await friendService.searchByUserName(userName);
     } catch (error) {
-      console.error("Lỗi xảy ra khi tìm bạn bè theo tên người dùng", error);
+      logger.error("Loi xay ra khi tim ban be theo ten nguoi dung", getErrorMeta(error));
       return null;
     } finally {
       set({ loading: false });
@@ -39,7 +40,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ loading: true, searchLoading: true });
       return await friendService.searchUsers(query, limit);
     } catch (error) {
-      console.error("Lỗi xảy ra khi tìm danh sách người dùng", error);
+      logger.error("Loi xay ra khi tim danh sach nguoi dung", getErrorMeta(error));
       return [];
     } finally {
       set({ loading: false, searchLoading: false });
@@ -54,7 +55,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ suggestions: limitedSuggestions });
       return limitedSuggestions;
     } catch (error) {
-      console.error("Lỗi xảy ra khi lấy gợi ý người dùng", error);
+      logger.error("Loi xay ra khi lay goi y nguoi dung", getErrorMeta(error));
       set({ suggestions: [] });
       return [];
     } finally {
@@ -107,7 +108,7 @@ export const useFriendStore = create<FriendState>((set) => ({
 
       return result;
     } catch (error) {
-      console.error("Lỗi xảy ra khi thêm bạn bè", error);
+      logger.error("Loi xay ra khi them ban be", getErrorMeta(error));
       const apiMessage =
         typeof error === "object" &&
         error !== null &&
@@ -119,7 +120,7 @@ export const useFriendStore = create<FriendState>((set) => ({
 
       return {
         success: false,
-        message: apiMessage ?? "Lỗi xảy ra khi gửi lời mời kết bạn. Hãy thử lại!",
+        message: apiMessage ?? "Loi xay ra khi gui loi moi ket ban. Hay thu lai!",
         autoAccepted: false,
         newFriend: null,
         request: null,
@@ -141,7 +142,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ receivedList: received, sentList: sent });
       useNotificationStore.getState().syncFriendRequestNotifications(received);
     } catch (error) {
-      console.error("Lỗi xảy ra khi getAllFriendRequests", error);
+      logger.error("Loi xay ra khi lay danh sach loi moi ket ban", getErrorMeta(error));
     } finally {
       set({ loading: false });
     }
@@ -173,7 +174,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       }));
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
-      console.error("Lỗi xảy ra khi acceptRequest", error);
+      logger.error("Loi xay ra khi chap nhan loi moi ket ban", getErrorMeta(error));
       throw error;
     } finally {
       set({ loading: false });
@@ -190,7 +191,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       }));
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
-      console.error("Loi xay ra khi declineRequest", error);
+      logger.error("Loi xay ra khi tu choi loi moi ket ban", getErrorMeta(error));
     } finally {
       set({ loading: false });
     }
@@ -212,7 +213,7 @@ export const useFriendStore = create<FriendState>((set) => ({
           : state.suggestions,
       }));
     } catch (error) {
-      console.error("Lỗi xảy ra khi cancelSentRequest", error);
+      logger.error("Loi xay ra khi huy loi moi da gui", getErrorMeta(error));
       throw error;
     } finally {
       set({ loading: false });
@@ -240,9 +241,9 @@ export const useFriendStore = create<FriendState>((set) => ({
         sentList: state.sentList.filter((request) => request.to?._id !== targetUserId),
       }));
 
-      return result.message ?? "Đã hủy kết bạn";
+      return result.message ?? "Da huy ket ban";
     } catch (error) {
-      console.error("Lỗi xảy ra khi removeFriend", error);
+      logger.error("Loi xay ra khi huy ket ban", getErrorMeta(error));
       throw error;
     } finally {
       set({ loading: false });
@@ -255,7 +256,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       const friends = await friendService.getFriendList();
       set({ friends });
     } catch (error) {
-      console.error("Lỗi xảy ra khi tải danh sách bạn bè", error);
+      logger.error("Loi xay ra khi tai danh sach ban be", getErrorMeta(error));
       set({ friends: [] });
     } finally {
       set({ loading: false });

@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { Camera, Loader2, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { chatServices } from "@/services/chatServices";
@@ -47,7 +48,7 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
 
       toast.success("Đã cập nhật ảnh đại diện nhóm");
     } catch (error) {
-      console.error("uploadGroupAvatar failed", error);
+      logger.error("Khong the cap nhat anh dai dien nhom", getErrorMeta(error));
       toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);

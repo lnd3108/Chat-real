@@ -11,7 +11,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/httpError";
-import { logger } from "@/lib/logger";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useAuthStore } from "./useAuthStore";
 import { useNotificationStore } from "./useNotificationStore";
 import { useSocketStore } from "./useSocketStore";
@@ -97,7 +97,7 @@ export const useChatStore = create<ChatState>()(
         } catch (error) {
           // Only log error if user still has access token
           if (useAuthStore.getState().accessToken) {
-            console.error("Failed to fetch conversations:", error);
+            logger.error("Khong the tai danh sach cuoc tro chuyen", getErrorMeta(error));
           }
           set({ convoLoading: false });
         }
@@ -154,7 +154,7 @@ export const useChatStore = create<ChatState>()(
             });
           } catch (error) {
             if (useAuthStore.getState().accessToken) {
-              console.error("Failed to fetch messages:", error);
+              logger.error("Khong the tai tin nhan", getErrorMeta(error));
             }
           } finally {
             inflightMessageFetches.delete(requestKey);
@@ -183,7 +183,7 @@ export const useChatStore = create<ChatState>()(
           }
 
           if (!finalRecipientId) {
-            console.error("Missing recipientId: cannot send direct message");
+            logger.warn("Khong the gui tin nhan truc tiep do thieu recipientId");
             return;
           }
 
@@ -222,7 +222,7 @@ export const useChatStore = create<ChatState>()(
             replyingTo: null,
           }));
         } catch (error: unknown) {
-          console.error("Failed to send direct message", error);
+          logger.error("Khong the gui tin nhan truc tiep", getErrorMeta(error));
           throw error;
         }
       },
@@ -249,7 +249,7 @@ export const useChatStore = create<ChatState>()(
           }
 
           if (!finalRecipientId) {
-            console.error("Missing recipientId: cannot send direct image");
+            logger.warn("Khong the gui anh truc tiep do thieu recipientId");
             return;
           }
 
@@ -289,7 +289,7 @@ export const useChatStore = create<ChatState>()(
             replyingTo: null,
           }));
         } catch (error) {
-          console.error("Failed to send direct image", error);
+          logger.error("Khong the gui anh truc tiep", getErrorMeta(error));
           throw error;
         }
       },
@@ -311,7 +311,7 @@ export const useChatStore = create<ChatState>()(
             replyingTo: null,
           }));
         } catch (error) {
-          console.error("Failed to send group message", error);
+          logger.error("Khong the gui tin nhan nhom", getErrorMeta(error));
           throw error;
         }
       },
@@ -332,7 +332,7 @@ export const useChatStore = create<ChatState>()(
             replyingTo: null,
           }));
         } catch (error) {
-          console.error("Failed to send support message", error);
+          logger.error("Khong the gui tin nhan ho tro", getErrorMeta(error));
           throw error;
         }
       },
@@ -360,7 +360,7 @@ export const useChatStore = create<ChatState>()(
             replyingTo: null,
           }));
         } catch (error) {
-          console.error("Failed to send group image", error);
+          logger.error("Khong the gui anh trong nhom", getErrorMeta(error));
           throw error;
         }
       },
@@ -371,7 +371,7 @@ export const useChatStore = create<ChatState>()(
           get().updateMessage(message);
           set({ editingMessage: null });
         } catch (error) {
-          console.error("Failed to edit message", error);
+          logger.error("Khong the chinh sua tin nhan", getErrorMeta(error));
         }
       },
 
@@ -383,7 +383,7 @@ export const useChatStore = create<ChatState>()(
             get().removeMessageForMe(activeConversationId, messageId);
           }
         } catch (error) {
-          console.error("Failed to delete message for me", error);
+          logger.error("Khong the xoa tin nhan o phia nguoi dung", getErrorMeta(error));
           toast.error("Không thể xóa tin nhắn ở phía bạn.");
           throw error;
         }
@@ -394,7 +394,7 @@ export const useChatStore = create<ChatState>()(
           const message = await chatServices.deleteMessageForEveryone(messageId);
           get().updateMessage(message);
         } catch (error) {
-          console.error("Failed to delete message for everyone", error);
+          logger.error("Khong the thu hoi tin nhan", getErrorMeta(error));
           toast.error("Không thể thu hồi tin nhắn lúc này.");
           throw error;
         }
@@ -405,7 +405,7 @@ export const useChatStore = create<ChatState>()(
           const message = await chatServices.toggleReaction(messageId, emoji);
           get().updateMessage(message);
         } catch (error) {
-          console.error("Failed to toggle reaction", error);
+          logger.error("Khong the cap nhat reaction", getErrorMeta(error));
         }
       },
 
@@ -435,7 +435,7 @@ export const useChatStore = create<ChatState>()(
             };
           });
         } catch (error) {
-          console.error("Failed to add message:", error);
+          logger.error("Khong the them tin nhan vao store", getErrorMeta(error));
         }
       },
 
@@ -577,10 +577,7 @@ export const useChatStore = create<ChatState>()(
           await chatServices.deleteOrLeaveGroupConversation(id);
           get().removeConversationLocal(id);
         } catch (error: unknown) {
-          console.error(
-            "deleteOrLeaveGroupConversation failed:",
-            error,
-          );
+          logger.error("Khong the roi hoac xoa cuoc tro chuyen nhom", getErrorMeta(error));
         }
       },
 
@@ -623,7 +620,7 @@ export const useChatStore = create<ChatState>()(
             ),
           }));
         } catch (error) {
-          console.error("Failed to mark as seen", error);
+          logger.error("Khong the danh dau da xem", getErrorMeta(error));
         }
       },
 
@@ -679,7 +676,7 @@ export const useChatStore = create<ChatState>()(
           await get().fetchMessages(conversation._id);
           return conversation;
         } catch (error) {
-          console.error("Failed to create conversation:", error);
+          logger.error("Khong the tao cuoc tro chuyen", getErrorMeta(error));
         } finally {
           set({ loading: false });
         }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { UserMinus, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { chatServices } from "@/services/chatServices";
@@ -70,7 +71,7 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
       toast.success(`Đã thêm ${friend.displayName} vào nhóm`);
       setSearch("");
     } catch (error) {
-      console.error("addGroupMembers failed", error);
+      logger.error("Khong the them thanh vien vao nhom", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
@@ -87,7 +88,7 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
       await chatServices.removeGroupMember(chat._id, memberId);
       toast.success(`Đã xóa ${displayName} khỏi nhóm`);
     } catch (error) {
-      console.error("removeGroupMember failed", error);
+      logger.error("Khong the xoa thanh vien khoi nhom", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message

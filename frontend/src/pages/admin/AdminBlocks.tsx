@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import {
   Ban,
   Eye,
@@ -176,7 +177,7 @@ const AdminBlocks = () => {
       setPagination(response.data.data.pagination);
       setAuditNote(response.data.data.auditNote ?? auditNote);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly thao tac admin blocks", getErrorMeta(err));
       setError("Không thể tải danh sách quan hệ chặn.");
     } finally {
       setLoading(false);
@@ -191,7 +192,7 @@ const AdminBlocks = () => {
       setSelectedBlock(response.data.data.block);
       setAuditNote(response.data.data.auditNote ?? auditNote);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly thao tac admin blocks", getErrorMeta(err));
       toast.error("Không thể tải chi tiết quan hệ chặn.");
     } finally {
       setDetailLoading(false);
@@ -236,7 +237,7 @@ const AdminBlocks = () => {
       await fetchBlocks();
       toast.success("Đã gỡ chặn thủ công.");
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the xu ly thao tac admin blocks", getErrorMeta(err));
       toast.error("Không thể gỡ quan hệ chặn.");
     } finally {
       setUnblockingId(null);

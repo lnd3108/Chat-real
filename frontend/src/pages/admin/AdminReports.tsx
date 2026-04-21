@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getErrorMessage } from "@/lib/httpError";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
 import type {
   AdminReportRecord,
@@ -73,7 +74,7 @@ const AdminReports = () => {
         sort: sortBy,
       });
     } catch (err) {
-      console.error("[report][admin-page][error]", err);
+      logger.error("Khong the tai danh sach bao cao admin", getErrorMeta(err));
       setError(getErrorMessage(err, "Không thể tải danh sách báo cáo."));
     }
   }, [fetchReportsFromStore, page, searchQuery, sortBy, statusFilter, typeFilter]);

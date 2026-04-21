@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { Search } from "lucide-react";
 
 import AdminPagination from "@/components/admin/AdminPagination";
@@ -124,7 +125,7 @@ const AdminFriendRequests = () => {
       setRequests(response.data.data.requests ?? []);
       setPagination(response.data.data.pagination);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai danh sach loi moi ket ban admin", getErrorMeta(err));
       setError("Không thể tải danh sách lời mời kết bạn.");
     } finally {
       setLoading(false);

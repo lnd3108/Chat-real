@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, Check, Loader2, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
@@ -176,7 +177,7 @@ const AdminReportDetail = () => {
       setModerationTargetUser(response.data.data.moderationTargetUser ?? null);
       setResolutionNote(response.data.data.report.resolutionNote || "");
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai chi tiet bao cao admin", getErrorMeta(err));
       setError("Không thể tải chi tiết báo cáo.");
     } finally {
       setLoading(false);
@@ -245,7 +246,7 @@ const AdminReportDetail = () => {
       setReport(response.data.data.report);
       setResolutionNote(response.data.data.report.resolutionNote || note);
     } catch (error) {
-      console.error("Không thể tự động đánh dấu báo cáo đã xử lý sau thao tác tài khoản:", error);
+      logger.error("Khong the tu dong danh dau bao cao da xu ly", getErrorMeta(error));
     }
   };
 

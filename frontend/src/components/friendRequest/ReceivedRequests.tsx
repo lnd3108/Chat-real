@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useFriendStore } from "@/stores/useFriendStore";
-import FriendRequestItem from "./FriendRequestItem";
-import { Button } from "../ui/button";
 import { toast } from "sonner";
+
+import { getErrorMeta, logger } from "@/lib/logger";
+import { useFriendStore } from "@/stores/useFriendStore";
+import { Button } from "../ui/button";
+import FriendRequestItem from "./FriendRequestItem";
 
 const ReceivedRequests = () => {
   const { acceptRequest, declineRequest, receivedList } = useFriendStore();
@@ -14,7 +16,7 @@ const ReceivedRequests = () => {
   if (!receivedList || receivedList.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Không có yêu cầu kết bạn nào.
+        Khong co yeu cau ket ban nao.
       </p>
     );
   }
@@ -23,9 +25,9 @@ const ReceivedRequests = () => {
     try {
       setPendingRequest({ id: requestId, action: "accept" });
       await acceptRequest(requestId);
-      toast.success("Đã chấp nhận lời mời kết bạn");
+      toast.success("Da chap nhan loi moi ket ban");
     } catch (error) {
-      console.error(error);
+      logger.error("Khong the chap nhan loi moi ket ban", getErrorMeta(error));
     } finally {
       setPendingRequest(null);
     }
@@ -35,16 +37,16 @@ const ReceivedRequests = () => {
     try {
       setPendingRequest({ id: requestId, action: "decline" });
       await declineRequest(requestId);
-      toast.success("Đã từ chối lời mời kết bạn");
+      toast.success("Da tu choi loi moi ket ban");
     } catch (error) {
-      console.error(error);
+      logger.error("Khong the tu choi loi moi ket ban", getErrorMeta(error));
     } finally {
       setPendingRequest(null);
     }
   };
 
   return (
-    <div className="space-y-3 mt-4">
+    <div className="mt-4 space-y-3">
       {receivedList.map((req) => (
         <FriendRequestItem
           type="received"
@@ -61,9 +63,9 @@ const ReceivedRequests = () => {
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "accept"
                 }
-                loadingText="Đang chấp nhận..."
+                loadingText="Dang chap nhan..."
               >
-                Chấp nhận
+                Chap nhan
               </Button>
               <Button
                 size="sm"
@@ -74,9 +76,9 @@ const ReceivedRequests = () => {
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "decline"
                 }
-                loadingText="Đang từ chối..."
+                loadingText="Dang tu choi..."
               >
-                Từ chối
+                Tu choi
               </Button>
             </div>
           }

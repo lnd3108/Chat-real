@@ -120,7 +120,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       isRefreshingSocketAuth = false;
-      logger.debug("Kết nối socket thành công");
       socket.emit("preferences:showOnlineStatus", get().showOnlineStatus);
       socket.emit(
         "conversation:active",

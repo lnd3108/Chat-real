@@ -24,6 +24,7 @@ import ProfileDialog from "../profile/ProfileDialog";
 import { useFriendStore } from "@/stores/useFriendStore";
 import NotificationMenuItem from "../profile/NotificationMenuItem";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { useNavigate } from "react-router";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import NotificationCenterDialog from "../profile/NotificationCenterDialog";
@@ -49,7 +50,7 @@ export function NavUser({ user }: { user: User }) {
       await signOut();
       navigate("/signin");
     } catch (error) {
-      console.error(error);
+      logger.error("Khong the dang xuat", getErrorMeta(error));
     }
   };
 

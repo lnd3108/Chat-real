@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { AlertCircle, Eye, MessageSquare, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 
@@ -61,7 +62,7 @@ const AdminSupport = () => {
       });
       setError(null);
     } catch (err) {
-      console.error(err);
+      logger.error("Khong the tai danh sach ho tro admin", getErrorMeta(err));
       setError(getErrorMessage(err, "Không thể tải danh sách hỗ trợ."));
     }
   }, [fetchSupportConversationsFromStore, page, searchQuery, sortBy, statusFilter]);

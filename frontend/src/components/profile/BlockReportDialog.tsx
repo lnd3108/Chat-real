@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { reportService } from "@/services/reportService";
 import { userService } from "@/services/userService";
 import { useFriendStore } from "@/stores/useFriendStore";
@@ -76,7 +77,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       try {
         setBlockedState(await userService.getBlockedUsers());
       } catch (error) {
-        console.error("Lỗi tải danh sách chặn:", error);
+        logger.error("Loi tai danh sach chan", getErrorMeta(error));
         toast.error("Không thể tải danh sách chặn.");
       }
     })();
@@ -102,14 +103,13 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
         description: report.description.trim(),
       };
 
-      console.debug("[report][user-submit][privacy]", payload);
       await reportService.createReport(payload);
 
       toast.success("Đã gửi báo cáo");
       setReport(defaultReportState);
       setTab("block");
     } catch (error) {
-      console.error("Lỗi gửi báo cáo:", error);
+      logger.error("Loi gui bao cao tu dialog quyen rieng tu", getErrorMeta(error));
       toast.error("Gửi báo cáo thất bại, thử lại.");
     } finally {
       setIsSubmittingReport(false);

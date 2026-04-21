@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import type { Conversation, Message } from "@/types/chat";
 import { getParticipantId } from "@/lib/chatParticipants";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { reportService } from "@/services/reportService";
 import { userService } from "@/services/userService";
@@ -134,7 +135,7 @@ const DirectInfoDialog = ({
         setIsBlocked(true);
         toast.success(`Đã chặn @${userName ?? displayName}`);
       } catch (error) {
-        console.error("Lỗi khi cập nhật trạng thái chặn:", error);
+        logger.error("Loi khi cap nhat trang thai chan", getErrorMeta(error));
         toast.error("Không thể cập nhật trạng thái chặn lúc này.");
       } finally {
         setIsSubmittingBlock(false);
@@ -165,14 +166,13 @@ const DirectInfoDialog = ({
           description: reportDescription.trim(),
         };
 
-        console.debug("[report][user-submit][direct]", payload);
         await reportService.createReport(payload);
 
         setReportDescription("");
         setReportReason(reportReasons[0]);
         toast.success("Đã gửi báo cáo");
       } catch (error) {
-        console.error("Lỗi gửi báo cáo direct:", error);
+        logger.error("Loi gui bao cao direct", getErrorMeta(error));
         toast.error("Gửi báo cáo thất bại, thử lại.");
       } finally {
         setIsSubmittingReport(false);

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { maintenanceService } from "@/services/maintenanceService";
 import { cn } from "@/lib/utils";
 import { useAdminDashboardStore } from "@/stores/useAdminDashboardStore";
@@ -52,7 +53,7 @@ const AdminMaintenance = () => {
         setStatus(data);
         setNewMessage(data.message);
       } catch (error) {
-        console.error("Không thể lấy trạng thái bảo trì:", error);
+        logger.error("Khong the lay trang thai bao tri", getErrorMeta(error));
         toast.error("Không thể tải trạng thái bảo trì");
       } finally {
         setLoading(false);

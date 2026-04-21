@@ -1,4 +1,5 @@
-﻿import type { Conversation } from "@/types/chat";
+import type { Conversation } from "@/types/chat";
+import { getErrorMeta, logger } from "@/lib/logger";
 import ChatCard from "./ChatCard";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -99,7 +100,7 @@ const DirectMessageCard = ({ convo }: { convo: Conversation }) => {
         await userService.blockUser(otherId);
         toast.success(`Đã chặn @${otherUser.userName ?? otherUser.displayName}`);
       } catch (error) {
-        console.error("Lỗi cập nhật chặn người dùng:", error);
+        logger.error("Loi cap nhat trang thai chan nguoi dung", getErrorMeta(error));
         toast.error("Không thể cập nhật trạng thái chặn lúc này.");
       }
     })();

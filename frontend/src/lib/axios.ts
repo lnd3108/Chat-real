@@ -42,10 +42,6 @@ api.interceptors.request.use((config) => {
 
   // Add global abort signal to all requests
   config.signal = globalAbortController.signal;
-  logger.debug("API request", {
-    method: config.method,
-    url: config.url,
-  });
 
   return config;
 });
@@ -53,12 +49,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    logger.warn("API response error", {
-      method: error.config?.method,
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-    });
+    const status = error.response?.status;
+    const shouldLogResponseError =
+      typeof status !== "number" || status >= 500;
+
+    if (shouldLogResponseError) {
+      logger.warn("API response error", {
+        method: error.config?.method,
+        url: error.config?.url,
+        status,
+        message: error.response?.data?.message || error.message,
+      });
+    }
 
     // Don't retry if account was deleted
     if (isAccountDeleted) {

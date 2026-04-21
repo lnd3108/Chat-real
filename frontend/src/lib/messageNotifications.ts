@@ -5,6 +5,7 @@ import type { AppNotification } from "@/types/store";
 import { DELETED_USER_LABEL, getParticipantId } from "./chatParticipants";
 import { isDirectNotificationEnabled } from "./directChatPreferences";
 import { isGroupNotificationEnabled } from "./groupNotificationSettings";
+import { getErrorMeta, logger } from "./logger";
 
 export type NotificationSetting = {
   enableAll: boolean;
@@ -172,7 +173,7 @@ export const requestDesktopNotificationPermission = async () => {
   try {
     await Notification.requestPermission();
   } catch (error) {
-    console.error("Không thể xin quyền thông báo:", error);
+    logger.warn("Khong the xin quyen thong bao", getErrorMeta(error));
   }
 };
 

@@ -1,8 +1,10 @@
+import { toast } from "sonner";
+import { create } from "zustand";
+
+import { getErrorMeta, logger } from "@/lib/logger";
 import { userService } from "@/services/userService";
 import type { UserState } from "@/types/store";
-import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
-import { toast } from "sonner";
 import { useChatStore } from "./useChatStore";
 
 export const useUserStore = create<UserState>(() => ({
@@ -20,8 +22,8 @@ export const useUserStore = create<UserState>(() => ({
         useChatStore.getState().fetchConversations();
       }
     } catch (error) {
-      console.error("Không thể tải ảnh đại diện lên:", error);
-      toast.error("Không thể cập nhật ảnh đại diện.");
+      logger.error("Khong the tai anh dai dien len", getErrorMeta(error));
+      toast.error("Khong the cap nhat anh dai dien.");
     }
   },
 }));

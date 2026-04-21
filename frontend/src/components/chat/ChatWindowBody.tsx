@@ -1,4 +1,5 @@
 import { useChatStore } from "@/stores/useChatStore";
+import { getErrorMeta, logger } from "@/lib/logger";
 import ChatWelcomeScreen from "./ChatWelcomeScreen";
 import MessageItem from "./MessageItem";
 import { useLayoutEffect, useRef } from "react";
@@ -54,7 +55,7 @@ const ChatWindowBody = () => {
     try {
       await fetchMessages(activeConversationId);
     } catch (error) {
-      console.error("Loi xay ra khi fetch them tin", error);
+      logger.error("Loi xay ra khi tai them tin nhan", getErrorMeta(error));
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMeta, logger } from "@/lib/logger";
 import { ShieldBan, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,7 +77,7 @@ const BlockTab = ({
         setBlockUserName("");
         setBlockReason("");
       } catch (error) {
-        console.error("Lỗi chặn người dùng:", error);
+        logger.error("Loi chan nguoi dung", getErrorMeta(error));
         toast.error("Không thể chặn người dùng lúc này.");
       } finally {
         setIsSubmitting(false);
@@ -92,7 +93,7 @@ const BlockTab = ({
         setBlocked(next);
         toast.success(`Đã bỏ chặn @${user.userName}`);
       } catch (error) {
-        console.error("Lỗi bỏ chặn người dùng:", error);
+        logger.error("Loi bo chan nguoi dung", getErrorMeta(error));
         toast.error("Không thể bỏ chặn người dùng lúc này.");
       } finally {
         setBusyUserId(null);
@@ -117,7 +118,7 @@ const BlockTab = ({
         setBlocked(next);
         toast.message("Đã xóa danh sách chặn");
       } catch (error) {
-        console.error("Lỗi xóa toàn bộ danh sách chặn:", error);
+        logger.error("Loi xoa toan bo danh sach chan", getErrorMeta(error));
         toast.error("Không thể xóa toàn bộ danh sách chặn lúc này.");
       } finally {
         setIsClearingAll(false);
