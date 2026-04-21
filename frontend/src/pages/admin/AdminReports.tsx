@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertCircle, Eye, Flag, Search } from "lucide-react";
 
@@ -7,100 +7,32 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { getErrorMessage } from "@/lib/httpError";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
+import type {
+  AdminReportRecord,
+  AdminReportStatus,
+  AdminReportTargetType,
+  PaginationData,
+} from "@/types/admin";
 
-interface ReporterSnapshot {
-  _id: string;
-  displayName: string;
-  userName: string;
-  avatarUrl?: string;
-}
-
-interface TargetUserSnapshot {
-  _id: string;
-  displayName: string;
-  userName: string;
-  email?: string;
-  avatarUrl?: string;
-}
-
-interface TargetMessagePreview {
-  _id: string;
-  content?: string;
-  imgUrl?: string;
-  senderDisplayName?: string;
-  createdAt: string;
-}
-
-interface Report {
-  _id: string;
-  reporterId: string;
-  targetType: "user" | "message" | "conversation";
-  targetUserId?: string;
-  targetMessageId?: string;
-  targetConversationId?: string;
-  reason: string;
-  description?: string;
-  status: "pending" | "reviewing" | "resolved" | "rejected";
-  reviewedByAdminId?: string;
-  reviewedAt?: string;
-  resolutionNote?: string;
-  createdAt: string;
-  updatedAt: string;
-  reporterSnapshot: ReporterSnapshot;
-  targetUserSnapshot?: TargetUserSnapshot;
-  targetMessagePreview?: TargetMessagePreview;
-  targetConversationSnapshot?: {
-    _id: string;
-    type: string;
-    groupName?: string;
-    membersCount: number;
-  };
-}
-
-interface PaginationData {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: "Chờ xử lý",
-    className: "bg-yellow-500/10 text-yellow-700",
-  },
-  reviewing: {
-    label: "Đang xem xét",
-    className: "bg-blue-500/10 text-blue-700",
-  },
-  resolved: {
-    label: "Đã xử lý",
-    className: "bg-emerald-500/10 text-emerald-700",
-  },
-  rejected: {
-    label: "Từ chối",
-    className: "bg-red-500/10 text-red-700",
-  },
+const statusConfig: Record<AdminReportStatus, { label: string; className: string }> = {
+  pending: { label: "Cho xu ly", className: "bg-yellow-500/10 text-yellow-700" },
+  reviewing: { label: "Dang xem xet", className: "bg-blue-500/10 text-blue-700" },
+  resolved: { label: "Da xu ly", className: "bg-emerald-500/10 text-emerald-700" },
+  rejected: { label: "Tu choi", className: "bg-red-500/10 text-red-700" },
 };
 
-const typeConfig: Record<string, { label: string; className: string }> = {
-  user: {
-    label: "Báo cáo người dùng",
-    className: "bg-purple-500/10 text-purple-700",
-  },
-  message: {
-    label: "Báo cáo tin nhắn",
-    className: "bg-blue-500/10 text-blue-700",
-  },
-  conversation: {
-    label: "Báo cáo cuộc trò chuyện",
-    className: "bg-amber-500/10 text-amber-700",
-  },
+const typeConfig: Record<AdminReportTargetType, { label: string; className: string }> = {
+  user: { label: "Bao cao nguoi dung", className: "bg-purple-500/10 text-purple-700" },
+  message: { label: "Bao cao tin nhan", className: "bg-blue-500/10 text-blue-700" },
+  conversation: { label: "Bao cao cuoc tro chuyen", className: "bg-amber-500/10 text-amber-700" },
 };
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "Không có ngày";
+  if (!dateString) {
+    return "Khong co ngay";
+  }
 
   return new Date(dateString).toLocaleString("vi-VN", {
     year: "numeric",
@@ -113,7 +45,7 @@ const formatDate = (dateString?: string | null) => {
 
 const AdminReports = () => {
   const navigate = useNavigate();
-  const reports = useAdminSocketStore((state) => state.reports as Report[]);
+  const reports = useAdminSocketStore((state) => state.reports as AdminReportRecord[]);
   const loading = useAdminSocketStore((state) => state.reportsLoading);
   const pagination = useAdminSocketStore(
     (state) => state.reportsPagination as PaginationData,
@@ -121,76 +53,42 @@ const AdminReports = () => {
   const fetchReportsFromStore = useAdminSocketStore((state) => state.fetchReports);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<
-    "" | "pending" | "reviewing" | "resolved" | "rejected"
-  >("");
-  const [typeFilter, setTypeFilter] = useState<
-    "" | "user" | "message" | "conversation"
-  >("");
+  const [statusFilter, setStatusFilter] = useState<"" | AdminReportStatus>("");
+  const [typeFilter, setTypeFilter] = useState<"" | AdminReportTargetType>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("createdAt-desc");
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setError(null);
-
-      const params = {
+      await fetchReportsFromStore({
         page,
         limit: 20,
         status: statusFilter,
         targetType: typeFilter,
         q: searchQuery,
         sort: sortBy,
-      };
-
-      console.debug("[report][admin-page][fetch]", params);
-
-      await fetchReportsFromStore(params);
+      });
     } catch (err) {
       console.error("[report][admin-page][error]", err);
-      setError("Không thể tải danh sách báo cáo.");
+      setError(getErrorMessage(err, "Khong the tai danh sach bao cao."));
     }
-  };
+  }, [fetchReportsFromStore, page, searchQuery, sortBy, statusFilter, typeFilter]);
 
   useEffect(() => {
-    void fetchReports();
-  }, [page, statusFilter, typeFilter, searchQuery, sortBy]);
-
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    setPage(1);
-  };
-
-  const handleStatusChange = (
-    value: "" | "pending" | "reviewing" | "resolved" | "rejected",
-  ) => {
-    setStatusFilter(value);
-    setPage(1);
-  };
-
-  const handleTypeChange = (
-    value: "" | "user" | "message" | "conversation",
-  ) => {
-    setTypeFilter(value);
-    setPage(1);
-  };
-
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
-    setPage(1);
-  };
-
-  const goToReportDetail = (reportId: string) => {
-    navigate(`/admin/reports/${reportId}`);
-  };
+    const timer = window.setTimeout(() => {
+      void fetchReports();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchReports]);
 
   if (error && !loading) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
+          <h1 className="text-3xl font-bold text-foreground">Quan ly bao cao</h1>
           <p className="mt-2 text-muted-foreground">
-            Quản lý và xem xét báo cáo từ người dùng để kiểm duyệt nội dung.
+            Quan ly va xem xet bao cao tu nguoi dung de kiem duyet noi dung.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -203,9 +101,9 @@ const AdminReports = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Quản lý báo cáo</h1>
+        <h1 className="text-3xl font-bold text-foreground">Quan ly bao cao</h1>
         <p className="mt-2 text-muted-foreground">
-          Tổng cộng {pagination.total} báo cáo cần theo dõi và xử lý.
+          Tong cong {pagination.total} bao cao can theo doi va xu ly.
         </p>
       </div>
 
@@ -213,10 +111,9 @@ const AdminReports = () => {
         <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground">Lưu ý quyền riêng tư</p>
+            <p className="font-medium text-foreground">Luu y quyen rieng tu</p>
             <p className="text-sm text-muted-foreground">
-              Admin chỉ được xem nội dung liên quan đến báo cáo cụ thể. Không được
-              duyệt hàng loạt tin nhắn người dùng ngoài phạm vi báo cáo.
+              Admin chi duoc xem noi dung lien quan den bao cao cu the. Khong duoc duyet hang loat tin nhan nguoi dung ngoai pham vi bao cao.
             </p>
           </div>
         </div>
@@ -227,45 +124,57 @@ const AdminReports = () => {
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm theo lý do hoặc người báo cáo..."
+              placeholder="Tim theo ly do hoac nguoi bao cao..."
               value={searchQuery}
-              onChange={(event) => handleSearch(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setPage(1);
+              }}
               className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
             />
           </div>
 
           <select
             value={statusFilter}
-            onChange={(event) => handleStatusChange(event.target.value as never)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value as "" | AdminReportStatus);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">Tất cả trạng thái</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="reviewing">Đang xem xét</option>
-            <option value="resolved">Đã xử lý</option>
-            <option value="rejected">Từ chối</option>
+            <option value="">Tat ca trang thai</option>
+            <option value="pending">Cho xu ly</option>
+            <option value="reviewing">Dang xem xet</option>
+            <option value="resolved">Da xu ly</option>
+            <option value="rejected">Tu choi</option>
           </select>
 
           <select
             value={typeFilter}
-            onChange={(event) => handleTypeChange(event.target.value as never)}
+            onChange={(event) => {
+              setTypeFilter(event.target.value as "" | AdminReportTargetType);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">Tất cả loại</option>
-            <option value="user">Người dùng</option>
-            <option value="message">Tin nhắn</option>
-            <option value="conversation">Cuộc trò chuyện</option>
+            <option value="">Tat ca loai</option>
+            <option value="user">Nguoi dung</option>
+            <option value="message">Tin nhan</option>
+            <option value="conversation">Cuoc tro chuyen</option>
           </select>
 
           <select
             value={sortBy}
-            onChange={(event) => handleSortChange(event.target.value)}
+            onChange={(event) => {
+              setSortBy(event.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="createdAt-desc">Mới nhất</option>
-            <option value="createdAt-asc">Cũ nhất</option>
-            <option value="updated">Cập nhật gần đây</option>
-            <option value="status">Theo trạng thái</option>
+            <option value="createdAt-desc">Moi nhat</option>
+            <option value="createdAt-asc">Cu nhat</option>
+            <option value="updated">Cap nhat gan day</option>
+            <option value="status">Theo trang thai</option>
           </select>
         </div>
       </div>
@@ -279,9 +188,9 @@ const AdminReports = () => {
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
               <Flag className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-4 text-muted-foreground">Không tìm thấy báo cáo nào.</p>
+              <p className="mt-4 text-muted-foreground">Khong tim thay bao cao nao.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.
+                Thu dieu chinh bo loc hoac tu khoa tim kiem.
               </p>
             </div>
           </div>
@@ -291,24 +200,12 @@ const AdminReports = () => {
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Người báo cáo
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Loại
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Lý do
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Tạo lúc
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
-                      Hành động
-                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Nguoi bao cao</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Loai</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Ly do</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Trang thai</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Tao luc</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Hanh dong</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -336,11 +233,7 @@ const AdminReports = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            typeConfig[report.targetType].className
-                          }`}
-                        >
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${typeConfig[report.targetType].className}`}>
                           {typeConfig[report.targetType].label}
                         </span>
                       </td>
@@ -348,11 +241,7 @@ const AdminReports = () => {
                         <span className="line-clamp-2">{report.reason}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            statusConfig[report.status].className
-                          }`}
-                        >
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[report.status].className}`}>
                           {statusConfig[report.status].label}
                         </span>
                       </td>
@@ -364,7 +253,7 @@ const AdminReports = () => {
                           type="button"
                           variant="ghost"
                           className="h-10 rounded-xl border border-border/50 bg-background/40 px-3 text-muted-foreground hover:bg-background/70 hover:text-foreground"
-                          onClick={() => goToReportDetail(report._id)}
+                          onClick={() => navigate(`/admin/reports/${report._id}`)}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Xem

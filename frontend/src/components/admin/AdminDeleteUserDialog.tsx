@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { axiosInstance } from "@/lib/axios";
+import { getErrorMessage } from "@/lib/httpError";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 interface AdminDeleteUserDialogProps {
@@ -45,7 +46,9 @@ const AdminDeleteUserDialog = ({
   const isSelf = currentAdminId === userId;
 
   const handleDelete = async () => {
-    if (isSelf) return;
+    if (isSelf) {
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -56,15 +59,15 @@ const AdminDeleteUserDialog = ({
         },
       });
 
-      toast.success("Đã xóa tài khoản người dùng.");
+      toast.success("Da xoa tai khoan nguoi dung.");
       setOpen(false);
       onSuccess?.();
 
       if (redirectToUsers) {
         navigate("/admin/users", { replace: true });
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Không thể xóa tài khoản.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Khong the xoa tai khoan."));
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +82,7 @@ const AdminDeleteUserDialog = ({
           className={fullWidth ? "w-full justify-start" : ""}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          {isSelf ? "Không thể tự xóa" : "Xóa tài khoản"}
+          {isSelf ? "Khong the tu xoa" : "Xoa tai khoan"}
         </Button>
       </AlertDialogTrigger>
 
@@ -88,42 +91,37 @@ const AdminDeleteUserDialog = ({
           <AlertDialogMedia className="bg-destructive/10 text-destructive">
             <Trash2 />
           </AlertDialogMedia>
-          <AlertDialogTitle>Xóa tài khoản người dùng</AlertDialogTitle>
+          <AlertDialogTitle>Xoa tai khoan nguoi dung</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2 text-left">
             <p>
-              Bạn sắp xóa vĩnh viễn tài khoản <strong>{displayName}</strong> (@{userName}).
+              Ban sap xoa vinh vien tai khoan <strong>{displayName}</strong> (@{userName}).
             </p>
-            <p>Quy tắc áp dụng:</p>
-            <p>- Direct chat sẽ bị xóa sạch cùng toàn bộ direct messages.</p>
-            <p>- Group chat sẽ không bị xóa chỉ vì user này, nhưng user sẽ bị remove khỏi nhóm.</p>
+            <p>Quy tac ap dung:</p>
+            <p>- Direct chat se bi xoa sach cung toan bo direct messages.</p>
+            <p>- Group chat khong bi xoa chi vi user nay, nhung user se bi remove khoi nhom.</p>
             <p>
-              - Group messages cũ vẫn được giữ lại, sender sẽ được ẩn danh thành{" "}
-              <strong>“Người dùng đã xóa”</strong>.
+              - Group messages cu van duoc giu lai, sender se duoc an danh thanh <strong>"Nguoi dung da xoa"</strong>.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground" htmlFor="admin-delete-reason">
-            Lý do xóa
+            Ly do xoa
           </label>
           <Input
             id="admin-delete-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Ví dụ: Vi phạm chính sách"
+            placeholder="Vi du: Vi pham chinh sach"
             maxLength={300}
           />
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={submitting}>Hủy</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            disabled={submitting}
-            onClick={handleDelete}
-          >
-            {submitting ? "Đang xóa..." : "Xác nhận xóa tài khoản"}
+          <AlertDialogCancel disabled={submitting}>Huy</AlertDialogCancel>
+          <Button variant="destructive" disabled={submitting} onClick={handleDelete}>
+            {submitting ? "Dang xoa..." : "Xac nhan xoa tai khoan"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

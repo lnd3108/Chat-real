@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+
 import { playClickSound } from "@/lib/sound";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFriendStore } from "@/stores/useFriendStore";
@@ -28,7 +29,8 @@ const AddFriendModal = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DiscoverUser[]>([]);
-  const { searchUsers, searchLoading } = useFriendStore();
+  const searchUsers = useFriendStore((state) => state.searchUsers);
+  const searchLoading = useFriendStore((state) => state.searchLoading);
   const {
     suggestions,
     isFetching: isFetchingSuggestions,
@@ -37,61 +39,43 @@ const AddFriendModal = () => {
     refreshSuggestions,
   } = useSuggestionStore();
 
-  // Ref để chặn effect chạy 2 lần trong StrictMode
   const effectRunRef = useRef(false);
-  // Ref để track xem modal mở lần đầu hay không
   const modalFirstOpenRef = useRef(false);
-  // Timeout ID để clear khi unmount
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
-
+  const searchTimeoutRef = useRef<number | null>(null);
   const trimmedQuery = query.trim();
 
-  // 🔥 Reset ref khi modal close
-  useEffect(() => {
-    if (!open) {
-      effectRunRef.current = false;
-      modalFirstOpenRef.current = false;
-      setQuery("");
-      setSearchResults([]);
-    }
-  }, [open]);
+  const clearSearchState = useCallback(() => {
+    setQuery("");
+    setSearchResults([]);
+  }, []);
 
-  // 🔥 CHỐNG SPAM: Main effect - fetch suggestions khi modal mở, search khi user nhập
   useEffect(() => {
     if (!open || !currentUserId) {
       return;
     }
 
-    // 🔥 StrictMode dev chạy 2 lần → block lần 2
     if (effectRunRef.current && !trimmedQuery) {
-      console.info("[AddFriendModal] Effect đã chạy, skip lần 2");
+      console.info("[AddFriendModal] Effect Ä‘Ã£ cháº¡y, skip láº§n 2");
       return;
     }
 
     if (!trimmedQuery) {
-      // 🔥 CASE: Modal mở / query được clear
       effectRunRef.current = true;
 
-      // 🔥 Chỉ fetch suggestions khi:
-      // - Modal mở lần đầu (modalFirstOpenRef.current = false)
-      // - Hoặc user bấm clear query
-      // - Và chưa fetch bao giờ (hasFetchedSuggestions = false)
       if (!modalFirstOpenRef.current && !hasFetchedSuggestions) {
         modalFirstOpenRef.current = true;
-        console.info("[AddFriendModal] Fetching suggestions khi modal mở lần đầu");
+        console.info("[AddFriendModal] Fetching suggestions khi modal má»Ÿ láº§n Ä‘áº§u");
         void fetchSuggestions(5, false);
       }
+
       return;
     }
 
-    // 🔥 CASE: User nhập query để tìm kiếm
-    // Reset flag để lần sau khi clear query sẽ fetch suggestions lại
     effectRunRef.current = false;
     modalFirstOpenRef.current = false;
 
-    // Debounce search
     if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+      window.clearTimeout(searchTimeoutRef.current);
     }
 
     searchTimeoutRef.current = window.setTimeout(() => {
@@ -101,16 +85,11 @@ const AddFriendModal = () => {
 
     return () => {
       if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+        window.clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
       }
     };
-  }, [
-    open,
-    trimmedQuery,
-    currentUserId,
-    // 🔥 Dependency: CHỈ user ID, query, open (ổn định)
-    // KHÔNG dùng suggestionsLoading, searchLoading, suggestions, searchResults
-  ]);
+  }, [currentUserId, fetchSuggestions, hasFetchedSuggestions, open, searchUsers, trimmedQuery]);
 
   const displayedUsers = useMemo(
     () => (trimmedQuery ? searchResults : suggestions),
@@ -119,26 +98,35 @@ const AddFriendModal = () => {
 
   const currentLoading = trimmedQuery ? searchLoading : isFetchingSuggestions;
   const emptyText = trimmedQuery
-    ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
-    : "Chưa có gợi ý phù hợp.";
+    ? `KhÃ´ng tÃ¬m tháº¥y user gáº§n Ä‘Ãºng vá»›i "${trimmedQuery}".`
+    : "ChÆ°a cÃ³ gá»£i Ã½ phÃ¹ há»£p.";
 
   const handleRefreshSuggestions = useCallback(async () => {
-    console.info("[AddFriendModal] User bấm reload suggestions");
+    console.info("[AddFriendModal] User báº¥m reload suggestions");
     await refreshSuggestions(5);
   }, [refreshSuggestions]);
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    playClickSound();
+
+    if (!nextOpen) {
+      effectRunRef.current = false;
+      modalFirstOpenRef.current = false;
+
+      if (searchTimeoutRef.current) {
+        window.clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+
+      clearSearchState();
+      toast.dismiss();
+    }
+
+    setOpen(nextOpen);
+  };
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        playClickSound();
-        if (!nextOpen) {
-          setQuery("");
-          setSearchResults([]);
-        }
-        setOpen(nextOpen);
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -146,15 +134,15 @@ const AddFriendModal = () => {
           className="flex z-10 justify-center items-center size-5 rounded-full hover:bg-sidebar-accent transition cursor-pointer"
         >
           <UserPlus className="size-4" />
-          <span className="sr-only">Kết bạn</span>
+          <span className="sr-only">Káº¿t báº¡n</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-border/40 bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">
         <DialogHeader className="border-b border-border/40 px-5 py-4">
-          <DialogTitle className="text-xl">Kết bạn</DialogTitle>
+          <DialogTitle className="text-xl">Káº¿t báº¡n</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Tìm người dùng rồi gửi lời mời kết bạn.
+            TÃ¬m ngÆ°á»i dÃ¹ng rá»“i gá»­i lá»i má»i káº¿t báº¡n.
           </DialogDescription>
         </DialogHeader>
 
@@ -164,7 +152,7 @@ const AddFriendModal = () => {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ví dụ: vanhle"
+              placeholder="VÃ­ dá»¥: vanhle"
               className="h-11 rounded-xl pl-11"
             />
           </div>
@@ -179,23 +167,15 @@ const AddFriendModal = () => {
             users={displayedUsers}
             loading={Boolean(currentUserId) && currentLoading}
             compact
-            title={trimmedQuery ? "Kết quả tìm kiếm" : "Bạn có thể biết"}
+            title={trimmedQuery ? "Káº¿t quáº£ tÃ¬m kiáº¿m" : "Báº¡n cÃ³ thá»ƒ biáº¿t"}
             emptyText={emptyText}
             onRefresh={!trimmedQuery ? handleRefreshSuggestions : undefined}
           />
         </div>
 
         <div className="flex justify-end border-t border-border/40 px-5 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl"
-            onClick={() => {
-              setOpen(false);
-              toast.dismiss();
-            }}
-          >
-            Đóng
+          <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
+            ÄÃ³ng
           </Button>
         </div>
       </DialogContent>

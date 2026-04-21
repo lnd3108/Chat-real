@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Eye, Search, MessageSquare, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, Eye, MessageSquare, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import AdminPagination from "@/components/admin/AdminPagination";
@@ -7,62 +7,21 @@ import UserAvatar from "@/components/chat/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { getErrorMessage } from "@/lib/httpError";
 import { useAdminSocketStore } from "@/stores/useAdminSocketStore";
-
-interface SupportUser {
-  _id: string;
-  displayName: string;
-  userName: string;
-  email?: string;
-  avatarUrl?: string;
-}
-
-interface SupportConversation {
-  _id: string;
-  supportStatus: "open" | "in_progress" | "resolved" | "closed";
-  supportCreatedByUserId: string;
-  assignedAdminId?: string | null;
-  lastMessage?: {
-    content?: string;
-    senderDisplayName?: string;
-  };
-  updatedAt: string;
-  unreadCounts?: Record<string, number>;
-  supportCreatedByUser?: SupportUser;
-  assignedAdmin?: {
-    _id: string;
-    displayName: string;
-  };
-}
-
-interface PaginationData {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
+import type { AdminSupportConversationRecord, PaginationData } from "@/types/admin";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  open: {
-    label: "Mở",
-    className: "bg-blue-500/10 text-blue-700",
-  },
-  in_progress: {
-    label: "Đang xử lý",
-    className: "bg-yellow-500/10 text-yellow-700",
-  },
-  resolved: {
-    label: "Đã giải quyết",
-    className: "bg-emerald-500/10 text-emerald-700",
-  },
-  closed: {
-    label: "Đóng",
-    className: "bg-gray-500/10 text-gray-700",
-  },
+  open: { label: "Mo", className: "bg-blue-500/10 text-blue-700" },
+  in_progress: { label: "Dang xu ly", className: "bg-yellow-500/10 text-yellow-700" },
+  resolved: { label: "Da giai quyet", className: "bg-emerald-500/10 text-emerald-700" },
+  closed: { label: "Dong", className: "bg-gray-500/10 text-gray-700" },
 };
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "Không có";
+  if (!dateString) {
+    return "Khong co";
+  }
 
   return new Date(dateString).toLocaleString("vi-VN", {
     year: "numeric",
@@ -76,7 +35,7 @@ const formatDate = (dateString?: string | null) => {
 const AdminSupport = () => {
   const navigate = useNavigate();
   const conversations = useAdminSocketStore(
-    (state) => state.supportConversations as SupportConversation[],
+    (state) => state.supportConversations as AdminSupportConversationRecord[],
   );
   const loading = useAdminSocketStore((state) => state.supportLoading);
   const pagination = useAdminSocketStore(
@@ -91,11 +50,7 @@ const AdminSupport = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("updatedAt-desc");
 
-  useEffect(() => {
-    void fetchSupportConversations();
-  }, [page, statusFilter, searchQuery, sortBy]);
-
-  const fetchSupportConversations = async () => {
+  const fetchSupportConversations = useCallback(async () => {
     try {
       await fetchSupportConversationsFromStore({
         page,
@@ -105,35 +60,26 @@ const AdminSupport = () => {
         sort: sortBy,
       });
       setError(null);
-
     } catch (err) {
       console.error(err);
-      setError("Không thể tải danh sách hỗ trợ.");
+      setError(getErrorMessage(err, "Khong the tai danh sach ho tro."));
     }
-  };
+  }, [fetchSupportConversationsFromStore, page, searchQuery, sortBy, statusFilter]);
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    setPage(1);
-  };
-
-  const handleStatusChange = (value: string) => {
-    setStatusFilter(value);
-    setPage(1);
-  };
-
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
-    setPage(1);
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchSupportConversations();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchSupportConversations]);
 
   if (error && !loading) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Hỗ trợ khách hàng</h1>
+          <h1 className="text-3xl font-bold text-foreground">Ho tro khach hang</h1>
           <p className="mt-2 text-muted-foreground">
-            Quản lý và xử lý yêu cầu hỗ trợ từ người dùng.
+            Quan ly va xu ly yeu cau ho tro tu nguoi dung.
           </p>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">
@@ -146,9 +92,9 @@ const AdminSupport = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Hỗ trợ khách hàng</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ho tro khach hang</h1>
         <p className="mt-2 text-muted-foreground">
-          Tổng cộng {pagination.total} yêu cầu hỗ trợ cần xử lý.
+          Tong cong {pagination.total} yeu cau ho tro can xu ly.
         </p>
       </div>
 
@@ -156,10 +102,9 @@ const AdminSupport = () => {
         <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-5 w-5 text-blue-700" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground">Hướng dẫn xử lý</p>
+            <p className="font-medium text-foreground">Huong dan xu ly</p>
             <p className="text-sm text-muted-foreground">
-              Nhấn vào yêu cầu để xem chi tiết và trả lời người dùng. Cập nhật
-              trạng thái khi hoàn thành.
+              Nhan vao yeu cau de xem chi tiet va tra loi nguoi dung. Cap nhat trang thai khi hoan thanh.
             </p>
           </div>
         </div>
@@ -170,33 +115,42 @@ const AdminSupport = () => {
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Tìm theo tên hoặc username người dùng..."
+              placeholder="Tim theo ten hoac username nguoi dung..."
               value={searchQuery}
-              onChange={(event) => handleSearch(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setPage(1);
+              }}
               className="border-border/50 bg-muted/50 pl-10 focus:border-primary/50"
             />
           </div>
 
           <select
             value={statusFilter}
-            onChange={(event) => handleStatusChange(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="">Tất cả trạng thái</option>
-            <option value="open">Mở</option>
-            <option value="in_progress">Đang xử lý</option>
-            <option value="resolved">Đã giải quyết</option>
-            <option value="closed">Đóng</option>
+            <option value="">Tat ca trang thai</option>
+            <option value="open">Mo</option>
+            <option value="in_progress">Dang xu ly</option>
+            <option value="resolved">Da giai quyet</option>
+            <option value="closed">Dong</option>
           </select>
 
           <select
             value={sortBy}
-            onChange={(event) => handleSortChange(event.target.value)}
+            onChange={(event) => {
+              setSortBy(event.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm transition-colors focus:border-primary/50 focus:outline-none"
           >
-            <option value="updatedAt-desc">Mới nhất</option>
-            <option value="createdAt-desc">Tạo mới nhất</option>
-            <option value="status">Theo trạng thái</option>
+            <option value="updatedAt-desc">Moi nhat</option>
+            <option value="createdAt-desc">Tao moi nhat</option>
+            <option value="status">Theo trang thai</option>
           </select>
         </div>
       </div>
@@ -210,9 +164,9 @@ const AdminSupport = () => {
           <div className="flex h-96 items-center justify-center">
             <div className="text-center">
               <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-4 text-muted-foreground">Không có yêu cầu hỗ trợ nào.</p>
+              <p className="mt-4 text-muted-foreground">Khong co yeu cau ho tro nao.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Tất cả các yêu cầu đã được xử lý.
+                Tat ca cac yeu cau da duoc xu ly.
               </p>
             </div>
           </div>
@@ -222,24 +176,12 @@ const AdminSupport = () => {
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Người dùng
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Nội dung
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Admin xử lý
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Cập nhật
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
-                      Hành động
-                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Nguoi dung</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Trang thai</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Noi dung</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Admin xu ly</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Cap nhat</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Hanh dong</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,7 +194,7 @@ const AdminSupport = () => {
                         <div className="flex items-center gap-3">
                           <UserAvatar
                             type="chat"
-                            name={conversation.supportCreatedByUser?.displayName ?? "Người dùng"}
+                            name={conversation.supportCreatedByUser?.displayName ?? "Nguoi dung"}
                             avatarUrl={conversation.supportCreatedByUser?.avatarUrl}
                             className="size-9"
                           />
@@ -267,17 +209,13 @@ const AdminSupport = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            statusConfig[conversation.supportStatus].className
-                          }`}
-                        >
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[conversation.supportStatus].className}`}>
                           {statusConfig[conversation.supportStatus].label}
                         </span>
                       </td>
                       <td className="max-w-[250px] px-6 py-4 text-sm text-muted-foreground">
                         <span className="line-clamp-2">
-                          {conversation.lastMessage?.content ?? "Không có nội dung"}
+                          {conversation.lastMessage?.content ?? "Khong co noi dung"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">

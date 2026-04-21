@@ -1,12 +1,12 @@
 import { axiosInstance } from "@/lib/axios";
+import type {
+  AdminReportRecord,
+  AdminSupportConversationRecord,
+  AdminSupportMessageRecord,
+  AdminUserRecord,
+  PaginationData,
+} from "@/types/admin";
 import { create } from "zustand";
-
-type Pagination = {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-};
 
 type UserListQuery = {
   page: number;
@@ -33,84 +33,19 @@ type SupportListQuery = {
   sort: string;
 };
 
-export interface AdminUserRecord {
-  _id: string;
-  displayName: string;
-  userName: string;
-  email: string;
-  role: "user" | "admin";
-  status: "active" | "inactive" | "suspended" | "banned";
-  avatarUrl?: string | null;
-  createdAt: string;
-  isOnline?: boolean;
-}
-
-export interface AdminReportRecord {
-  _id: string;
-  reporterSnapshot: {
-    _id: string;
-    displayName: string;
-    userName: string;
-    avatarUrl?: string;
-  };
-  targetType: "user" | "message" | "conversation";
-  reason: string;
-  status: "pending" | "reviewing" | "resolved" | "rejected";
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdminSupportConversationRecord {
-  _id: string;
-  supportStatus: "open" | "in_progress" | "resolved" | "closed";
-  supportCreatedByUserId: string;
-  supportCreatedByUser?: {
-    _id: string;
-    displayName: string;
-    userName: string;
-    email?: string;
-    avatarUrl?: string;
-  };
-  assignedAdminId?: string | null;
-  assignedAdmin?: {
-    _id: string;
-    displayName: string;
-  } | null;
-  lastMessage?: {
-    _id?: string;
-    content?: string;
-    senderDisplayName?: string;
-    createdAt?: string;
-  };
-  unreadCounts?: Record<string, number>;
-  updatedAt: string;
-  createdAt: string;
-}
-
-export interface AdminSupportMessageRecord {
-  _id: string;
-  conversationId: string;
-  senderId: string;
-  senderDisplayName?: string;
-  senderAvatar?: string | null;
-  content: string;
-  createdAt: string;
-  type?: string;
-}
-
 interface AdminSocketState {
   boundSocketId: string | null;
   users: AdminUserRecord[];
   usersLoading: boolean;
-  usersPagination: Pagination;
+  usersPagination: PaginationData;
   userQuery: UserListQuery;
   reports: AdminReportRecord[];
   reportsLoading: boolean;
-  reportsPagination: Pagination;
+  reportsPagination: PaginationData;
   reportQuery: ReportListQuery;
   supportConversations: AdminSupportConversationRecord[];
   supportLoading: boolean;
-  supportPagination: Pagination;
+  supportPagination: PaginationData;
   supportQuery: SupportListQuery;
   supportMessagesByConversation: Record<string, AdminSupportMessageRecord[]>;
   activeSupportConversationId: string | null;
@@ -135,24 +70,26 @@ interface AdminSocketState {
   ) => void;
 }
 
-const defaultPagination: Pagination = {
+const defaultPagination: PaginationData = {
   page: 1,
   limit: 20,
   total: 0,
   pages: 1,
 };
 
-const upsertById = <T extends { _id: string }>(items: T[], incoming: T) => {
+const getItemTimestamp = (item: { updatedAt?: string; createdAt?: string }) =>
+  new Date(item.updatedAt ?? item.createdAt ?? 0).getTime();
+
+const upsertById = <T extends { _id: string; updatedAt?: string; createdAt?: string }>(
+  items: T[],
+  incoming: T,
+) => {
   const exists = items.some((item) => item._id === incoming._id);
   const next = exists
     ? items.map((item) => (item._id === incoming._id ? { ...item, ...incoming } : item))
     : [incoming, ...items];
 
-  return [...next].sort((a, b) => {
-    const aTime = new Date((a as { updatedAt?: string; createdAt?: string }).updatedAt ?? (a as { createdAt?: string }).createdAt ?? 0).getTime();
-    const bTime = new Date((b as { updatedAt?: string; createdAt?: string }).updatedAt ?? (b as { createdAt?: string }).createdAt ?? 0).getTime();
-    return bTime - aTime;
-  });
+  return [...next].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
 };
 
 export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
@@ -184,7 +121,9 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
   },
   supportMessagesByConversation: {},
   activeSupportConversationId: null,
+
   setBoundSocketId: (socketId) => set({ boundSocketId: socketId }),
+
   fetchUsers: async (query) => {
     const nextQuery = { ...get().userQuery, ...query };
     try {
@@ -200,8 +139,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch admin users:", error);
       set({ usersLoading: false });
+      throw error;
     }
   },
+
   fetchReports: async (query) => {
     const nextQuery = { ...get().reportQuery, ...query };
     try {
@@ -217,8 +158,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch admin reports:", error);
       set({ reportsLoading: false });
+      throw error;
     }
   },
+
   fetchSupportConversations: async (query) => {
     const nextQuery = { ...get().supportQuery, ...query };
     try {
@@ -234,8 +177,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch admin support conversations:", error);
       set({ supportLoading: false });
+      throw error;
     }
   },
+
   fetchSupportConversationDetail: async (id) => {
     const response = await axiosInstance.get(`/admin/support/conversations/${id}`);
     const conversation = response.data.data.conversation ?? null;
@@ -254,7 +199,9 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
 
     return { conversation, messages };
   },
+
   setActiveSupportConversationId: (id) => set({ activeSupportConversationId: id }),
+
   upsertUser: (user) => {
     set((state) => ({
       users: upsertById(state.users, {
@@ -268,21 +215,25 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
       }),
     }));
   },
+
   removeUser: (userId) => {
     set((state) => ({
       users: state.users.filter((item) => item._id !== userId),
     }));
   },
+
   upsertReport: (report) => {
     set((state) => ({
       reports: upsertById(state.reports, report),
     }));
   },
+
   upsertSupportConversation: (conversation) => {
     set((state) => ({
       supportConversations: upsertById(state.supportConversations, conversation),
     }));
   },
+
   upsertSupportMessage: (conversationId, message) => {
     set((state) => {
       const current = state.supportMessagesByConversation[conversationId] ?? [];

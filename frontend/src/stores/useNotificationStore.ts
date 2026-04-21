@@ -1,6 +1,6 @@
+import { shouldStoreNotification } from "@/lib/messageNotifications";
 import type { NotificationState } from "@/types/store";
 import type { FriendRequest } from "@/types/user";
-import { shouldStoreNotification } from "@/lib/messageNotifications";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -9,19 +9,13 @@ const MAX_NOTIFICATIONS = 100;
 const buildFriendRequestNotification = (request: FriendRequest) => ({
   id: `friend-request-${request._id}`,
   type: "friend_request" as const,
-  title: "Lời mời kết bạn mới",
-  message: `${request.from?.displayName ?? "Ai đó"} đã gửi lời mời kết bạn cho bạn`,
+  title: "Lá»i má»i káº¿t báº¡n má»›i",
+  message: `${request.from?.displayName ?? "Ai Ä‘Ã³"} Ä‘Ã£ gá»­i lá»i má»i káº¿t báº¡n cho báº¡n`,
   actorName: request.from?.displayName,
   entityId: request._id,
 });
 
-const sortByNewest = <
-  T extends {
-    createdAt: string;
-  },
->(
-  items: T[],
-) =>
+const sortByNewest = <T extends { createdAt: string }>(items: T[]) =>
   [...items].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
@@ -82,7 +76,7 @@ export const useNotificationStore = create<NotificationState>()(
               (item.entityId && requestIds.has(item.entityId)),
           );
 
-          let nextItems = [...nonFriendRequestItems];
+          const nextItems = [...nonFriendRequestItems];
 
           requests.forEach((request) => {
             if (!shouldStoreNotification("friend_request")) {
@@ -93,7 +87,9 @@ export const useNotificationStore = create<NotificationState>()(
               (item) => item.id === `friend-request-${request._id}`,
             );
 
-            if (existing) return;
+            if (existing) {
+              return;
+            }
 
             nextItems.push({
               ...buildFriendRequestNotification(request),
