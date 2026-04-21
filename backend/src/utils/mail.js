@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getMailConfig } from "../config/mail.js";
 
 let transporter;
 
@@ -7,17 +8,20 @@ const isPlaceholder = (value) =>
   (value.includes("your_gmail@gmail.com") ||
     value.includes("your_google_app_password"));
 
-const isMailConfigured = () =>
-  Boolean(
-    process.env.SMTP_HOST &&
-    process.env.SMTP_PORT &&
-    process.env.SMTP_USER &&
-    process.env.SMTP_PASS &&
-    process.env.SMTP_FROM &&
-    !isPlaceholder(process.env.SMTP_USER) &&
-    !isPlaceholder(process.env.SMTP_PASS) &&
-    !isPlaceholder(process.env.SMTP_FROM),
+const isMailConfigured = () => {
+  const config = getMailConfig();
+
+  return Boolean(
+    config.host &&
+      config.port &&
+      config.user &&
+      config.pass &&
+      config.from &&
+      !isPlaceholder(config.user) &&
+      !isPlaceholder(config.pass) &&
+      !isPlaceholder(config.from),
   );
+};
 
 const getTransporter = () => {
   if (!isMailConfigured()) {
@@ -25,13 +29,15 @@ const getTransporter = () => {
   }
 
   if (!transporter) {
+    const config = getMailConfig();
+
     transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: config.user,
+        pass: config.pass,
       },
     });
   }
@@ -42,16 +48,16 @@ const getTransporter = () => {
 const getAppName = () => process.env.APP_NAME || "ChatRealTime";
 
 const sendMail = async ({ to, subject, text, html }) => {
+  if (!isMailConfigured()) {
+    throw new Error("SMTP not configured. Please set mail environment variables.");
+  }
+
+  const mailer = getTransporter();
+  const config = getMailConfig();
+
   try {
-    // Check if mail is configured
-    if (!isMailConfigured()) {
-      throw new Error("SMTP not configured. Please set SMTP environment variables.");
-    }
-
-    const mailer = getTransporter();
-
     await mailer.sendMail({
-      from: process.env.SMTP_FROM,
+      from: config.from,
       to,
       subject,
       text,
@@ -94,6 +100,39 @@ export const sendVerificationCodeEmail = async ({
         <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
         <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
         <p>Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này.</p>
+      </div>
+    `,
+  });
+};
+
+export const sendPasswordResetOtpEmail = async ({
+  email,
+  code,
+  displayName,
+}) => {
+  const appName = getAppName();
+
+  await sendMail({
+    to: email,
+    subject: `${appName} - Xác nhận quên mật khẩu`,
+    text: [
+      `Xin chào ${displayName || "bạn"},`,
+      "",
+      `Mã xác nhận của bạn là: ${code}`,
+      "",
+      "Mã có hiệu lực trong 5 phút.",
+      "Không chia sẻ mã này cho bất kỳ ai.",
+      "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin-bottom:12px">${appName}</h2>
+        <p>Xin chào ${displayName || "bạn"},</p>
+        <p>Mã xác nhận của bạn là:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
+        <p>Mã có hiệu lực trong <strong>5 phút</strong>.</p>
+        <p><strong>Không chia sẻ mã này cho bất kỳ ai.</strong></p>
+        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
       </div>
     `,
   });
@@ -151,6 +190,7 @@ export const sendAccountDeletedEmail = async ({
   const reasonHtml = trimmedReason
     ? `<p><strong>Lý do từ quản trị viên:</strong> ${trimmedReason}</p>`
     : "";
+  const config = getMailConfig();
 
   await sendMail({
     to: email,
@@ -172,83 +212,67 @@ export const sendAccountDeletedEmail = async ({
         <p>${deletionMessage}</p>
         ${reasonHtml}
         <p>${supportMessage}</p>
-        <p>Email liên hệ: ${process.env.SMTP_USER}</p>
+        <p>Email liên hệ: ${config.user}</p>
+      </div>
+    `,
+  });
+};
+
+export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
+  const appName = getAppName();
+
+  await sendMail({
+    to: email,
+    subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
+    text: [
+      "Xin chào Quản trị viên,",
+      "",
+      `Mã xác nhận bảo trì hệ thống của bạn là: ${code}`,
+      "",
+      "Mã có hiệu lực trong 10 phút.",
+      "Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin-bottom:12px">${appName}</h2>
+        <p>Xin chào Quản trị viên,</p>
+        <p>Mã xác nhận bảo trì hệ thống của bạn là:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
+        <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
+        <p>Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.</p>
       </div>
     `,
   });
 };
 
 const getMailConfigStatus = () => {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_PORT) {
+  const config = getMailConfig();
+
+  if (!config.host || !config.port) {
     return {
       ok: false,
       message: "Thiếu SMTP_HOST hoặc SMTP_PORT.",
     };
   }
 
-  if (
-    !process.env.SMTP_USER ||
-    !process.env.SMTP_PASS ||
-    !process.env.SMTP_FROM
-  ) {
+  if (!config.user || !config.pass || !config.from) {
     return {
       ok: false,
-      message: "Thiếu SMTP_USER, SMTP_PASS hoặc SMTP_FROM.",
+      message: "Thiếu MAIL_USER/MAIL_PASS/MAIL_FROM hoặc SMTP_USER/SMTP_PASS/SMTP_FROM.",
     };
   }
 
-  if (
-    isPlaceholder(process.env.SMTP_USER) ||
-    isPlaceholder(process.env.SMTP_PASS) ||
-    isPlaceholder(process.env.SMTP_FROM)
-  ) {
+  if (isPlaceholder(config.user) || isPlaceholder(config.pass) || isPlaceholder(config.from)) {
     return {
       ok: false,
-      message:
-        "SMTP vẫn đang dùng giá trị mẫu, chưa thay thế bằng tài khoản thật.",
+      message: "Cấu hình email vẫn đang dùng giá trị mẫu, chưa thay bằng tài khoản thật.",
     };
   }
 
   return {
     ok: true,
-    message: `SMTP đã cấu hình cho ${process.env.SMTP_USER}.`,
+    message: `Email đã cấu hình cho ${config.user}.`,
   };
-};
-
-export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
-  try {
-    const appName = getAppName();
-
-    await sendMail({
-      to: email,
-      subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
-      text: [
-        "Xin chào Quản trị viên,",
-        "",
-        `Mã xác nhận bảo trì hệ thống của bạn là: ${code}`,
-        "",
-        "Mã có hiệu lực trong 10 phút.",
-        "Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.",
-      ].join("\n"),
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-          <h2 style="margin-bottom:12px">${appName}</h2>
-          <p>Xin chào Quản trị viên,</p>
-          <p>Mã xác nhận bảo trì hệ thống của bạn là:</p>
-          <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p>
-          <p>Mã có hiệu lực trong <strong>10 phút</strong>.</p>
-          <p>Nếu bạn không yêu cầu bảo trì hệ thống, vui lòng bỏ qua email này.</p>
-        </div>
-      `,
-    });
-  } catch (error) {
-    console.error("Error in sendMaintenanceConfirmationCodeEmail:", {
-      email,
-      error: error.message,
-      code: error.code,
-    });
-    throw error;
-  }
 };
 
 export { getMailConfigStatus, isMailConfigured };

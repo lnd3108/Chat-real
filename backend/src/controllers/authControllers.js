@@ -22,6 +22,11 @@ import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.
 import { hasAdminPanelAccess } from "../services/rbacService.js";
 import { logger } from "../utils/logger.js";
 import { sanitizeAuthResponse } from "../utils/sanitizeUser.js";
+import {
+  requestPasswordReset,
+  resetPasswordWithVerifiedOtp,
+  verifyPasswordResetOtp,
+} from "../services/passwordResetService.js";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
@@ -859,6 +864,75 @@ export const resendVerificationCode = async (req, res) => {
       code: error?.code,
     });
     return res.status(500).json({ message: "Không thể gửi lại mã xác minh" });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const payload = await requestPasswordReset({
+      email: req.body?.email,
+      req,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi forgotPassword", {
+      message: error?.message,
+      status: error?.status,
+    });
+
+    return res.status(error?.status || 500).json({
+      message: error?.message || "Khong the xu ly yeu cau quen mat khau.",
+      resendAvailableAt: error?.resendAvailableAt,
+      attemptsRemaining: error?.attemptsRemaining,
+    });
+  }
+};
+
+export const verifyForgotPasswordOtp = async (req, res) => {
+  try {
+    const payload = await verifyPasswordResetOtp({
+      email: req.body?.email,
+      otp: req.body?.otp,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi verifyForgotPasswordOtp", {
+      message: error?.message,
+      status: error?.status,
+    });
+
+    return res.status(error?.status || 500).json({
+      message: error?.message || "Khong the xac minh ma dat lai mat khau.",
+      attemptsRemaining: error?.attemptsRemaining,
+    });
+  }
+};
+
+export const resetForgottenPassword = async (req, res) => {
+  try {
+    const payload = await resetPasswordWithVerifiedOtp({
+      email: req.body?.email,
+      resetToken: req.body?.resetToken,
+      resetTokenValue: req.body?.resetTokenValue,
+      newPassword: req.body?.newPassword,
+      confirmPassword: req.body?.confirmPassword,
+    });
+
+    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken");
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.warn("Loi resetForgottenPassword", {
+      message: error?.message,
+      status: error?.status,
+    });
+
+    return res.status(error?.status || 500).json({
+      message: error?.message || "Khong the dat lai mat khau.",
+    });
   }
 };
 

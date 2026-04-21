@@ -6,7 +6,12 @@ import { connectDB } from "../src/libs/db.js";
 import User from "../src/models/User.js";
 import { normalizeRole } from "../src/services/rbacService.js";
 
-const SYSTEM_ACCOUNT_USERNAMES = new Set(["admin", "super_admin", "superadmin", "system"]);
+const SYSTEM_ACCOUNT_USERNAMES = new Set([
+  "admin",
+  "super_admin",
+  "superadmin",
+  "system",
+]);
 
 const resolveCanonicalRole = (user) => {
   if (user?.isSuperAdmin === true) {
@@ -25,7 +30,13 @@ const resolveCanonicalRole = (user) => {
     return APP_ROLES.SUPPORT;
   }
 
-  if (SYSTEM_ACCOUNT_USERNAMES.has(String(user?.userName ?? "").trim().toLowerCase())) {
+  if (
+    SYSTEM_ACCOUNT_USERNAMES.has(
+      String(user?.userName ?? "")
+        .trim()
+        .toLowerCase(),
+    )
+  ) {
     return APP_ROLES.SUPER_ADMIN;
   }
 
@@ -44,13 +55,20 @@ const run = async () => {
 
   for (const user of users) {
     const nextRole = resolveCanonicalRole(user.toObject());
-    const currentRole = String(user.role ?? "").trim().toUpperCase();
+    const currentRole = String(user.role ?? "")
+      .trim()
+      .toUpperCase();
     const legacyRoles = Array.isArray(user.roles) ? user.roles : [];
-    const needsUpdate = currentRole !== nextRole || legacyRoles.length !== 1 || legacyRoles[0] !== nextRole;
+    const needsUpdate =
+      currentRole !== nextRole ||
+      legacyRoles.length !== 1 ||
+      legacyRoles[0] !== nextRole;
 
     if (!Object.values(APP_ROLES).includes(nextRole)) {
       invalidCount += 1;
-      console.warn(`[SKIP] user=${user._id} userName=${user.userName} role khong hop le`);
+      console.warn(
+        `[SKIP] user=${user._id} userName=${user.userName} role không hợp lệ`,
+      );
       continue;
     }
 
@@ -72,12 +90,14 @@ const run = async () => {
     console.log(`[UPDATED] ${user.userName} -> ${nextRole}`);
   }
 
-  console.log(`Hoan tat migrate role. Updated=${updatedCount}, Invalid=${invalidCount}`);
+  console.log(
+    `Hoàn tất migrate role. Updated=${updatedCount}, Invalid=${invalidCount}`,
+  );
   await mongoose.disconnect();
 };
 
 run().catch(async (error) => {
-  console.error("Migrate role that bai:", error);
+  console.error("Migrate role thất bại:", error);
   await mongoose.disconnect();
   process.exit(1);
 });

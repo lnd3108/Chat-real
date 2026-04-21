@@ -104,6 +104,14 @@ export function SignInForm({
                   Mật khẩu
                 </Label>
                 <Input type="password" id="password" {...register("password")} />
+                <div className="text-right">
+                  <a
+                    href="/forgot-password"
+                    className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                  >
+                    Quên mật khẩu?
+                  </a>
+                </div>
                 {errors.password && (
                   <p className="text-sm text-destructive">
                     {errors.password.message}

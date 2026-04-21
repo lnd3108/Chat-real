@@ -11,6 +11,9 @@ import {
   googleCallback,
   verifyEmailCode,
   resendVerificationCode,
+  forgotPassword,
+  verifyForgotPasswordOtp,
+  resetForgottenPassword,
 } from "../controllers/authControllers.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 
@@ -27,6 +30,12 @@ router.post("/google/callback", googleCallback);
 router.post("/verify-email", verifyEmailCode);
 
 router.post("/resend-verification", resendVerificationCode);
+
+router.post("/forgot-password", forgotPassword);
+
+router.post("/verify-forgot-password-otp", verifyForgotPasswordOtp);
+
+router.post("/reset-password", resetForgottenPassword);
 
 router.post("/signout", signOut);
 

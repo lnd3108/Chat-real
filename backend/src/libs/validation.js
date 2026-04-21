@@ -22,6 +22,33 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Yêu cầu password"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Email không hợp lệ"),
+});
+
+export const verifyForgotPasswordOtpSchema = z.object({
+  email: z.string().trim().email("Email không hợp lệ"),
+  otp: z.string().trim().regex(/^\d{6}$/, "OTP phải gồm đúng 6 chữ số"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    email: z.string().trim().email("Email không hợp lệ"),
+    resetToken: z.string().min(1, "Thiếu resetToken"),
+    resetTokenValue: z.string().min(1, "Thiếu resetTokenValue"),
+    newPassword: z
+      .string()
+      .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+      .regex(/[A-Z]/, "Mật khẩu phải có ít nhất 1 chữ hoa")
+      .regex(/[a-z]/, "Mật khẩu phải có ít nhất 1 chữ thường")
+      .regex(/[0-9]/, "Mật khẩu phải có ít nhất 1 chữ số"),
+    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Xác nhận mật khẩu không khớp",
+    path: ["confirmPassword"],
+  });
+
 // User Validation
 export const updateUserSchema = z.object({
   displayName: z.string().min(1, "Tên hiển thị không được trống").optional(),

@@ -121,6 +121,55 @@ export const authService = {
     };
   },
 
+  forgotPassword: async (email: string) => {
+    const res = await api.post("/auth/forgot-password", { email });
+
+    return res.data as {
+      message: string;
+      resendAvailableAt?: number;
+    };
+  },
+
+  verifyForgotPasswordOtp: async (email: string, otp: string) => {
+    const res = await api.post("/auth/verify-forgot-password-otp", {
+      email,
+      otp,
+    });
+
+    return res.data as {
+      message: string;
+      resetToken: string;
+      resetTokenValue: string;
+      resetTokenExpiresAt: number;
+    };
+  },
+
+  resetPassword: async ({
+    email,
+    resetToken,
+    resetTokenValue,
+    newPassword,
+    confirmPassword,
+  }: {
+    email: string;
+    resetToken: string | null;
+    resetTokenValue: string | null;
+    newPassword: string;
+    confirmPassword: string;
+  }) => {
+    const res = await api.post("/auth/reset-password", {
+      email,
+      resetToken,
+      resetTokenValue,
+      newPassword,
+      confirmPassword,
+    });
+
+    return res.data as {
+      message: string;
+    };
+  },
+
   requestAccountDeletionCode: async () => {
     const res = await api.post(
       "/auth/delete-account/request",

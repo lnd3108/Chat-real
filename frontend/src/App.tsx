@@ -4,6 +4,7 @@ import { SignUpPage } from "./pages/SignUpPasge";
 import ChatAppPage from "./pages/ChatAppPage";
 import { GoogleAuthCallbackPage } from "./pages/GoogleAuthCallbackPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminProtectedRoute from "./components/auth/AdminProtectedRoute";
@@ -84,6 +85,7 @@ function App() {
             element={<GoogleAuthCallbackPage />}
           />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Protected routes - User */}
           <Route element={<ProtectedRoute />}>
