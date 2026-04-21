@@ -9,11 +9,11 @@ import {
   isMailConfigured,
   sendVerificationCodeEmail,
   sendAccountDeletionCodeEmail,
-  sendAccountDeletedEmail,
 } from "../utils/mail.js";
 import { isMaintenanceEnabled, getMaintenanceMessage } from "../services/maintenanceService.js";
 import { ADMIN_SOCKET_EVENTS } from "../constants/socketEvents.js";
 import { emitToAdmins } from "../socket/adminSocket.js";
+import { deleteMyAccount } from "./userController.js";
 import {
   buildAdminActor,
   emitAdminNotification,
@@ -1021,9 +1021,8 @@ export const requestAccountDeletion = async (req, res) => {
   }
 };
 
-export const confirmAccountDeletion = async (req, res) => {
-  const { deleteMyAccount } = await import("./userController.js");
-  return deleteMyAccount(req, res);
+export const confirmAccountDeletion = async (req, res) => deleteMyAccount(req, res);
+/*
 
   try {
     const userId = req.user?._id;
@@ -1090,3 +1089,4 @@ export const confirmAccountDeletion = async (req, res) => {
     });
   }
 };
+*/

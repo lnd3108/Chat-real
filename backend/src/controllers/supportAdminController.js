@@ -10,8 +10,7 @@ import {
 } from "../services/adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "../services/dashboardRealtimeService.js";
 import { emitSupportConversationRealtime } from "../services/supportRealtimeService.js";
-
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import { escapeRegex } from "../utils/regex.js";
 const SUPPORT_STATUS_SET = ["open", "in_progress", "resolved", "closed"];
 
 const populateSupportConversation = async (conversation) => {

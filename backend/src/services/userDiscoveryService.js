@@ -9,11 +9,10 @@ import {
   isEligibleForFriendship,
   isProtectedAccount,
 } from "./friendshipPolicyService.js";
+import { escapeRegex } from "../utils/regex.js";
 
 const DEFAULT_SUGGESTION_LIMIT = 5;
 const MAX_SUGGESTION_LIMIT = 5;
-
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getReasonText = (mutualFriendsCount) =>
   mutualFriendsCount > 0 ? `${mutualFriendsCount} bạn chung` : "Gợi ý cho bạn";

@@ -1,8 +1,13 @@
 import Report from "../models/Report.js";
-import User from "../models/User.js";
-import Message from "../models/Message.js";
-import Conversation from "../models/Conversation.js";
 import { emitNewReportCreated } from "../services/reportRealtimeService.js";
+import {
+  buildReporterSnapshot,
+  buildTargetConversationSnapshot,
+  buildTargetMessagePreview,
+  buildTargetUserSnapshot,
+  validateReportInput,
+  validateReportTarget,
+} from "../services/reportService.js";
 
 /**
  * Create a new report
@@ -14,124 +19,29 @@ export const createReport = async (req, res) => {
       req.body;
     const reporterId = req.user._id;
 
-    console.log("[report][create][request]", {
-      reporterId: reporterId?.toString?.() ?? reporterId,
+    const inputError = validateReportInput({ targetType, reason, description });
+    if (inputError) {
+      return res.status(400).json({ message: inputError });
+    }
+
+    const targetError = await validateReportTarget({
+      reporterId,
       targetType,
-      targetUserId: targetUserId ?? null,
-      targetMessageId: targetMessageId ?? null,
-      targetConversationId: targetConversationId ?? null,
-      reasonLength: typeof reason === "string" ? reason.trim().length : 0,
-      descriptionLength:
-        typeof description === "string" ? description.trim().length : 0,
+      targetUserId,
+      targetMessageId,
+      targetConversationId,
     });
-
-    // Validation
-    if (!targetType || !["user", "message", "conversation"].includes(targetType)) {
-      return res.status(400).json({ message: "Invalid targetType" });
+    if (targetError) {
+      return res.status(targetError.status).json({ message: targetError.message });
     }
 
-    if (!reason || reason.trim().length === 0) {
-      return res.status(400).json({ message: "Reason is required" });
-    }
-
-    if (reason.trim().length > 500) {
-      return res.status(400).json({ message: "Reason must be less than 500 characters" });
-    }
-
-    if (description && description.length > 2000) {
-      return res.status(400).json({ message: "Description must be less than 2000 characters" });
-    }
-
-    // Validate target based on type
-    if (targetType === "user") {
-      if (!targetUserId) {
-        return res.status(400).json({ message: "targetUserId is required for user reports" });
-      }
-      if (reporterId.toString() === targetUserId.toString()) {
-        return res.status(400).json({ message: "Cannot report yourself" });
-      }
-
-      const targetUser = await User.findById(targetUserId).lean();
-      if (!targetUser) {
-        return res.status(404).json({ message: "Target user not found" });
-      }
-    }
-
-    if (targetType === "message") {
-      if (!targetMessageId) {
-        return res.status(400).json({ message: "targetMessageId is required for message reports" });
-      }
-
-      const message = await Message.findById(targetMessageId).lean();
-      if (!message) {
-        return res.status(404).json({ message: "Target message not found" });
-      }
-    }
-
-    if (targetType === "conversation") {
-      if (!targetConversationId) {
-        return res.status(400).json({ message: "targetConversationId is required for conversation reports" });
-      }
-
-      const conversation = await Conversation.findById(targetConversationId).lean();
-      if (!conversation) {
-        return res.status(404).json({ message: "Target conversation not found" });
-      }
-    }
-
-    // Get snapshots
-    const reporterSnapshot = {
-      _id: req.user._id,
-      displayName: req.user.displayName,
-      userName: req.user.userName,
-      avatarUrl: req.user.avatarUrl,
-    };
-
-    let targetUserSnapshot = null;
-    if (targetType === "user" && targetUserId) {
-      const targetUser = await User.findById(targetUserId).lean();
-      if (targetUser) {
-        targetUserSnapshot = {
-          _id: targetUser._id,
-          displayName: targetUser.displayName,
-          userName: targetUser.userName,
-          email: targetUser.email,
-          avatarUrl: targetUser.avatarUrl,
-        };
-      }
-    }
-
-    let targetMessagePreview = null;
-    if (targetType === "message" && targetMessageId) {
-      const message = await Message.findById(targetMessageId)
-        .select("content imgUrl senderId senderDisplayName senderDeleted createdAt")
-        .lean();
-      if (message) {
-        targetMessagePreview = {
-          _id: message._id,
-          content: message.content,
-          imgUrl: message.imgUrl,
-          senderDisplayName: message.senderDisplayName,
-          senderUserName: message.senderUserName,
-          createdAt: message.createdAt,
-        };
-      }
-    }
-
-    let targetConversationSnapshot = null;
-    if (targetType === "conversation" && targetConversationId) {
-      const conversation = await Conversation.findById(targetConversationId)
-        .select("type groupName members createdAt")
-        .lean();
-      if (conversation) {
-        targetConversationSnapshot = {
-          _id: conversation._id,
-          type: conversation.type,
-          groupName: conversation.groupName,
-          membersCount: conversation.members ? conversation.members.length : 0,
-        };
-      }
-    }
+    const reporterSnapshot = buildReporterSnapshot(req.user);
+    const [targetUserSnapshot, targetMessagePreview, targetConversationSnapshot] =
+      await Promise.all([
+        buildTargetUserSnapshot(targetType, targetUserId),
+        buildTargetMessagePreview(targetType, targetMessageId),
+        buildTargetConversationSnapshot(targetType, targetConversationId),
+      ]);
 
     // Create report
     const report = new Report({
@@ -150,14 +60,6 @@ export const createReport = async (req, res) => {
 
     await report.save();
     await emitNewReportCreated(report._id);
-
-    console.log("[report][create][saved]", {
-      _id: report._id?.toString?.() ?? report._id,
-      reporterId: report.reporterId?.toString?.() ?? report.reporterId,
-      targetType: report.targetType,
-      status: report.status,
-      createdAt: report.createdAt,
-    });
 
     res.status(201).json({
       message: "Report created successfully",

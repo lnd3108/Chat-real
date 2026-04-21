@@ -16,6 +16,7 @@ const mockSignInParse = jest.fn();
 const mockSendVerificationCodeEmail = jest.fn();
 const mockSendAccountDeletionCodeEmail = jest.fn();
 const mockSendAccountDeletedEmail = jest.fn();
+const mockSendMaintenanceConfirmationCodeEmail = jest.fn();
 const mockIsMailConfigured = jest.fn(() => true);
 
 jest.unstable_mockModule("../../models/User.js", () => ({
@@ -76,6 +77,7 @@ jest.unstable_mockModule("../../utils/mail.js", () => ({
   sendVerificationCodeEmail: mockSendVerificationCodeEmail,
   sendAccountDeletionCodeEmail: mockSendAccountDeletionCodeEmail,
   sendAccountDeletedEmail: mockSendAccountDeletedEmail,
+  sendMaintenanceConfirmationCodeEmail: mockSendMaintenanceConfirmationCodeEmail,
 }));
 
 const {

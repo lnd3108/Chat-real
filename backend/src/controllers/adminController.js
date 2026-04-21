@@ -36,8 +36,7 @@ import {
   getAdminDashboardRealtimeStats,
 } from "../services/dashboardRealtimeService.js";
 import { emitReportUpdated } from "../services/reportRealtimeService.js";
-
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import { escapeRegex } from "../utils/regex.js";
 
 const mapAdminUserSummary = (user) => {
   if (!user) return null;
@@ -1609,19 +1608,6 @@ export const getReports = async (req, res) => {
       .lean();
 
     const total = await Report.countDocuments(query);
-
-    console.log("[report][admin-list]", {
-      adminId: req.user?._id?.toString?.() ?? req.user?._id ?? null,
-      page: pageNum,
-      limit: limitNum,
-      status: status ?? "",
-      targetType: targetType ?? "",
-      q: q ?? "",
-      sort,
-      matched: reports.length,
-      total,
-      firstReportId: reports[0]?._id?.toString?.() ?? null,
-    });
 
     res.json({
       message: "Reports retrieved successfully",
