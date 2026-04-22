@@ -1,5 +1,16 @@
 import { signInSchema, signUpSchema } from "../../../../libs/validation.js";
-import { logger } from "../../../../utils/logger.js";
+import { makeCommandHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeServerErrorHandler,
+  makeStatusMessageErrorHandler,
+  makeValidationErrorHandler,
+} from "../../../../shared/api/http/error-handlers.js";
+import {
+  presentCommandResult,
+  presentJson,
+  presentRedirect,
+} from "../../../../shared/api/http/presenters.js";
+import { parseBody } from "../../../../shared/validation/request-validator.js";
 import { getGoogleAuthUrl } from "../../application/google-auth.service.js";
 import {
   requestPasswordReset,
@@ -23,177 +34,123 @@ import {
   requestAuthenticatedAccountDeletion,
 } from "../../application/account-management.command-service.js";
 
-const sendResult = (res, result) => {
-  if (result?.sendStatus) {
-    return res.sendStatus(result.sendStatus);
-  }
+export const signUp = makeCommandHandler({
+  execute: (req) => signUpUser(parseBody(signUpSchema, req.body)),
+  present: presentCommandResult,
+  onError: makeValidationErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi signUp",
+    serverMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+    validationMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i xÃƒÆ’Ã‚Â¡c thÃƒÂ¡Ã‚Â»Ã‚Â±c dÃƒÂ¡Ã‚Â»Ã‚Â¯ liÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡u",
+  }),
+});
 
-  return res.status(result.status).json(result.body);
-};
+export const signIn = makeCommandHandler({
+  execute: (req, res) =>
+    signInUser({
+      ...parseBody(signInSchema, req.body),
+      res,
+    }),
+  present: presentCommandResult,
+  onError: makeValidationErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i signIn",
+    serverMessage: "Loi he thong",
+    validationMessage: "Loi xac thuc du lieu",
+  }),
+});
 
-export const signUp = async (req, res) => {
-  try {
-    const validatedData = signUpSchema.parse(req.body);
-    const result = await signUpUser(validatedData);
-    return sendResult(res, result);
-  } catch (error) {
-    if (error.name === "ZodError") {
-      return res.status(400).json({
-        message: "LÃ¡Â»â€”i xÃƒÂ¡c thÃ¡Â»Â±c dÃ¡Â»Â¯ liÃ¡Â»â€¡u",
-        errors: error.issues || error.errors,
-      });
-    }
-
-    logger.error("LÃ¡Â»â€”i khi gÃ¡Â»Âi signUp", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng" });
-  }
-};
-
-export const signIn = async (req, res) => {
-  try {
-    const validatedData = signInSchema.parse(req.body);
-    const result = await signInUser({ ...validatedData, res });
-    return sendResult(res, result);
-  } catch (error) {
-    if (error.name === "ZodError") {
-      return res.status(400).json({
-        message: "Loi xac thuc du lieu",
-        errors: error.issues || error.errors,
-      });
-    }
-
-    logger.error("LÃ¡Â»â€”i signIn", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
-
-export const startGoogleAuth = async (_req, res) => {
-  try {
+export const startGoogleAuth = makeCommandHandler({
+  execute: async () => {
     if (
       !process.env.GOOGLE_CLIENT_ID ||
       !process.env.GOOGLE_CLIENT_SECRET ||
       !process.env.GOOGLE_CALLBACK_URL
     ) {
-      return res.status(500).json({
-        message: "Google OAuth chÃ†Â°a Ã„â€˜Ã†Â°Ã¡Â»Â£c cÃ¡ÂºÂ¥u hÃƒÂ¬nh Ã„â€˜Ã¡ÂºÂ§y Ã„â€˜Ã¡Â»Â§.",
-      });
+      throw Object.assign(
+        new Error(
+          "Google OAuth chÃƒâ€ Ã‚Â°a Ãƒâ€žÃ¢â‚¬ËœÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Â£c cÃƒÂ¡Ã‚ÂºÃ‚Â¥u hÃƒÆ’Ã‚Â¬nh Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§y Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã‚Â§.",
+        ),
+        { status: 500 },
+      );
     }
 
-    return res.redirect(getGoogleAuthUrl());
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i startGoogleAuth", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "KhÃƒÂ´ng thÃ¡Â»Æ’ bÃ¡ÂºÂ¯t Ã„â€˜Ã¡ÂºÂ§u Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p Google" });
-  }
-};
+    return getGoogleAuthUrl();
+  },
+  present: (location) => presentRedirect(location),
+  onError: makeStatusMessageErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i startGoogleAuth",
+    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ bÃƒÂ¡Ã‚ÂºÃ‚Â¯t Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§u Ãƒâ€žÃ¢â‚¬ËœÃƒâ€žÃ†â€™ng nhÃƒÂ¡Ã‚ÂºÃ‚Â­p Google",
+  }),
+});
 
-export const googleCallback = async (req, res) => {
-  try {
-    const result = await signInWithGoogle({
+export const googleCallback = makeCommandHandler({
+  execute: (req, res) =>
+    signInWithGoogle({
       code: req.body?.code,
       res,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i googleCallback", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "Ã„ÂÃ„Æ’ng nhÃ¡ÂºÂ­p Google thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i googleCallback",
+    message: "Ãƒâ€žÃ‚ÂÃƒâ€žÃ†â€™ng nhÃƒÂ¡Ã‚ÂºÃ‚Â­p Google thÃƒÂ¡Ã‚ÂºÃ‚Â¥t bÃƒÂ¡Ã‚ÂºÃ‚Â¡i",
+  }),
+});
 
-export const verifyEmailCode = async (req, res) => {
-  try {
-    const result = await verifyEmailWithCode({
+export const verifyEmailCode = makeCommandHandler({
+  execute: (req, res) =>
+    verifyEmailWithCode({
       verificationToken: req.body?.verificationToken,
       code: req.body?.code,
       res,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i verifyEmailCode", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "XÃƒÂ¡c minh email thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i verifyEmailCode",
+    message: "XÃƒÆ’Ã‚Â¡c minh email thÃƒÂ¡Ã‚ÂºÃ‚Â¥t bÃƒÂ¡Ã‚ÂºÃ‚Â¡i",
+  }),
+});
 
-export const resendVerificationCode = async (req, res) => {
-  try {
-    const result = await resendEmailVerification({
+export const resendVerificationCode = makeCommandHandler({
+  execute: (req) =>
+    resendEmailVerification({
       verificationToken: req.body?.verificationToken,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i resendVerificationCode", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "KhÃƒÂ´ng thÃ¡Â»Æ’ gÃ¡Â»Â­i lÃ¡ÂºÂ¡i mÃƒÂ£ xÃƒÂ¡c minh" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i resendVerificationCode",
+    message: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÂ¡Ã‚Â»Ã‚Â­i lÃƒÂ¡Ã‚ÂºÃ‚Â¡i mÃƒÆ’Ã‚Â£ xÃƒÆ’Ã‚Â¡c minh",
+  }),
+});
 
-export const forgotPassword = async (req, res) => {
-  try {
-    const payload = await requestPasswordReset({
+export const forgotPassword = makeCommandHandler({
+  execute: async (req) => ({
+    payload: await requestPasswordReset({
       email: req.body?.email,
       req,
-    });
+    }),
+  }),
+  present: ({ payload }) => presentJson({ body: payload }),
+  onError: makeStatusMessageErrorHandler({
+    fallbackMessage: "Khong the xu ly yeu cau quen mat khau.",
+    extraKeys: ["resendAvailableAt", "attemptsRemaining"],
+  }),
+});
 
-    return res.status(200).json(payload);
-  } catch (error) {
-    logger.warn("Loi forgotPassword", {
-      message: error?.message,
-      status: error?.status,
-    });
-
-    return res.status(error?.status || 500).json({
-      message: error?.message || "Khong the xu ly yeu cau quen mat khau.",
-      resendAvailableAt: error?.resendAvailableAt,
-      attemptsRemaining: error?.attemptsRemaining,
-    });
-  }
-};
-
-export const verifyForgotPasswordOtp = async (req, res) => {
-  try {
-    const payload = await verifyPasswordResetOtp({
+export const verifyForgotPasswordOtp = makeCommandHandler({
+  execute: async (req) => ({
+    payload: await verifyPasswordResetOtp({
       email: req.body?.email,
       otp: req.body?.otp,
-    });
+    }),
+  }),
+  present: ({ payload }) => presentJson({ body: payload }),
+  onError: makeStatusMessageErrorHandler({
+    fallbackMessage: "Khong the xac minh ma dat lai mat khau.",
+    extraKeys: ["attemptsRemaining"],
+  }),
+});
 
-    return res.status(200).json(payload);
-  } catch (error) {
-    logger.warn("Loi verifyForgotPasswordOtp", {
-      message: error?.message,
-      status: error?.status,
-    });
-
-    return res.status(error?.status || 500).json({
-      message: error?.message || "Khong the xac minh ma dat lai mat khau.",
-      attemptsRemaining: error?.attemptsRemaining,
-    });
-  }
-};
-
-export const resetForgottenPassword = async (req, res) => {
-  try {
+export const resetForgottenPassword = makeCommandHandler({
+  execute: async (req, res) => {
     const payload = await resetPasswordWithVerifiedOtp({
       email: req.body?.email,
       resetToken: req.body?.resetToken,
@@ -205,102 +162,80 @@ export const resetForgottenPassword = async (req, res) => {
     res.clearCookie("refreshToken");
     res.clearCookie("accessToken");
 
-    return res.status(200).json(payload);
-  } catch (error) {
-    logger.warn("Loi resetForgottenPassword", {
-      message: error?.message,
-      status: error?.status,
-    });
+    return { payload };
+  },
+  present: ({ payload }) => presentJson({ body: payload }),
+  onError: makeStatusMessageErrorHandler({
+    fallbackMessage: "Khong the dat lai mat khau.",
+  }),
+});
 
-    return res.status(error?.status || 500).json({
-      message: error?.message || "Khong the dat lai mat khau.",
-    });
-  }
-};
-
-export const signOut = async (req, res) => {
-  try {
-    const result = await signOutUser({
+export const signOut = makeCommandHandler({
+  execute: (req, res) =>
+    signOutUser({
       cookies: req.cookies,
       authorizationHeader: req.headers.authorization,
       res,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i khi gÃ¡Â»Âi signOut", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({
-      message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
-    });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi signOut",
+    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+  }),
+});
 
-export const refreshToken = async (req, res) => {
-  try {
-    const result = await refreshAccessToken({
+export const refreshToken = makeCommandHandler({
+  execute: (req, res) =>
+    refreshAccessToken({
       refreshToken: req.cookies?.refreshToken,
       res,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i khi gÃ¡Â»Âi refreshToken", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({
-      message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
-    });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi refreshToken",
+    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+  }),
+});
 
-export const changePassword = async (req, res) => {
-  try {
-    const result = await changePasswordForUser({
+export const changePassword = makeCommandHandler({
+  execute: (req, res) =>
+    changePasswordForUser({
       userId: req.user?._id,
       currentPassword: req.body?.currentPassword,
       newPassword: req.body?.newPassword,
       confirmPassword: req.body?.confirmPassword,
       res,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i khi gÃ¡Â»Âi changePassword", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({ message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi changePassword",
+    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+  }),
+});
 
-export const requestAccountDeletion = async (req, res) => {
-  try {
-    const result = await requestAuthenticatedAccountDeletion({
+export const requestAccountDeletion = makeCommandHandler({
+  execute: (req) =>
+    requestAuthenticatedAccountDeletion({
       userId: req.user?._id,
-    });
-    return sendResult(res, result);
-  } catch (error) {
-    logger.error("LÃ¡Â»â€”i requestAccountDeletion", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
-    });
-    return res.status(500).json({
-      message: "KhÃƒÂ´ng thÃ¡Â»Æ’ bÃ¡ÂºÂ¯t Ã„â€˜Ã¡ÂºÂ§u yÃƒÂªu cÃ¡ÂºÂ§u xÃƒÂ³a tÃƒÂ i khoÃ¡ÂºÂ£n.",
-    });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i requestAccountDeletion",
+    message:
+      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ bÃƒÂ¡Ã‚ÂºÃ‚Â¯t Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§u yÃƒÆ’Ã‚Âªu cÃƒÂ¡Ã‚ÂºÃ‚Â§u xÃƒÆ’Ã‚Â³a tÃƒÆ’Ã‚Â i khoÃƒÂ¡Ã‚ÂºÃ‚Â£n.",
+  }),
+});
 
-export const confirmAccountDeletion = async (req, res) =>
-  sendResult(
-    res,
-    await confirmAuthenticatedAccountDeletion({
+export const confirmAccountDeletion = makeCommandHandler({
+  execute: (req, res) =>
+    confirmAuthenticatedAccountDeletion({
       user: req.user,
       body: req.body,
       res,
     }),
-  );
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "Loi confirmAccountDeletion",
+    message: "Khong the xoa tai khoan.",
+  }),
+});

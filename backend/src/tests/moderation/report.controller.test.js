@@ -44,7 +44,7 @@ describe("moderation report controller", () => {
     });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Táº¡o bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      message: "TÃƒÂ¡Ã‚ÂºÃ‚Â¡o bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data: { report: { _id: "report-1" } },
     });
   });
@@ -71,7 +71,7 @@ describe("moderation report controller", () => {
       targetType: "user",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      message: "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data: {
         reports: [{ _id: "report-1" }],
         pagination: { page: 1, limit: 20, total: 1, pages: 1 },

@@ -1,4 +1,18 @@
-import { logger } from "../../../../shared/infrastructure/logger/logger.js";
+import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeServerErrorHandler,
+  makeStatusMessageErrorHandler,
+  makeSuccessFlagErrorHandler,
+} from "../../../../shared/api/http/error-handlers.js";
+import {
+  presentCommandResult,
+  presentJson,
+  presentNoContent,
+} from "../../../../shared/api/http/presenters.js";
+import {
+  parseQueryInteger,
+  parseTrimmedString,
+} from "../../../../shared/validation/request-validator.js";
 import {
   blockUserCommand,
   cancelEmailChangeCommand,
@@ -15,208 +29,167 @@ import {
   verifyEmailChangeCommand,
 } from "../../application/user-profile.service.js";
 
-export const authMe = async (req, res) => {
-  try {
-    return res.status(200).json(await getAuthMe({ user: req.user }));
-  } catch (error) {
-    logger.error("Loi khi goi authMe", {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code,
+export const authMe = makeQueryHandler({
+  execute: (req) => getAuthMe({ user: req.user }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeServerErrorHandler({
+    logMessage: "Loi khi goi authMe",
+    message: "Loi he thong",
+  }),
+});
+
+export const test = makeQueryHandler({
+  execute: async () => null,
+  present: () => presentNoContent(),
+  onError: makeServerErrorHandler({
+    logMessage: "Loi khi goi user-profile/test",
+    message: "Loi he thong",
+  }),
+});
+
+export const searchUserByUserName = makeQueryHandler({
+  execute: (req) => {
+    const query = parseTrimmedString(req.query.q);
+    const limit = parseQueryInteger(req.query.limit, {
+      min: 1,
+      max: 20,
+      fallback: 10,
     });
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
 
-export const test = async (_req, res) => res.sendStatus(204);
-
-export const searchUserByUserName = async (req, res) => {
-  try {
-    const q = String(req.query.q ?? "").trim();
-    const requestedLimit = Number.parseInt(req.query.limit, 10);
-    const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 20)
-      : 10;
-
-    if (!q) {
-      return res.status(400).json({ message: "Can cung cap tu khoa tim kiem." });
+    if (!query) {
+      throw Object.assign(new Error("Can cung cap tu khoa tim kiem."), { status: 400 });
     }
 
-    return res.status(200).json(
-      await searchUsersQuery({ user: req.user, query: q, limit }),
-    );
-  } catch (error) {
-    console.error("Loi xay ra khi searchUserByUserName", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+    return searchUsersQuery({ user: req.user, query, limit });
+  },
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeStatusMessageErrorHandler({
+    logMessage: "Loi xay ra khi searchUserByUserName",
+    fallbackMessage: "Loi he thong",
+  }),
+});
 
-export const getUserSuggestions = async (req, res) => {
-  try {
-    const requestedLimit = Number.parseInt(req.query.limit, 10);
-    const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 5)
-      : 5;
+export const getUserSuggestions = makeQueryHandler({
+  execute: (req) =>
+    getUserSuggestionsQuery({
+      user: req.user,
+      limit: parseQueryInteger(req.query.limit, {
+        min: 1,
+        max: 5,
+        fallback: 5,
+      }),
+    }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeServerErrorHandler({
+    logMessage: "Loi khi lay user suggestions",
+    message: "Loi he thong",
+  }),
+});
 
-    return res.status(200).json(
-      await getUserSuggestionsQuery({ user: req.user, limit }),
-    );
-  } catch (error) {
-    console.error("Loi khi lay user suggestions", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+export const uploadAvatar = makeCommandHandler({
+  execute: (req) => uploadAvatarCommand({ user: req.user, file: req.file }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "Loi khi upload avatar",
+    message: "Loi he thong",
+  }),
+});
 
-export const uploadAvatar = async (req, res) => {
-  try {
-    const result = await uploadAvatarCommand({ user: req.user, file: req.file });
-    if (result.error) {
-      return res.status(result.error.status).json({ message: result.error.message });
-    }
-    return res.status(result.status).json(result.payload);
-  } catch (error) {
-    console.error("Loi khi upload avatar:", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+export const updateMe = makeCommandHandler({
+  execute: (req) =>
+    updateProfileCommand({ user: req.user, body: req.body, req }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeSuccessFlagErrorHandler({
+    fallbackMessage: "Loi he thong",
+    extraKeys: ["resendAfter"],
+  }),
+});
 
-export const updateMe = async (req, res) => {
-  try {
-    return res.status(200).json(
-      await updateProfileCommand({ user: req.user, body: req.body, req }),
-    );
-  } catch (error) {
-    logger.warn("Loi updateMe", {
-      message: error?.message,
-      status: error?.status,
-    });
-    return res.status(error?.status || 500).json({
-      success: false,
-      message: error?.message || "Loi he thong",
-      resendAfter: error?.resendAfter,
-    });
-  }
-};
+export const sendEmailChangeOtp = makeCommandHandler({
+  execute: (req) =>
+    sendEmailChangeOtpCommand({ user: req.user, body: req.body, req }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeSuccessFlagErrorHandler({
+    fallbackMessage: "Khong the gui ma xac minh email moi.",
+    extraKeys: ["resendAfter"],
+  }),
+});
 
-export const sendEmailChangeOtp = async (req, res) => {
-  try {
-    return res.status(200).json(
-      await sendEmailChangeOtpCommand({ user: req.user, body: req.body, req }),
-    );
-  } catch (error) {
-    logger.warn("Loi sendEmailChangeOtp", {
-      message: error?.message,
-      status: error?.status,
-    });
-    return res.status(error?.status || 500).json({
-      success: false,
-      message: error?.message || "Khong the gui ma xac minh email moi.",
-      resendAfter: error?.resendAfter,
-    });
-  }
-};
+export const verifyMyEmailChange = makeCommandHandler({
+  execute: (req) =>
+    verifyEmailChangeCommand({ user: req.user, body: req.body }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeSuccessFlagErrorHandler({
+    fallbackMessage: "Khong the xac minh email moi.",
+  }),
+});
 
-export const verifyMyEmailChange = async (req, res) => {
-  try {
-    return res.status(200).json(
-      await verifyEmailChangeCommand({ user: req.user, body: req.body }),
-    );
-  } catch (error) {
-    logger.warn("Loi verifyMyEmailChange", {
-      message: error?.message,
-      status: error?.status,
-    });
-    return res.status(error?.status || 500).json({
-      success: false,
-      message: error?.message || "Khong the xac minh email moi.",
-    });
-  }
-};
+export const cancelMyEmailChange = makeCommandHandler({
+  execute: (req) =>
+    cancelEmailChangeCommand({ user: req.user, body: req.body }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeSuccessFlagErrorHandler({
+    fallbackMessage: "Khong the huy xac minh email moi.",
+  }),
+});
 
-export const cancelMyEmailChange = async (req, res) => {
-  try {
-    return res.status(200).json(
-      await cancelEmailChangeCommand({ user: req.user, body: req.body }),
-    );
-  } catch (error) {
-    logger.warn("Loi cancelMyEmailChange", {
-      message: error?.message,
-      status: error?.status,
-    });
-    return res.status(error?.status || 500).json({
-      success: false,
-      message: error?.message || "Khong the huy xac minh email moi.",
-    });
-  }
-};
+export const updatePreferences = makeCommandHandler({
+  execute: (req) =>
+    updatePreferencesCommand({ user: req.user, body: req.body }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeServerErrorHandler({
+    logMessage: "Loi updatePreferences",
+    message: "Loi he thong",
+  }),
+});
 
-export const updatePreferences = async (req, res) => {
-  try {
-    return res.status(200).json(
-      await updatePreferencesCommand({ user: req.user, body: req.body }),
-    );
-  } catch (error) {
-    console.error("Loi updatePreferences:", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+export const getBlockedUsers = makeQueryHandler({
+  execute: (req) => getBlockedUsersQuery({ user: req.user }),
+  present: (payload) => presentJson({ body: payload }),
+  onError: makeServerErrorHandler({
+    logMessage: "Loi getBlockedUsers",
+    message: "Loi he thong",
+  }),
+});
 
-export const getBlockedUsers = async (req, res) => {
-  try {
-    return res.status(200).json(await getBlockedUsersQuery({ user: req.user }));
-  } catch (error) {
-    console.error("Loi getBlockedUsers:", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
-
-export const blockUser = async (req, res) => {
-  try {
-    const result = await blockUserCommand({
+export const blockUser = makeCommandHandler({
+  execute: (req) =>
+    blockUserCommand({
       user: req.user,
       targetUserId: req.params.targetUserId,
       reason: req.body?.reason,
-    });
-    if (result.error) {
-      return res.status(result.error.status).json({ message: result.error.message });
-    }
-    return res.status(result.status).json(result.payload);
-  } catch (error) {
-    console.error("Loi blockUser:", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "Loi blockUser",
+    message: "Loi he thong",
+  }),
+});
 
-export const unblockUser = async (req, res) => {
-  try {
-    const result = await unblockUserCommand({
+export const unblockUser = makeCommandHandler({
+  execute: (req) =>
+    unblockUserCommand({
       user: req.user,
       targetUserId: req.params.targetUserId,
-    });
-    if (result.error) {
-      return res.status(result.error.status).json({ message: result.error.message });
-    }
-    return res.status(result.status).json(result.payload);
-  } catch (error) {
-    console.error("Loi unblockUser:", error);
-    return res.status(500).json({ message: "Loi he thong" });
-  }
-};
+    }),
+  present: presentCommandResult,
+  onError: makeServerErrorHandler({
+    logMessage: "Loi unblockUser",
+    message: "Loi he thong",
+  }),
+});
 
-export const deleteMyAccount = async (req, res) => {
-  try {
+export const deleteMyAccount = makeCommandHandler({
+  execute: async (req, res) => {
     const result = await deleteMyAccountCommand({ user: req.user, body: req.body });
-    if (result.error) {
-      return res.status(result.error.status).json({ message: result.error.message });
-    }
-    if (result.clearRefreshToken) {
+    if (result?.clearRefreshToken) {
       res.clearCookie("refreshToken");
     }
-    return res.status(result.status).json(result.payload);
-  } catch (error) {
-    console.error("Loi deleteMyAccount:", error);
-    return res.status(error.status || 500).json({
-      message: error.message || "Khong the xoa tai khoan. Vui long thu lai.",
-    });
-  }
-};
+    return result;
+  },
+  present: presentCommandResult,
+  onError: makeStatusMessageErrorHandler({
+    logMessage: "Loi deleteMyAccount",
+    fallbackMessage: "Khong the xoa tai khoan. Vui long thu lai.",
+  }),
+});

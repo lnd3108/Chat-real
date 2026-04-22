@@ -235,6 +235,8 @@ jest.unstable_mockModule("../../utils/controllerResponses.js", () => ({
       return onError(error, req, res);
     }
   },
+  sendError: (res, status, message) => res.status(status).json({ message }),
+  sendJson: (res, status, payload) => res.status(status).json(payload),
   sendSuccess: (res, payload, status = 200) => res.status(status).json(payload),
   sendServerError: jest.fn((res, _error, { message }) =>
     res.status(500).json({ message }),
@@ -285,7 +287,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportsQuery).toHaveBeenCalledWith(req.query);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      message: "LÃ¡ÂºÂ¥y danh sÃƒÂ¡ch bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
       data: {
         reports: [{ _id: "r1" }],
         pagination: { page: 1, limit: 20, total: 1, pages: 1 },
@@ -306,7 +308,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportDetailQuery).toHaveBeenCalledWith({ reportId: "r1" });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Láº¥y chi tiáº¿t bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      message: "LÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
       data: {
         report: { _id: "r1" },
         moderationTargetUser: { _id: "u2" },
@@ -333,7 +335,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      message: "CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
       data: { report: { _id: "r1", status: "resolved" } },
     });
   });
@@ -360,7 +362,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng thÃ nh cÃ´ng",
+      message: "XÃ¡Â»Â­ lÃƒÂ½ bÃƒÂ¡o cÃƒÂ¡o bÃ¡ÂºÂ±ng hÃƒÂ nh Ã„â€˜Ã¡Â»â„¢ng thÃƒÂ nh cÃƒÂ´ng",
       data: {
         report: { _id: "r1", status: "resolved" },
         action: "Da khoa nguoi dung",

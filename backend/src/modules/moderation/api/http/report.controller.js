@@ -2,41 +2,40 @@ import {
   createReportCommand,
   getMyReportsQuery,
 } from "../../application/report-user.service.js";
+import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import { makeStatusMessageErrorHandler } from "../../../../shared/api/http/error-handlers.js";
+import { presentMessageData } from "../../../../shared/api/http/presenters.js";
 
-export const createReport = async (req, res) => {
-  try {
-    const report = await createReportCommand({ user: req.user, body: req.body });
+export const createReport = makeCommandHandler({
+  execute: (req) => createReportCommand({ user: req.user, body: req.body }),
+  present: (report) =>
+    presentMessageData(
+      "TÃƒÂ¡Ã‚ÂºÃ‚Â¡o bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      { report },
+      201,
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage: "Loi khi tao bao cao:",
+    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ tÃƒÂ¡Ã‚ÂºÃ‚Â¡o bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o",
+  }),
+});
 
-    return res.status(201).json({
-      message: "Táº¡o bÃ¡o cÃ¡o thÃ nh cÃ´ng",
-      data: { report },
-    });
-  } catch (error) {
-    console.error("Loi khi tao bao cao:", error);
-    return res.status(error?.status || 500).json({
-      message: error?.message || "KhÃ´ng thá»ƒ táº¡o bÃ¡o cÃ¡o",
-    });
-  }
-};
-
-export const getMyReports = async (req, res) => {
-  try {
-    const data = await getMyReportsQuery({
+export const getMyReports = makeQueryHandler({
+  execute: (req) =>
+    getMyReportsQuery({
       reporterId: req.user._id,
       page: req.query.page,
       limit: req.query.limit,
       status: req.query.status,
       targetType: req.query.targetType,
-    });
-
-    return res.json({
-      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+    }),
+  present: (data) =>
+    presentMessageData(
+      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data,
-    });
-  } catch (error) {
-    console.error("Loi khi lay danh sach bao cao:", error);
-    return res.status(error?.status || 500).json({
-      message: error?.message || "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch bÃ¡o cÃ¡o",
-    });
-  }
-};
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage: "Loi khi lay danh sach bao cao:",
+    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o",
+  }),
+});

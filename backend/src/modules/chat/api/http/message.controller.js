@@ -6,89 +6,77 @@ import {
   sendGroupMessageCommand,
   toggleMessageReactionCommand,
 } from "../../application/message.command-service.js";
-import {
-  handleController,
-  respondCommandResult,
-} from "../../../../utils/controllerResponses.js";
+import { makeCommandHandler } from "../../../../shared/api/http/controller-factory.js";
+import { makeServerErrorHandler } from "../../../../shared/api/http/error-handlers.js";
+import { presentCommandResult } from "../../../../shared/api/http/presenters.js";
 
-const sendChatServerError = (_error, _req, res) =>
-  res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+const chatServerError = makeServerErrorHandler({
+  message: "Lá»—i há»‡ thá»‘ng",
+});
 
-export const sendDirectMessage = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      sendDirectMessageCommand({
-        user: req.user,
-        body: req.body,
-        file: req.file,
-      }),
-    ),
-  sendChatServerError,
-);
+export const sendDirectMessage = makeCommandHandler({
+  execute: (req) =>
+    sendDirectMessageCommand({
+      user: req.user,
+      body: req.body,
+      file: req.file,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
-export const sendGroupMessage = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      sendGroupMessageCommand({
-        user: req.user,
-        conversation: req.conversation,
-        body: req.body,
-        file: req.file,
-      }),
-    ),
-  sendChatServerError,
-);
+export const sendGroupMessage = makeCommandHandler({
+  execute: (req) =>
+    sendGroupMessageCommand({
+      user: req.user,
+      conversation: req.conversation,
+      body: req.body,
+      file: req.file,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
-export const editMessage = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      editMessageCommand({
-        user: req.user,
-        messageId: req.params.messageId,
-        content: req.body?.content,
-      }),
-    ),
-  sendChatServerError,
-);
+export const editMessage = makeCommandHandler({
+  execute: (req) =>
+    editMessageCommand({
+      user: req.user,
+      messageId: req.params.messageId,
+      content: req.body?.content,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
-export const deleteMessageForMe = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      deleteMessageForMeCommand({
-        user: req.user,
-        messageId: req.params.messageId,
-      }),
-    ),
-  sendChatServerError,
-);
+export const deleteMessageForMe = makeCommandHandler({
+  execute: (req) =>
+    deleteMessageForMeCommand({
+      user: req.user,
+      messageId: req.params.messageId,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
-export const deleteMessageForEveryone = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      deleteMessageForEveryoneCommand({
-        user: req.user,
-        messageId: req.params.messageId,
-      }),
-    ),
-  sendChatServerError,
-);
+export const deleteMessageForEveryone = makeCommandHandler({
+  execute: (req) =>
+    deleteMessageForEveryoneCommand({
+      user: req.user,
+      messageId: req.params.messageId,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
-export const toggleReaction = handleController(
-  (req, res) =>
-    respondCommandResult(
-      res,
-      toggleMessageReactionCommand({
-        user: req.user,
-        messageId: req.params.messageId,
-        emoji: req.body?.emoji,
-      }),
-    ),
-  sendChatServerError,
-);
+export const toggleReaction = makeCommandHandler({
+  execute: (req) =>
+    toggleMessageReactionCommand({
+      user: req.user,
+      messageId: req.params.messageId,
+      emoji: req.body?.emoji,
+    }),
+  present: presentCommandResult,
+  onError: chatServerError,
+});
 
 export const sendMessageWithImage = sendGroupMessage;

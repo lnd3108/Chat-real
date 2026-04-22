@@ -5,99 +5,98 @@ import {
   sendSupportReplyCommand,
   updateSupportStatusCommand,
 } from "../../application/support-admin.service.js";
+import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import { makeStatusMessageErrorHandler } from "../../../../shared/api/http/error-handlers.js";
+import { presentMessageData } from "../../../../shared/api/http/presenters.js";
 
-const getErrorStatus = (error) => error?.status || 500;
-const getErrorMessage = (error, fallback) => error?.message || fallback;
-
-export const getSupportConversations = async (req, res) => {
-  try {
-    const data = await getSupportConversationsQuery(req.query);
-
-    return res.json({
-      message: "Láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n há»— trá»£ thÃ nh cÃ´ng",
+export const getSupportConversations = makeQueryHandler({
+  execute: (req) => getSupportConversationsQuery(req.query),
+  present: (data) =>
+    presentMessageData(
+      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data,
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n há»— trá»£:", error);
-    return res.status(getErrorStatus(error)).json({
-      message: getErrorMessage(error, "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n há»— trá»£"),
-    });
-  }
-};
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage:
+      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
+    fallbackMessage:
+      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+  }),
+});
 
-export const getSupportConversationDetail = async (req, res) => {
-  try {
-    const data = await getSupportConversationDetailQuery({
+export const getSupportConversationDetail = makeQueryHandler({
+  execute: (req) =>
+    getSupportConversationDetailQuery({
       conversationId: req.params.id,
-    });
-
-    return res.json({
-      message: "Láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n há»— trá»£ thÃ nh cÃ´ng",
+    }),
+  present: (data) =>
+    presentMessageData(
+      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data,
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n há»— trá»£:", error);
-    return res.status(getErrorStatus(error)).json({
-      message: getErrorMessage(error, "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n há»— trá»£"),
-    });
-  }
-};
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage:
+      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
+    fallbackMessage:
+      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+  }),
+});
 
-export const sendSupportReply = async (req, res) => {
-  try {
-    const data = await sendSupportReplyCommand({
+export const sendSupportReply = makeCommandHandler({
+  execute: (req) =>
+    sendSupportReplyCommand({
       admin: req.user,
       conversationId: req.body.conversationId,
       content: req.body.content,
-    });
-
-    return res.status(201).json({
-      message: "Gá»­i pháº£n há»“i há»— trá»£ thÃ nh cÃ´ng",
+    }),
+  present: (data) =>
+    presentMessageData(
+      "GÃƒÂ¡Ã‚Â»Ã‚Â­i phÃƒÂ¡Ã‚ÂºÃ‚Â£n hÃƒÂ¡Ã‚Â»Ã¢â‚¬Å“i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
       data,
-    });
-  } catch (error) {
-    console.error("Lá»—i khi gá»­i pháº£n há»“i há»— trá»£:", error);
-    return res.status(getErrorStatus(error)).json({
-      message: getErrorMessage(error, "KhÃ´ng thá»ƒ gá»­i pháº£n há»“i há»— trá»£"),
-    });
-  }
-};
+      201,
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage:
+      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Â­i phÃƒÂ¡Ã‚ÂºÃ‚Â£n hÃƒÂ¡Ã‚Â»Ã¢â‚¬Å“i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
+    fallbackMessage:
+      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÂ¡Ã‚Â»Ã‚Â­i phÃƒÂ¡Ã‚ÂºÃ‚Â£n hÃƒÂ¡Ã‚Â»Ã¢â‚¬Å“i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+  }),
+});
 
-export const updateSupportStatus = async (req, res) => {
-  try {
-    const conversation = await updateSupportStatusCommand({
+export const updateSupportStatus = makeCommandHandler({
+  execute: (req) =>
+    updateSupportStatusCommand({
       admin: req.user,
       conversationId: req.params.id,
       status: req.body.status,
-    });
+    }),
+  present: (conversation) =>
+    presentMessageData(
+      "CÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t trÃƒÂ¡Ã‚ÂºÃ‚Â¡ng thÃƒÆ’Ã‚Â¡i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      { conversation },
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage:
+      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t trÃƒÂ¡Ã‚ÂºÃ‚Â¡ng thÃƒÆ’Ã‚Â¡i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
+    fallbackMessage:
+      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t trÃƒÂ¡Ã‚ÂºÃ‚Â¡ng thÃƒÆ’Ã‚Â¡i hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+  }),
+});
 
-    return res.json({
-      message: "Cáº­p nháº­t tráº¡ng thÃ¡i há»— trá»£ thÃ nh cÃ´ng",
-      data: { conversation },
-    });
-  } catch (error) {
-    console.error("Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i há»— trá»£:", error);
-    return res.status(getErrorStatus(error)).json({
-      message: getErrorMessage(error, "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i há»— trá»£"),
-    });
-  }
-};
-
-export const assignSupportAdmin = async (req, res) => {
-  try {
-    const conversation = await assignSupportAdminCommand({
+export const assignSupportAdmin = makeCommandHandler({
+  execute: (req) =>
+    assignSupportAdminCommand({
       conversationId: req.params.id,
       adminId: req.body.adminId,
-    });
-
-    return res.json({
-      message: "GÃ¡n quáº£n trá»‹ viÃªn thÃ nh cÃ´ng",
-      data: { conversation },
-    });
-  } catch (error) {
-    console.error("Lá»—i khi gÃ¡n quáº£n trá»‹ viÃªn há»— trá»£:", error);
-    return res.status(getErrorStatus(error)).json({
-      message: getErrorMessage(error, "KhÃ´ng thá»ƒ gÃ¡n quáº£n trá»‹ viÃªn"),
-    });
-  }
-};
+    }),
+  present: (conversation) =>
+    presentMessageData(
+      "GÃƒÆ’Ã‚Â¡n quÃƒÂ¡Ã‚ÂºÃ‚Â£n trÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ viÃƒÆ’Ã‚Âªn thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      { conversation },
+    ),
+  onError: makeStatusMessageErrorHandler({
+    logMessage:
+      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÆ’Ã‚Â¡n quÃƒÂ¡Ã‚ÂºÃ‚Â£n trÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ viÃƒÆ’Ã‚Âªn hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
+    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÆ’Ã‚Â¡n quÃƒÂ¡Ã‚ÂºÃ‚Â£n trÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ viÃƒÆ’Ã‚Âªn",
+  }),
+});
