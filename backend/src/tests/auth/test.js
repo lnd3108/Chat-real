@@ -26,9 +26,6 @@ const mockGetMaintenanceMessage = jest.fn();
 const mockEmitToAdmins = jest.fn();
 const mockEmitAdminNotification = jest.fn();
 const mockEmitDashboardStatsUpdated = jest.fn();
-const mockRequestPasswordReset = jest.fn();
-const mockVerifyPasswordResetOtp = jest.fn();
-const mockResetPasswordWithVerifiedOtp = jest.fn();
 
 jest.unstable_mockModule("../../models/User.js", () => ({
   default: {
@@ -115,18 +112,12 @@ jest.unstable_mockModule("../../services/dashboardRealtimeService.js", () => ({
   emitDashboardStatsUpdated: mockEmitDashboardStatsUpdated,
 }));
 
-jest.unstable_mockModule("../../services/passwordResetService.js", () => ({
-  requestPasswordReset: mockRequestPasswordReset,
-  verifyPasswordResetOtp: mockVerifyPasswordResetOtp,
-  resetPasswordWithVerifiedOtp: mockResetPasswordWithVerifiedOtp,
-}));
-
 const {
   signUp,
   signIn,
   requestAccountDeletion,
   confirmAccountDeletion,
-} = await import("../../controllers/authControllers.js");
+} = await import("../../modules/auth/api/http/auth.controller.js");
 
 const createRes = () => {
   const res = {

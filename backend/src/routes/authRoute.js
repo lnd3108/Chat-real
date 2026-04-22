@@ -14,7 +14,7 @@ import {
   forgotPassword,
   verifyForgotPasswordOtp,
   resetForgottenPassword,
-} from "../controllers/authControllers.js";
+} from "../modules/auth/api/http/auth.controller.js";
 import { protectedRoute } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
