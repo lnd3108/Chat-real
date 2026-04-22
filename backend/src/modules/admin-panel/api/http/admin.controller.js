@@ -3,7 +3,9 @@ import Conversation from "../../../../models/Conversation.js";
 import Message from "../../../../models/Message.js";
 import FriendRequest from "../../../../models/FriendRequest.js";
 import Friend from "../../../../models/Friend.js";
-import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../../../../models/Blocking.js";
+import Blocking, {
+  BLOCKING_TYPE_DIRECT_ONLY,
+} from "../../../../models/Blocking.js";
 import Report from "../../../../models/Report.js";
 import { emitDirectBlockStatusChanged } from "../../../chat/api/http/conversation.controller.js";
 import { ADMIN_SOCKET_EVENTS } from "../../../../constants/socketEvents.js";
@@ -523,7 +525,9 @@ export const updateUserStatus = async (req, res) => {
     console.error("Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng:", error);
     return res.status(error.status || 500).json({
       success: false,
-      message: error.message || "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng.",
+      message:
+        error.message ||
+        "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng.",
     });
   }
 };
@@ -1128,8 +1132,8 @@ export const getMaintenanceInfo = async (req, res) => {
   try {
     return res.status(200).json(await getMaintenanceInfoQuery());
   } catch (error) {
-    console.error("Loi khi lay thong tin bao tri:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("Lỗi khi lấy thông tin bảo trì:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -1141,9 +1145,9 @@ export const requestMaintenancePasswordVerification = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("Loi khi yeu cau xac minh mat khau:", error);
+    console.error("Lỗi khi yêu cầu xác minh mật khẩu:", error);
     return res.status(error.status || 500).json({
-      message: error.message || "Loi he thong",
+      message: error.message || "Lỗi hệ thống",
     });
   }
 };
@@ -1157,14 +1161,14 @@ export const verifyMaintenancePassword = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("Loi khi xac minh mat khau bao tri:", {
+    console.error("Lỗi khi xác minh mật khẩu bảo trì:", {
       adminId: req.user?._id,
       error: error.message,
       code: error.code,
       stack: error.stack,
     });
     return res.status(error.status || 500).json({
-      message: error.message || "Loi he thong",
+      message: error.message || "Lỗi hệ thống",
     });
   }
 };
@@ -1179,10 +1183,10 @@ export const confirmMaintenanceToggle = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("Loi khi xac nhan thay doi trang thai bao tri:", error);
-    return res.status(error.status || 500).json(
-      error.payload || { message: error.message || "Loi he thong" },
-    );
+    console.error("Lỗi khi xác nhận thay đổi trạng thái bảo trì:", error);
+    return res
+      .status(error.status || 500)
+      .json(error.payload || { message: error.message || "Lỗi hệ thống" });
   }
 };
 
@@ -1194,9 +1198,9 @@ export const updateMaintenanceMessage = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("Loi khi cap nhat thong bao bao tri:", error);
+    console.error("Lỗi khi cập nhật thông báo bảo trì:", error);
     return res.status(error.status || 500).json({
-      message: error.message || "Loi he thong",
+      message: error.message || "Lỗi hệ thống",
     });
   }
 };

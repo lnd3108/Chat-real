@@ -49,7 +49,7 @@ export const startServer = async () => {
 
   return new Promise((resolve) => {
     server.listen(port, () => {
-      console.log(`Server bat dau tren cong ${port}`);
+      console.log(`Server bắt đầu chạy trên cổng ${port}`);
       resolve({ app, server });
     });
   });

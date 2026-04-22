@@ -1,7 +1,9 @@
 import EmailChangeVerification from "../models/EmailChangeVerification.js";
 import User from "../models/User.js";
-import { isMailConfigured } from "../utils/mail.js";
-import { sendEmailChangeOtpEmail } from "./mailService.js";
+import {
+  isMailConfigured,
+  sendEmailChangeVerificationEmail,
+} from "../utils/mail.js";
 import {
   generatePasswordResetOtp,
   hashOtpValue,
@@ -210,7 +212,7 @@ const sendEmailChangeOtp = async ({ user, newEmail, pendingProfile, req }) => {
   });
 
   try {
-    await sendEmailChangeOtpEmail({
+    await sendEmailChangeVerificationEmail({
       email: newEmail,
       code: otp,
       displayName: user.displayName,
@@ -332,7 +334,7 @@ export const resendEmailChangeOtp = async ({ userId, newEmail, req }) => {
   pending.userAgent = req.headers["user-agent"] || null;
   await pending.save();
 
-  await sendEmailChangeOtpEmail({
+  await sendEmailChangeVerificationEmail({
     email: normalizedEmail,
     code: otp,
     displayName: currentUser.displayName,
