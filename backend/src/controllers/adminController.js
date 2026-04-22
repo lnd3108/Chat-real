@@ -24,7 +24,10 @@ import {
   toggleMaintenanceMode,
   updateMaintenanceMessage as updateMaintenanceMessageInDb,
 } from "../services/maintenanceService.js";
-import { ADMIN_SOCKET_EVENTS, USER_SOCKET_EVENTS } from "../constants/socketEvents.js";
+import {
+  ADMIN_SOCKET_EVENTS,
+  USER_SOCKET_EVENTS,
+} from "../constants/socketEvents.js";
 import { emitToAdmins } from "../socket/adminSocket.js";
 import {
   buildAdminActor,
@@ -63,13 +66,14 @@ import {
 } from "../services/rbacService.js";
 import { sendError, sendServerError } from "../utils/controllerResponses.js";
 
-
-
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
   _id: conversation._id,
   type: conversation.type,
-  groupName: conversation.type === "group" ? conversation.group?.name ?? "Nhóm" : null,
-  membersCount: Array.isArray(conversation.participants) ? conversation.participants.length : 0,
+  groupName:
+    conversation.type === "group" ? (conversation.group?.name ?? "Nhóm") : null,
+  membersCount: Array.isArray(conversation.participants)
+    ? conversation.participants.length
+    : 0,
   messagesCount,
   lastMessage: mapAdminLastMessage(conversation.lastMessage),
   updatedAt: conversation.updatedAt,
@@ -170,12 +174,12 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
   const blockedByA = activeBlocks.some(
     (block) =>
       block.userId?.toString() === userAId.toString() &&
-      block.blockedUserId?.toString() === userBId.toString()
+      block.blockedUserId?.toString() === userBId.toString(),
   );
   const blockedByB = activeBlocks.some(
     (block) =>
       block.userId?.toString() === userBId.toString() &&
-      block.blockedUserId?.toString() === userAId.toString()
+      block.blockedUserId?.toString() === userAId.toString(),
   );
 
   return {
@@ -255,7 +259,11 @@ export const getDashboardOverview = async (req, res) => {
       }),
       Friend.countDocuments(),
       FriendRequest.countDocuments({
-        $or: [{ status: "pending" }, { status: { $exists: false } }, { status: null }],
+        $or: [
+          { status: "pending" },
+          { status: { $exists: false } },
+          { status: null },
+        ],
       }),
       Blocking.countDocuments({ isActive: { $ne: false } }),
       Report.countDocuments({ status: "pending" }),
@@ -483,14 +491,26 @@ export const getDashboardReportChart = async (req, res) => {
       success: true,
       data: {
         items: [
-          { status: "pending", label: "Chờ xử lý", total: rowMap.get("pending") ?? 0 },
+          {
+            status: "pending",
+            label: "Chờ xử lý",
+            total: rowMap.get("pending") ?? 0,
+          },
           {
             status: "reviewing",
             label: "Đang xem xét",
             total: rowMap.get("reviewing") ?? 0,
           },
-          { status: "resolved", label: "Đã xử lý", total: rowMap.get("resolved") ?? 0 },
-          { status: "rejected", label: "Từ chối", total: rowMap.get("rejected") ?? 0 },
+          {
+            status: "resolved",
+            label: "Đã xử lý",
+            total: rowMap.get("resolved") ?? 0,
+          },
+          {
+            status: "rejected",
+            label: "Từ chối",
+            total: rowMap.get("rejected") ?? 0,
+          },
         ],
       },
     });
@@ -571,7 +591,10 @@ export const getUsers = async (req, res) => {
     }
 
     // Filter by status
-    if (status && ["active", "inactive", "suspended", "banned"].includes(status)) {
+    if (
+      status &&
+      ["active", "inactive", "suspended", "banned"].includes(status)
+    ) {
       filter.status = status;
     }
 
@@ -587,7 +610,9 @@ export const getUsers = async (req, res) => {
 
     // Execute query
     const users = await User.find(filter)
-      .select("-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash")
+      .select(
+        "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
+      )
       .limit(limit)
       .skip(skip)
       .sort(sortObj);
@@ -624,7 +649,7 @@ export const getUserDetail = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).select(
-      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash"
+      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
     );
 
     if (!user) {
@@ -725,8 +750,10 @@ export const updateUserRole = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { role },
-      { new: true }
-    ).select("-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash");
+      { new: true },
+    ).select(
+      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -897,7 +924,8 @@ export const deleteUserAsAdmin = async (req, res) => {
     if (adminUserId && adminUserId === id) {
       return res.status(400).json({
         success: false,
-        message: "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
+        message:
+          "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
       });
     }
 
@@ -1044,7 +1072,9 @@ export const getConversations = async (req, res) => {
       .sort(getAdminConversationSort(sort));
 
     const total = await Conversation.countDocuments(filter);
-    const conversationIds = conversations.map((conversation) => conversation._id);
+    const conversationIds = conversations.map(
+      (conversation) => conversation._id,
+    );
     const messagesCountMap = await getMessagesCountMap(conversationIds);
 
     return res.status(200).json({
@@ -1053,8 +1083,8 @@ export const getConversations = async (req, res) => {
         conversations: conversations.map((conversation) =>
           mapAdminConversationSummary(
             conversation,
-            messagesCountMap.get(conversation._id.toString()) ?? 0
-          )
+            messagesCountMap.get(conversation._id.toString()) ?? 0,
+          ),
         ),
         pagination: {
           page,
@@ -1186,7 +1216,10 @@ export const getConversationDetail = async (req, res) => {
         conversation: {
           _id: conversation._id,
           type: conversation.type,
-          groupName: conversation.type === "group" ? conversation.group?.name ?? "Nhóm" : null,
+          groupName:
+            conversation.type === "group"
+              ? (conversation.group?.name ?? "Nhóm")
+              : null,
           creator:
             conversation.type === "group" && conversation.group?.createdBy
               ? {
@@ -1301,7 +1334,7 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const currentBlock = await Blocking.findById(id).select(
-      "userId blockedUserId isActive"
+      "userId blockedUserId isActive",
     );
 
     if (!currentBlock) {
@@ -1330,7 +1363,7 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
             type: BLOCKING_TYPE_DIRECT_ONLY,
           },
         },
-        { new: true }
+        { new: true },
       )
         .populate("userId", "displayName userName email avatarUrl")
         .populate("blockedUserId", "displayName userName email avatarUrl"),
@@ -1365,7 +1398,14 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
 
 export const getReports = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, targetType, q, sort = "createdAt-desc" } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      targetType,
+      q,
+      sort = "createdAt-desc",
+    } = req.query;
 
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
@@ -1441,9 +1481,12 @@ export const getReportDetail = async (req, res) => {
           report.targetUserId.userName ??
           report.targetUserSnapshot?.userName ??
           "deleted-user",
-        email: report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
+        email:
+          report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
         avatarUrl:
-          report.targetUserId.avatarUrl ?? report.targetUserSnapshot?.avatarUrl ?? null,
+          report.targetUserId.avatarUrl ??
+          report.targetUserSnapshot?.avatarUrl ??
+          null,
         status: report.targetUserId.status ?? "active",
         source: "target_user",
       };
@@ -1453,7 +1496,10 @@ export const getReportDetail = async (req, res) => {
       if (sender) {
         moderationTargetUser = {
           _id: sender._id,
-          displayName: sender.displayName ?? report.targetMessagePreview?.senderDisplayName ?? "Người gửi",
+          displayName:
+            sender.displayName ??
+            report.targetMessagePreview?.senderDisplayName ??
+            "Người gửi",
           userName: sender.userName ?? "unknown",
           email: sender.email ?? null,
           avatarUrl: sender.avatarUrl ?? null,
@@ -1473,7 +1519,8 @@ export const getReportDetail = async (req, res) => {
       }
     }
 
-    moderationTargetUser = buildModerationTargetUser(report) ?? moderationTargetUser;
+    moderationTargetUser =
+      buildModerationTargetUser(report) ?? moderationTargetUser;
 
     res.json({
       message: "Lấy chi tiết báo cáo thành công",
@@ -1496,7 +1543,10 @@ export const updateReportStatus = async (req, res) => {
     const { status, resolutionNote } = req.body;
     const adminId = req.user._id;
 
-    const validationError = validateAdminReportStatusUpdate({ status, resolutionNote });
+    const validationError = validateAdminReportStatusUpdate({
+      status,
+      resolutionNote,
+    });
     if (validationError) {
       return sendError(res, 400, validationError);
     }
@@ -1563,7 +1613,9 @@ export const resolveReportWithAction = async (req, res) => {
       await User.findByIdAndUpdate(report.targetUserId, { status: "inactive" });
       actionResult = "Đã đánh dấu tài khoản để xóa";
     } else if (action === "delete-message" && report.targetMessageId) {
-      await Message.findByIdAndUpdate(report.targetMessageId, { isDeletedForEveryone: true });
+      await Message.findByIdAndUpdate(report.targetMessageId, {
+        isDeletedForEveryone: true,
+      });
       actionResult = "Đã xóa tin nhắn";
     }
 
@@ -1580,7 +1632,9 @@ export const resolveReportWithAction = async (req, res) => {
       updateData.resolutionNote = `[${action}] Đã xử lý theo hành động`;
     }
 
-    const updatedReport = await Report.findByIdAndUpdate(id, updateData, { new: true })
+    const updatedReport = await Report.findByIdAndUpdate(id, updateData, {
+      new: true,
+    })
       .populate("reporterId", "displayName userName avatarUrl")
       .populate("targetUserId", "displayName userName avatarUrl")
       .populate("reviewedByAdminId", "displayName userName")
@@ -1656,7 +1710,8 @@ export const requestMaintenancePasswordVerification = async (req, res) => {
     // For testing purposes, you might want to return the code
     // In production, only admin should request it and check email
     return res.status(200).json({
-      message: "Yêu cầu xác minh mật khẩu đã được tạo. Vui lòng kiểm tra email.",
+      message:
+        "Yêu cầu xác minh mật khẩu đã được tạo. Vui lòng kiểm tra email.",
       email: admin.email,
     });
   } catch (error) {
@@ -1683,7 +1738,7 @@ export const verifyMaintenancePassword = async (req, res) => {
     // Kiểm tra mật khẩu
     const isPasswordValid = await verifyPasswordAndPrepareConfirmation(
       password,
-      admin.hashedPassword
+      admin.hashedPassword,
     );
 
     if (!isPasswordValid) {
@@ -1707,12 +1762,15 @@ export const verifyMaintenancePassword = async (req, res) => {
       code: error.code,
       stack: error.stack,
     });
-    
+
     // Trả về thông báo cụ thể theo loại lỗi
     if (error.message?.includes("SMTP")) {
-      return res.status(500).json({ message: "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên." });
+      return res.status(500).json({
+        message:
+          "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên.",
+      });
     }
-    
+
     return res.status(500).json({ message: "Lỗi hệ thống: " + error.message });
   }
 };
@@ -1761,22 +1819,25 @@ export const confirmMaintenanceToggle = async (req, res) => {
     };
 
     emitToAdmins(
-      enable ? ADMIN_SOCKET_EVENTS.MAINTENANCE_ON : ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF,
+      enable
+        ? ADMIN_SOCKET_EVENTS.MAINTENANCE_ON
+        : ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF,
       maintenancePayload,
     );
     emitAdminNotification({
       type: "system",
-      title: enable ? "Da bat maintenance mode" : "Da tat maintenance mode",
-      message:
-        enable
-          ? `${actor?.displayName ?? "Admin"} vua bat che do bao tri`
-          : `${actor?.displayName ?? "Admin"} vua tat che do bao tri`,
+      title: enable ? "Đã bật maintenance mode" : "Đã tắt maintenance mode",
+      message: enable
+        ? `${actor?.displayName ?? "Admin"} vừa bật chế độ bảo trì`
+        : `${actor?.displayName ?? "Admin"} vừa tắt chế độ bảo trì`,
       link: "/admin/maintenance",
       actor: buildAdminActor(actor),
       severity: enable ? "warning" : "success",
     });
     getIo().emit(
-      enable ? USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON : USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_OFF,
+      enable
+        ? USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON
+        : USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_OFF,
       { message: result.message, isEnabled: result.isEnabled },
     );
     await emitDashboardStatsUpdated({

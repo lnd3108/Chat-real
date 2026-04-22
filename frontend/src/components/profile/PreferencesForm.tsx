@@ -32,7 +32,7 @@ const PreferencesForm = () => {
     try {
       await updateShowOnlineStatus(checked);
     } catch (error) {
-      logger.error("Khong the cap nhat trang thai online", getErrorMeta(error));
+      logger.error("Không thể cập nhật trạng thái online", getErrorMeta(error));
     }
   };
 

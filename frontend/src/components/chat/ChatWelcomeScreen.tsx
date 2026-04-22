@@ -50,19 +50,19 @@ const ChatWelcomeScreen = () => {
               <span className="text-3xl">💬</span>
             </div>
             <h2 className="mb-2 bg-gradient-chat bg-clip-text text-2xl font-bold text-transparent">
-              Chao mung ban den voi ChatRealTime
+              Chào Mừng bạn đến với ChatRealTime
             </h2>
             <p className="text-muted-foreground">
-              Tai khoan moi chua co hoi thoai nao. Ban co the bat dau bang cach ket ban voi
-              mot vai nguoi ben duoi.
+              Tài khoản mới chưa có cuộc trò chuyện nào. Bạn có thể bắt đầu bằng
+              cách kết bạn với một vài người bên dưới.
             </p>
           </div>
 
           <UserSuggestionsList
             users={suggestions}
             loading={Boolean(currentUserId) && isFetching}
-            title="Ban co the biet"
-            emptyText="Chua tim thay nguoi phu hop de goi y."
+            title="Gợi ý kết bạn"
+            emptyText="Chưa tìm thấy người phù hợp để gợi ý."
             onRefresh={handleRefreshSuggestions}
           />
         </div>

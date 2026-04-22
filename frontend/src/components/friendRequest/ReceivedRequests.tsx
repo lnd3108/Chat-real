@@ -16,7 +16,7 @@ const ReceivedRequests = () => {
   if (!receivedList || receivedList.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Khong co yeu cau ket ban nao.
+        Không có yêu cầu kết bạn nào.
       </p>
     );
   }
@@ -25,9 +25,9 @@ const ReceivedRequests = () => {
     try {
       setPendingRequest({ id: requestId, action: "accept" });
       await acceptRequest(requestId);
-      toast.success("Da chap nhan loi moi ket ban");
+      toast.success("Đã chấp nhận lời mời kết bạn");
     } catch (error) {
-      logger.error("Khong the chap nhan loi moi ket ban", getErrorMeta(error));
+      logger.error("Không thể chấp nhận lời mời kết bạn", getErrorMeta(error));
     } finally {
       setPendingRequest(null);
     }
@@ -37,9 +37,9 @@ const ReceivedRequests = () => {
     try {
       setPendingRequest({ id: requestId, action: "decline" });
       await declineRequest(requestId);
-      toast.success("Da tu choi loi moi ket ban");
+      toast.success("Đã từ chối lời mời kết bạn");
     } catch (error) {
-      logger.error("Khong the tu choi loi moi ket ban", getErrorMeta(error));
+      logger.error("Không thể từ chối lời mời kết bạn", getErrorMeta(error));
     } finally {
       setPendingRequest(null);
     }
@@ -63,9 +63,9 @@ const ReceivedRequests = () => {
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "accept"
                 }
-                loadingText="Dang chap nhan..."
+                loadingText="Đang chấp nhận..."
               >
-                Chap nhan
+                Chấp nhận
               </Button>
               <Button
                 size="sm"
@@ -76,9 +76,9 @@ const ReceivedRequests = () => {
                   pendingRequest?.id === req._id &&
                   pendingRequest.action === "decline"
                 }
-                loadingText="Dang tu choi..."
+                loadingText="Đang từ chối..."
               >
-                Tu choi
+                Từ chối
               </Button>
             </div>
           }

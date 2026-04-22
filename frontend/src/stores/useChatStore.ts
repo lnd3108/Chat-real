@@ -405,7 +405,7 @@ export const useChatStore = create<ChatState>()(
           const message = await chatServices.toggleReaction(messageId, emoji);
           get().updateMessage(message);
         } catch (error) {
-          logger.error("Khong the cap nhat reaction", getErrorMeta(error));
+          logger.error("Không thể cập nhật reaction", getErrorMeta(error));
         }
       },
 

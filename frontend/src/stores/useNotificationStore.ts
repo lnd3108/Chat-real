@@ -9,8 +9,8 @@ const MAX_NOTIFICATIONS = 100;
 const buildFriendRequestNotification = (request: FriendRequest) => ({
   id: `friend-request-${request._id}`,
   type: "friend_request" as const,
-  title: "Lá»i má»i káº¿t báº¡n má»›i",
-  message: `${request.from?.displayName ?? "Ai Ä‘Ã³"} Ä‘Ã£ gá»­i lá»i má»i káº¿t báº¡n cho báº¡n`,
+  title: "Lời mời kết bạn mới",
+  message: `${request.from?.displayName ?? "Ai đó"} đã gửi lời mời kết bạn cho bạn`,
   actorName: request.from?.displayName,
   entityId: request._id,
 });
@@ -35,7 +35,9 @@ export const useNotificationStore = create<NotificationState>()(
         }
 
         set((state) => {
-          const exists = state.items.some((item) => item.id === notification.id);
+          const exists = state.items.some(
+            (item) => item.id === notification.id,
+          );
           if (exists) {
             return {
               items: sortByNewest(

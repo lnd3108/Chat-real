@@ -75,12 +75,12 @@ const NewGroupChatModal = () => {
 
     try {
       if (!groupName.trim()) {
-        toast.error("Vui long nhap ten nhom");
+        toast.error("Vui lòng nhập tên nhóm");
         return;
       }
 
       if (invitedUsers.length < 2) {
-        toast.error("Nhom can it nhat 2 thanh vien");
+        toast.error("Nhóm cần ít nhất 2 thành viên");
         return;
       }
 
@@ -92,15 +92,16 @@ const NewGroupChatModal = () => {
 
       resetForm();
       setOpen(false);
-      toast.success("Tao nhom chat thanh cong!");
+      toast.success("Tạo nhóm chat thành công!");
     } catch (error) {
-      logger.error("Loi khi tao nhom chat", getErrorMeta(error));
-      toast.error("Khong the tao nhom chat. Vui long thu lai.");
+      logger.error(" lỗi khi tạo nhóm chat", getErrorMeta(error));
+      toast.error("Không thể tạo nhóm chat. Vui lòng thử lại.");
     }
   };
 
   const selectedUserIds = invitedUsers.map((user) => user._id);
-  const isSubmitDisabled = loading || !groupName.trim() || invitedUsers.length < 2;
+  const isSubmitDisabled =
+    loading || !groupName.trim() || invitedUsers.length < 2;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -111,47 +112,55 @@ const NewGroupChatModal = () => {
           className="flex z-10 items-center justify-center size-5 rounded-full hover:bg-sidebar-accent transition cursor-pointer"
         >
           <Users className="size-4" />
-          <span className="sr-only">Tao nhom chat moi</span>
+          <span className="sr-only">Tạo nhóm chat mới</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[480px] border-none max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Tao nhom chat moi</DialogTitle>
+          <DialogTitle>Tạo nhóm chat mới</DialogTitle>
           <DialogDescription>
             {invitedUsers.length > 0
-              ? `Da chon ${invitedUsers.length} thanh vien`
-              : "Chon ban be va dat ten nhom"}
+              ? `Đã chọn ${invitedUsers.length} thành viên`
+              : "Chọn bạn bè và đặt tên nhóm của bạn."}
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex flex-1 flex-col gap-4 overflow-hidden" onSubmit={handleSubmit}>
+        <form
+          className="flex flex-1 flex-col gap-4 overflow-hidden"
+          onSubmit={handleSubmit}
+        >
           <div className="space-y-2">
             <Label htmlFor="group-name" className="text-sm font-semibold">
-              Ten nhom <span className="text-destructive">*</span>
+              Tên nhóm <span className="text-destructive">*</span>
             </Label>
             <Input
               id="group-name"
-              placeholder="Nhap ten nhom cua ban"
+              placeholder="Nhập tên nhóm của bạn"
               className="glass border-border/50 focus:border-primary/50 transition-smooth"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               maxLength={50}
             />
-            <p className="text-xs text-muted-foreground">{groupName.length}/50</p>
+            <p className="text-xs text-muted-foreground">
+              {groupName.length}/50
+            </p>
           </div>
 
           {invitedUsers.length > 0 && (
-            <SelectedUsersList invitedUsers={invitedUsers} onRemove={handleRemoveFriend} />
+            <SelectedUsersList
+              invitedUsers={invitedUsers}
+              onRemove={handleRemoveFriend}
+            />
           )}
 
           <div className="flex flex-1 flex-col space-y-2 overflow-hidden">
             <Label htmlFor="search-friends" className="text-sm font-semibold">
-              Them ban be <span className="text-destructive">*</span>
+              Thêm bạn bè <span className="text-destructive">*</span>
             </Label>
             <Input
               id="search-friends"
-              placeholder="Tim theo ten hoac username..."
+              placeholder="Tìm theo tên hoặc username..."
               className="glass border-border/50 focus:border-primary/50 transition-smooth"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -168,12 +177,19 @@ const NewGroupChatModal = () => {
           </div>
 
           {groupName.trim() && invitedUsers.length < 2 && (
-            <p className="text-xs text-destructive/80">Can chon it nhat 2 thanh vien de tao nhom</p>
+            <p className="text-xs text-destructive/80">
+              Cần chọn ít nhất 2 thành viên để tạo nhóm
+            </p>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
-              Huy
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
+              Hủy
             </Button>
             <Button
               type="submit"
@@ -181,11 +197,11 @@ const NewGroupChatModal = () => {
               className="bg-gradient-chat text-white hover:opacity-90 transition-smooth"
             >
               {loading ? (
-                <span>Dang tao nhom...</span>
+                <span>Đang tạo nhóm...</span>
               ) : (
                 <>
                   <UserPlus className="mr-2 size-4" />
-                  Tao nhom chat ({invitedUsers.length})
+                  Tạo nhóm chat ({invitedUsers.length})
                 </>
               )}
             </Button>

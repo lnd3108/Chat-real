@@ -192,7 +192,7 @@ const GroupInfoDialog = ({
 
       toast.success("Đã cập nhật ảnh đại diện nhóm");
     } catch (error) {
-      logger.error("Khong the cap nhat anh dai dien nhom", getErrorMeta(error));
+      logger.error("Không thể cập nhật ảnh đại diện nhóm", getErrorMeta(error));
       toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);
@@ -226,7 +226,7 @@ const GroupInfoDialog = ({
       setEditingGroupName(false);
       toast.success("Đã cập nhật tên nhóm");
     } catch (error) {
-      logger.error("Khong the cap nhat ten nhom", getErrorMeta(error));
+      logger.error("Không thể cập nhật tên nhóm", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message
@@ -245,7 +245,7 @@ const GroupInfoDialog = ({
       toast.success(`Đã thêm ${friend.displayName} vào nhóm`);
       setSearch("");
     } catch (error) {
-      logger.error("Khong the them thanh vien vao nhom", getErrorMeta(error));
+      logger.error("Không thể thêm thành viên vào nhóm", getErrorMeta(error));
       const message =
         axios.isAxiosError(error) && error.response?.data?.message
           ? error.response.data.message

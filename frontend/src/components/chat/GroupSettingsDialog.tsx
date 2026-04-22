@@ -48,7 +48,7 @@ const GroupSettingsDialog = ({ chat }: GroupSettingsDialogProps) => {
 
       toast.success("Đã cập nhật ảnh đại diện nhóm");
     } catch (error) {
-      logger.error("Khong the cap nhat anh dai dien nhom", getErrorMeta(error));
+      logger.error("Không thể cập nhật ảnh đại diện nhóm", getErrorMeta(error));
       toast.error("Không thể cập nhật ảnh đại diện nhóm");
     } finally {
       setAvatarUploading(false);

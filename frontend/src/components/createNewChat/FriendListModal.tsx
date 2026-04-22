@@ -35,10 +35,7 @@ const FriendListModal = ({
   onPick,
 }: FriendListModalProps) => {
   const currentUserId = useAuthStore((state) => state.user?._id);
-  const {
-    friends: friendsStore,
-    loading: loadingStore,
-  } = useFriendStore();
+  const { friends: friendsStore, loading: loadingStore } = useFriendStore();
   const {
     suggestions,
     isFetching,
@@ -79,7 +76,13 @@ const FriendListModal = ({
         void fetchSuggestions(5, false);
       }
     }
-  }, [open, currentUserId, shouldShowSuggestions, hasFetched, fetchSuggestions]);
+  }, [
+    open,
+    currentUserId,
+    shouldShowSuggestions,
+    hasFetched,
+    fetchSuggestions,
+  ]);
 
   const handleAddConversation = async (friendId: string) => {
     await createConversation("direct", "", [friendId]);
@@ -95,23 +98,24 @@ const FriendListModal = ({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl capitalize">
           <MessageCircle className="size-5" />
-          Bat dau hoi thoai moi
+          Bắt đầu cuộc trò chuyện mới
         </DialogTitle>
         <DialogDescription className="sr-only">
-          Chon mot nguoi ban de mo cuoc tro chuyen truc tiep hoac xem cac goi y ket ban.
+          Chọn một người bạn để bắt đầu cuộc trò chuyện trực tiếp hoặc xem các
+          gợi ý kết bạn.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-5">
         <div className="space-y-2">
           <h1 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Danh sach ban be
+            Danh sách bạn bè
           </h1>
 
           <div className="max-h-60 space-y-2 overflow-y-auto">
             {loading ? (
               <div className="py-8 text-center text-muted-foreground">
-                Dang tai danh sach ban be...
+                Đang tải danh sách bạn bè...
               </div>
             ) : null}
 
@@ -130,8 +134,12 @@ const FriendListModal = ({
                     />
 
                     <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-sm font-semibold">{friend.displayName}</h2>
-                      <span className="text-sm text-muted-foreground">@{friend.userName}</span>
+                      <h2 className="truncate text-sm font-semibold">
+                        {friend.displayName}
+                      </h2>
+                      <span className="text-sm text-muted-foreground">
+                        @{friend.userName}
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -140,7 +148,8 @@ const FriendListModal = ({
             {shouldShowSuggestions ? (
               <div className="py-2 text-center text-muted-foreground">
                 <Users className="mx-auto mb-3 size-12 opacity-50" />
-                Chua co ban be nao. Ban co the gui loi moi tu cac goi y ben duoi.
+                Chưa có bạn bè nào. Bạn có thể gửi lời mời từ các gợi ý bên
+                dưới.
               </div>
             ) : null}
           </div>
@@ -151,8 +160,8 @@ const FriendListModal = ({
             users={suggestions}
             loading={Boolean(currentUserId) && isFetching}
             compact
-            title="Ban co the biet"
-            emptyText="Chua co goi y phu hop de bat dau."
+            title="Bạn có thể biết"
+            emptyText="Chưa có gợi ý phù hợp để bắt đầu."
             onRefresh={handleRefreshSuggestions}
           />
         ) : null}

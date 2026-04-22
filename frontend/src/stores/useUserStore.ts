@@ -22,8 +22,8 @@ export const useUserStore = create<UserState>(() => ({
         useChatStore.getState().fetchConversations();
       }
     } catch (error) {
-      logger.error("Khong the tai anh dai dien len", getErrorMeta(error));
-      toast.error("Khong the cap nhat anh dai dien.");
+      logger.error("Không thể tải ảnh đại diện lên", getErrorMeta(error));
+      toast.error("Không thể cập nhật ảnh đại diện.");
     }
   },
 }));

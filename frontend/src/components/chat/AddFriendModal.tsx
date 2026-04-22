@@ -86,7 +86,14 @@ const AddFriendModal = () => {
         searchTimeoutRef.current = null;
       }
     };
-  }, [currentUserId, fetchSuggestions, hasFetchedSuggestions, open, searchUsers, trimmedQuery]);
+  }, [
+    currentUserId,
+    fetchSuggestions,
+    hasFetchedSuggestions,
+    open,
+    searchUsers,
+    trimmedQuery,
+  ]);
 
   const displayedUsers = useMemo(
     () => (trimmedQuery ? searchResults : suggestions),
@@ -95,8 +102,8 @@ const AddFriendModal = () => {
 
   const currentLoading = trimmedQuery ? searchLoading : isFetchingSuggestions;
   const emptyText = trimmedQuery
-    ? `Khong tim thay user gan dung voi "${trimmedQuery}".`
-    : "Chua co goi y phu hop.";
+    ? `Không tìm thấy user gần đúng với "${trimmedQuery}".`
+    : "Chưa có gợi ý phù hợp.";
 
   const handleRefreshSuggestions = useCallback(async () => {
     await refreshSuggestions(5);
@@ -130,15 +137,15 @@ const AddFriendModal = () => {
           className="z-10 flex size-5 cursor-pointer items-center justify-center rounded-full transition hover:bg-sidebar-accent"
         >
           <UserPlus className="size-4" />
-          <span className="sr-only">Ket ban</span>
+          <span className="sr-only">Kết bạn</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-border/40 bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">
         <DialogHeader className="border-b border-border/40 px-5 py-4">
-          <DialogTitle className="text-xl">Ket ban</DialogTitle>
+          <DialogTitle className="text-xl">Kết bạn</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Tim nguoi dung roi gui loi moi ket ban.
+            Tìm người dùng rồi gửi lời mời kết bạn.
           </DialogDescription>
         </DialogHeader>
 
@@ -163,15 +170,22 @@ const AddFriendModal = () => {
             users={displayedUsers}
             loading={Boolean(currentUserId) && currentLoading}
             compact
-            title={trimmedQuery ? "Ket qua tim kiem" : "Ban co the biet"}
+            title={
+              trimmedQuery ? "Kết quả tìm kiếm" : "Những người bạn có thể biết"
+            }
             emptyText={emptyText}
             onRefresh={!trimmedQuery ? handleRefreshSuggestions : undefined}
           />
         </div>
 
         <div className="flex justify-end border-t border-border/40 px-5 py-4">
-          <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
-            Dong
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => setOpen(false)}
+          >
+            Đóng
           </Button>
         </div>
       </DialogContent>
