@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../../../models/User.js";
 import Session from "../../../models/Session.js";
-import { deleteMyAccount } from "../../../controllers/userController.js";
+import { deleteMyAccountCommand } from "../../user-profile/application/user-profile.service.js";
 import { sendAccountDeletionCodeForUser } from "./verification.service.js";
 
 export const changePasswordForUser = async ({
@@ -104,5 +104,21 @@ export const requestAuthenticatedAccountDeletion = async ({ userId }) => {
   return { status: 200, body: deletion.payload };
 };
 
-export const confirmAuthenticatedAccountDeletion = ({ req, res }) =>
-  deleteMyAccount(req, res);
+export const confirmAuthenticatedAccountDeletion = async ({ user, body, res }) => {
+  const result = await deleteMyAccountCommand({ user, body });
+  if (result.error) {
+    return {
+      status: result.error.status,
+      body: { message: result.error.message },
+    };
+  }
+
+  if (result.clearRefreshToken) {
+    res.clearCookie("refreshToken");
+  }
+
+  return {
+    status: result.status,
+    body: result.payload,
+  };
+};

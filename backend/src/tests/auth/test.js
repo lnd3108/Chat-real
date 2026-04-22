@@ -20,7 +20,7 @@ const mockSendAccountDeletionCodeEmail = jest.fn();
 const mockSendAccountDeletedEmail = jest.fn();
 const mockSendMaintenanceConfirmationCodeEmail = jest.fn();
 const mockIsMailConfigured = jest.fn(() => true);
-const mockDeleteMyAccount = jest.fn();
+const mockDeleteMyAccountCommand = jest.fn();
 const mockIsMaintenanceEnabled = jest.fn();
 const mockGetMaintenanceMessage = jest.fn();
 const mockEmitToAdmins = jest.fn();
@@ -90,9 +90,12 @@ jest.unstable_mockModule("../../utils/mail.js", () => ({
   sendMaintenanceConfirmationCodeEmail: mockSendMaintenanceConfirmationCodeEmail,
 }));
 
-jest.unstable_mockModule("../../controllers/userController.js", () => ({
-  deleteMyAccount: mockDeleteMyAccount,
-}));
+jest.unstable_mockModule(
+  "../../modules/user-profile/application/user-profile.service.js",
+  () => ({
+    deleteMyAccountCommand: mockDeleteMyAccountCommand,
+  }),
+);
 
 jest.unstable_mockModule("../../services/maintenanceService.js", () => ({
   isMaintenanceEnabled: mockIsMaintenanceEnabled,
@@ -230,7 +233,7 @@ describe("authControllers", () => {
         "refresh-token",
         expect.objectContaining({ httpOnly: true, maxAge: expect.any(Number) }),
       );
-      expect(mockDeleteMyAccount).not.toHaveBeenCalled();
+      expect(mockDeleteMyAccountCommand).not.toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           accessToken: "access-token",
@@ -330,10 +333,11 @@ describe("authControllers", () => {
     });
 
     it("deletes the account after correct verification code", async () => {
-      mockDeleteMyAccount.mockImplementation(async (_req, response) => {
-        response.status(200).json({
-          message: "Xóa tài khoản thành công.",
-        });
+      mockDeleteMyAccountCommand.mockResolvedValue({
+        status: 200,
+        payload: {
+          message: "XÃ³a tÃ i khoáº£n thÃ nh cÃ´ng.",
+        },
       });
 
       const req = {
@@ -347,10 +351,13 @@ describe("authControllers", () => {
 
       await confirmAccountDeletion(req, res);
 
-      expect(mockDeleteMyAccount).toHaveBeenCalledWith(req, res);
+      expect(mockDeleteMyAccountCommand).toHaveBeenCalledWith({
+        user: req.user,
+        body: req.body,
+      });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Xóa tài khoản thành công.",
+        message: "XÃ³a tÃ i khoáº£n thÃ nh cÃ´ng.",
       });
     });
   });

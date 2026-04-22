@@ -296,4 +296,11 @@ export const requestAccountDeletion = async (req, res) => {
 };
 
 export const confirmAccountDeletion = async (req, res) =>
-  confirmAuthenticatedAccountDeletion({ req, res });
+  sendResult(
+    res,
+    await confirmAuthenticatedAccountDeletion({
+      user: req.user,
+      body: req.body,
+      res,
+    }),
+  );
