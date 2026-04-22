@@ -4,12 +4,10 @@ import {
   deleteMessageForEveryone,
   deleteMessageForMe,
   editMessage,
-  toggleReaction,
-} from "../controllers/messageController.js";
-import {
   sendDirectMessage,
   sendGroupMessage,
   sendMessageWithImage,
+  toggleReaction,
 } from "../modules/chat/api/http/message.controller.js";
 import { handleSingleImageUpload, upload } from "../middlewares/uploadMiddleWare.js";
 import {

@@ -1,9 +1,10 @@
 import Report from "../models/Report.js";
-import { ADMIN_SOCKET_EVENTS, USER_SOCKET_EVENTS } from "../constants/socketEvents.js";
-import { emitToAdmins } from "../socket/adminSocket.js";
-import { emitToUser } from "../socket/index.js";
 import { buildAdminActor, emitAdminNotification } from "./adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "./dashboardRealtimeService.js";
+import {
+  emitReportCreatedRealtime,
+  emitReportUpdatedRealtime,
+} from "../shared/infrastructure/realtime/report-realtime.js";
 
 const mapReportPayload = async (reportId) => {
   return Report.findById(reportId)
@@ -19,10 +20,7 @@ export const emitNewReportCreated = async (reportId) => {
     return null;
   }
 
-  emitToAdmins(ADMIN_SOCKET_EVENTS.REPORT_NEW, {
-    report,
-    createdAt: new Date().toISOString(),
-  });
+  emitReportCreatedRealtime({ report });
 
   emitAdminNotification({
     type: "report",
@@ -48,11 +46,7 @@ export const emitReportUpdated = async (reportId, metadata = {}) => {
     return null;
   }
 
-  emitToAdmins(ADMIN_SOCKET_EVENTS.REPORT_UPDATED, {
-    report,
-    metadata,
-    updatedAt: new Date().toISOString(),
-  });
+  emitReportUpdatedRealtime({ report, metadata });
 
   emitAdminNotification({
     type: "report",
@@ -66,15 +60,6 @@ export const emitReportUpdated = async (reportId, metadata = {}) => {
       ...metadata,
     },
   });
-
-  if (report.reporterId?._id) {
-    emitToUser(report.reporterId._id, USER_SOCKET_EVENTS.REPORT_STATUS_UPDATED, {
-      reportId: report._id,
-      status: report.status,
-      reviewedAt: report.reviewedAt,
-      resolutionNote: report.resolutionNote ?? null,
-    });
-  }
 
   await emitDashboardStatsUpdated({ reason: "report:updated", reportId: report._id.toString() });
   return report;

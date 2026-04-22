@@ -2,19 +2,19 @@ import express from "express";
 import {
   authMe,
   blockUser,
+  cancelMyEmailChange,
+  deleteMyAccount,
   getBlockedUsers,
   getUserSuggestions,
   searchUserByUserName,
+  sendEmailChangeOtp,
+  verifyMyEmailChange,
   test,
-  deleteMyAccount,
   unblockUser,
   updateMe,
   updatePreferences,
   uploadAvatar,
-  sendEmailChangeOtp,
-  verifyMyEmailChange,
-  cancelMyEmailChange,
-} from "../controllers/userController.js";
+} from "../modules/user-profile/api/http/user.controller.js";
 import { upload } from "../middlewares/uploadMiddleWare.js";
 
 const router = express.Router();

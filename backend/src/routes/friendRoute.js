@@ -3,12 +3,12 @@ import express from "express";
 import {
   acceptFriendRequest,
   cancelSentFriendRequest,
-  sendFriendRequest,
   declineFriendRequest,
   getAllFriends,
   getFriendRequests,
   removeFriend,
-} from "../controllers/friendController.js";
+  sendFriendRequest,
+} from "../modules/friendship/api/http/friend.controller.js";
 
 const router = express.Router();
 

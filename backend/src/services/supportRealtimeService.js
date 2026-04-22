@@ -1,8 +1,6 @@
-import { ADMIN_SOCKET_EVENTS, USER_SOCKET_EVENTS } from "../constants/socketEvents.js";
-import { emitToAdmins } from "../socket/adminSocket.js";
-import { emitToUser } from "../socket/index.js";
 import { buildAdminActor, emitAdminNotification } from "./adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "./dashboardRealtimeService.js";
+import { emitSupportConversationRealtimeEvent } from "../shared/infrastructure/realtime/support-realtime.js";
 
 export const emitSupportConversationRealtime = async ({
   type,
@@ -10,24 +8,13 @@ export const emitSupportConversationRealtime = async ({
   message = null,
   actor = null,
 }) => {
-  const payload = {
-    conversationId: conversation?._id,
+  const payload = emitSupportConversationRealtimeEvent({
+    type,
     conversation,
     message,
-    actor: buildAdminActor(actor),
-    createdAt: new Date().toISOString(),
-  };
-
-  emitToAdmins(ADMIN_SOCKET_EVENTS.SUPPORT_NEW_MESSAGE, payload);
-
-  const targetUserId =
-    conversation?.supportCreatedByUser?._id ??
-    conversation?.supportCreatedByUserId ??
-    null;
-
-  if (type === "reply" && targetUserId) {
-    emitToUser(targetUserId, USER_SOCKET_EVENTS.SUPPORT_REPLY_NEW, payload);
-  }
+    actor,
+    buildAdminActor,
+  });
 
   emitAdminNotification({
     type: "support",
