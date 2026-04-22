@@ -14,6 +14,20 @@ const mockRequestMaintenancePasswordVerificationCommand = jest.fn();
 const mockVerifyMaintenancePasswordCommand = jest.fn();
 const mockConfirmMaintenanceToggleCommand = jest.fn();
 const mockUpdateMaintenanceMessageCommand = jest.fn();
+const mockGetDashboardUserChartData = jest.fn();
+const mockGetDashboardMessageChartData = jest.fn();
+const mockGetDashboardReportChartData = jest.fn();
+const mockGetDashboardSupportChartData = jest.fn();
+const mockGetFriendRequestsAdminQuery = jest.fn();
+const mockGetFriendshipsAdminQuery = jest.fn();
+const mockGetConversationsAdminQuery = jest.fn();
+const mockGetAdminMessagesQuery = jest.fn();
+const mockGetAdminBlockedUsersQuery = jest.fn();
+const mockGetConversationDetailAdminQuery = jest.fn();
+const mockGetBlocksAdminQuery = jest.fn();
+const mockGetBlockDetailAdminQuery = jest.fn();
+const mockUnblockBlockRelationAsAdminCommand = jest.fn();
+const mockUpdateUserRoleLegacyCommand = jest.fn();
 
 jest.unstable_mockModule(
   "../../modules/moderation/application/report-admin.service.js",
@@ -53,6 +67,26 @@ jest.unstable_mockModule(
       mockRequestMaintenancePasswordVerificationCommand,
     updateMaintenanceMessageCommand: mockUpdateMaintenanceMessageCommand,
     verifyMaintenancePasswordCommand: mockVerifyMaintenancePasswordCommand,
+  }),
+);
+
+jest.unstable_mockModule(
+  "../../modules/admin-panel/application/admin-read.service.js",
+  () => ({
+    getAdminBlockedUsersQuery: mockGetAdminBlockedUsersQuery,
+    getAdminMessagesQuery: mockGetAdminMessagesQuery,
+    getBlockDetailAdminQuery: mockGetBlockDetailAdminQuery,
+    getBlocksAdminQuery: mockGetBlocksAdminQuery,
+    getConversationDetailAdminQuery: mockGetConversationDetailAdminQuery,
+    getConversationsAdminQuery: mockGetConversationsAdminQuery,
+    getDashboardMessageChartData: mockGetDashboardMessageChartData,
+    getDashboardReportChartData: mockGetDashboardReportChartData,
+    getDashboardSupportChartData: mockGetDashboardSupportChartData,
+    getDashboardUserChartData: mockGetDashboardUserChartData,
+    getFriendRequestsAdminQuery: mockGetFriendRequestsAdminQuery,
+    getFriendshipsAdminQuery: mockGetFriendshipsAdminQuery,
+    unblockBlockRelationAsAdminCommand: mockUnblockBlockRelationAsAdminCommand,
+    updateUserRoleLegacyCommand: mockUpdateUserRoleLegacyCommand,
   }),
 );
 
@@ -243,7 +277,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportsQuery).toHaveBeenCalledWith(req.query);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Lấy danh sách báo cáo thành công",
+      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: {
         reports: [{ _id: "r1" }],
         pagination: { page: 1, limit: 20, total: 1, pages: 1 },
@@ -264,7 +298,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportDetailQuery).toHaveBeenCalledWith({ reportId: "r1" });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Lấy chi tiết báo cáo thành công",
+      message: "Láº¥y chi tiáº¿t bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: {
         report: { _id: "r1" },
         moderationTargetUser: { _id: "u2" },
@@ -291,7 +325,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Cập nhật trạng thái báo cáo thành công",
+      message: "Cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: { report: { _id: "r1", status: "resolved" } },
     });
   });
@@ -318,7 +352,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "Xử lý báo cáo bằng hành động thành công",
+      message: "Xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng thÃ nh cÃ´ng",
       data: {
         report: { _id: "r1", status: "resolved" },
         action: "Da khoa nguoi dung",

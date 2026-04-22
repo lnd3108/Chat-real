@@ -14,6 +14,7 @@ import {
   syncConversationLastMessage,
   updateConversationAfterCreateMessage,
 } from "../infrastructure/realtime/message-realtime.js";
+import { emitToUser } from "../../../shared/infrastructure/realtime/socket-gateway.js";
 import { getIo } from "../../../shared/infrastructure/realtime/socket-registry.js";
 import { isConversationActiveForUser } from "../../../shared/infrastructure/realtime/user-presence.js";
 
@@ -156,11 +157,73 @@ export const createAndEmitMessage = async ({
   return { message, conversationPayload: conversationPayload ?? null };
 };
 
-export const sendDirectMessageCommand = async ({
-  user,
-  body,
-  file,
-}) => {
+const ensureConversationMember = async (conversationId, userId) => {
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) {
+    return { error: { status: 404, message: "Cuoc tro chuyen khong ton tai" } };
+  }
+
+  const isMember = conversation.participants.some(
+    (participant) => participant.userId.toString() === userId.toString(),
+  );
+
+  if (!isMember) {
+    return { error: { status: 403, message: "Ban khong thuoc cuoc tro chuyen nay" } };
+  }
+
+  return { conversation };
+};
+
+const loadMessageContext = async (messageId, userId) => {
+  const message = await Message.findById(messageId);
+  if (!message) {
+    return { error: { status: 404, message: "Tin nhan khong ton tai" } };
+  }
+
+  const { conversation, error } = await ensureConversationMember(
+    message.conversationId,
+    userId,
+  );
+
+  if (error) {
+    return { error };
+  }
+
+  return { message, conversation };
+};
+
+const findLatestVisibleMessage = async (conversationId) =>
+  Message.findOne({
+    conversationId,
+    $or: [
+      { isDeletedForEveryone: false },
+      { isDeletedForEveryone: { $exists: false } },
+    ],
+  }).sort({ createdAt: -1 });
+
+const syncReplySnapshotsAfterRecall = async (conversation, recalledMessage) => {
+  const impactedMessages = await Message.find({
+    conversationId: conversation._id,
+    "replyTo.messageId": recalledMessage._id,
+  });
+
+  if (impactedMessages.length === 0) return;
+
+  const io = getIo();
+
+  for (const impactedMessage of impactedMessages) {
+    if (!impactedMessage.replyTo) continue;
+
+    impactedMessage.replyTo.content = RECALL_PLACEHOLDER;
+    impactedMessage.replyTo.imgUrl = null;
+    impactedMessage.replyTo.isDeletedForEveryone = true;
+
+    await impactedMessage.save();
+    emitMessageUpdated(io, conversation, impactedMessage);
+  }
+};
+
+export const sendDirectMessageCommand = async ({ user, body, file }) => {
   const { recipientId, content, conversationId, replyToMessageId } = body;
   const senderId = user._id;
 
@@ -256,12 +319,7 @@ export const sendDirectMessageCommand = async ({
   };
 };
 
-export const sendGroupMessageCommand = async ({
-  user,
-  conversation,
-  body,
-  file,
-}) => {
+export const sendGroupMessageCommand = async ({ user, conversation, body, file }) => {
   const { conversationId, content, replyToMessageId } = body;
   const senderId = user._id;
 
@@ -289,15 +347,7 @@ export const sendGroupMessageCommand = async ({
 };
 
 export const syncConversationAndEmitUpdate = async (conversation, message) => {
-  const latestMessage =
-    message ??
-    (await Message.findOne({
-      conversationId: conversation._id,
-      $or: [
-        { isDeletedForEveryone: false },
-        { isDeletedForEveryone: { $exists: false } },
-      ],
-    }).sort({ createdAt: -1 }));
+  const latestMessage = message ?? (await findLatestVisibleMessage(conversation._id));
 
   syncConversationLastMessage(conversation, latestMessage);
   await conversation.save();
@@ -320,6 +370,160 @@ export const clearMessageAssets = async (message) => {
   await deleteImagePromise.catch((deleteError) => {
     console.error("Khong the xoa anh tin nhan tren Cloudinary:", deleteError);
   });
+};
+
+export const editMessageCommand = async ({ user, messageId, content }) => {
+  const userId = user._id;
+
+  if (!content?.trim()) {
+    return { error: { status: 400, message: "Noi dung khong duoc de trong" } };
+  }
+
+  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  if (error) {
+    return { error };
+  }
+
+  if (message.type === "system") {
+    return { error: { status: 400, message: "Khong the sua tin nhan he thong" } };
+  }
+
+  if (!message.senderId || message.senderId.toString() !== userId.toString()) {
+    return { error: { status: 403, message: "Ban khong the sua tin nhan nay" } };
+  }
+
+  if (message.isDeletedForEveryone) {
+    return { error: { status: 400, message: "Tin nhan da bi thu hoi" } };
+  }
+
+  message.content = content.trim();
+  message.editedAt = new Date();
+  await message.save();
+
+  if (conversation.lastMessage?._id?.toString() === message._id.toString()) {
+    await syncConversationAndEmitUpdate(conversation, message);
+  }
+
+  emitMessageUpdated(getIo(), conversation, message);
+
+  return {
+    status: 200,
+    payload: { message: normalizeMessageForClient(message, userId) },
+  };
+};
+
+export const deleteMessageForMeCommand = async ({ user, messageId }) => {
+  const userId = user._id;
+
+  const { message, error } = await loadMessageContext(messageId, userId);
+  if (error) {
+    return { error };
+  }
+
+  const alreadyDeleted = message.deletedFor.some(
+    (item) => item.toString() === userId.toString(),
+  );
+
+  if (!alreadyDeleted) {
+    message.deletedFor.push(userId);
+    await message.save();
+  }
+
+  emitToUser(userId.toString(), "message:removed-for-me", {
+    conversationId: message.conversationId.toString(),
+    messageId: message._id.toString(),
+  });
+
+  return {
+    status: 200,
+    payload: { success: true },
+  };
+};
+
+export const deleteMessageForEveryoneCommand = async ({ user, messageId }) => {
+  const userId = user._id;
+
+  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  if (error) {
+    return { error };
+  }
+
+  if (message.type === "system") {
+    return { error: { status: 400, message: "Khong the thu hoi tin nhan he thong" } };
+  }
+
+  if (!message.senderId || message.senderId.toString() !== userId.toString()) {
+    return { error: { status: 403, message: "Ban khong the thu hoi tin nhan nay" } };
+  }
+
+  await clearMessageAssets(message);
+
+  message.content = null;
+  message.imgUrl = null;
+  message.imgPublicId = null;
+  message.replyTo = null;
+  message.reactions = [];
+  message.isDeletedForEveryone = true;
+  message.editedAt = null;
+  await message.save();
+
+  await syncReplySnapshotsAfterRecall(conversation, message);
+
+  if (conversation.lastMessage?._id?.toString() === message._id.toString()) {
+    await syncConversationAndEmitUpdate(conversation, message);
+  }
+
+  emitMessageUpdated(getIo(), conversation, message);
+
+  return {
+    status: 200,
+    payload: { message: normalizeMessageForClient(message, userId) },
+  };
+};
+
+export const toggleMessageReactionCommand = async ({ user, messageId, emoji }) => {
+  const userId = user._id;
+
+  if (!emoji?.trim()) {
+    return { error: { status: 400, message: "Emoji la bat buoc" } };
+  }
+
+  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  if (error) {
+    return { error };
+  }
+
+  if (message.isDeletedForEveryone) {
+    return {
+      error: {
+        status: 400,
+        message: "Khong the tha bieu cam vao tin nhan da thu hoi",
+      },
+    };
+  }
+
+  const reaction = message.reactions.find((item) => item.emoji === emoji);
+  if (!reaction) {
+    message.reactions.push({ emoji, userIds: [userId] });
+  } else {
+    const exists = reaction.userIds.some(
+      (item) => item.toString() === userId.toString(),
+    );
+
+    reaction.userIds = exists
+      ? reaction.userIds.filter((item) => item.toString() !== userId.toString())
+      : [...reaction.userIds, userId];
+
+    message.reactions = message.reactions.filter((item) => item.userIds.length > 0);
+  }
+
+  await message.save();
+  emitMessageUpdated(getIo(), conversation, message);
+
+  return {
+    status: 200,
+    payload: { message: normalizeMessageForClient(message, userId) },
+  };
 };
 
 export const emitExistingMessageUpdated = (conversation, message) => {

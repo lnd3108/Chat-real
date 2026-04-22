@@ -1,34 +1,3 @@
-import User from "../../../../models/User.js";
-import Conversation from "../../../../models/Conversation.js";
-import Message from "../../../../models/Message.js";
-import FriendRequest from "../../../../models/FriendRequest.js";
-import Friend from "../../../../models/Friend.js";
-import Blocking, {
-  BLOCKING_TYPE_DIRECT_ONLY,
-} from "../../../../models/Blocking.js";
-import Report from "../../../../models/Report.js";
-import { emitDirectBlockStatusChanged } from "../../../chat/api/http/conversation.controller.js";
-import { ADMIN_SOCKET_EVENTS } from "../../../../constants/socketEvents.js";
-import { emitToAdmins } from "../../../../shared/infrastructure/realtime/admin-room.js";
-import {
-  buildAdminActor,
-  emitAdminNotification,
-} from "../../../../services/adminNotificationService.js";
-import { emitDashboardStatsUpdated } from "../../../../services/dashboardRealtimeService.js";
-import { escapeRegex } from "../../../../utils/regex.js";
-import {
-  buildAdminBlockFilter,
-  buildAdminFriendFilter,
-  buildAdminFriendRequestFilter,
-  getAdminBlockSort,
-  getAdminFriendRequestSort,
-  getAdminFriendSort,
-  mapAdminBlockRelation,
-  mapAdminFriendRelation,
-  mapAdminFriendRequestRelation,
-  mapAdminLastMessage,
-  syncBlockingDocumentsFromEmbeddedState,
-} from "../../../../services/adminQueryHelpers.js";
 import {
   getDashboardOverviewSummary,
   getDashboardStatsSummary,
@@ -53,456 +22,178 @@ import {
   updateMaintenanceMessageCommand,
   verifyMaintenancePasswordCommand,
 } from "../../../system/application/admin-maintenance.service.js";
+import {
+  getAdminBlockedUsersQuery,
+  getAdminMessagesQuery,
+  getBlockDetailAdminQuery,
+  getBlocksAdminQuery,
+  getConversationDetailAdminQuery,
+  getConversationsAdminQuery,
+  getDashboardMessageChartData,
+  getDashboardReportChartData,
+  getDashboardSupportChartData,
+  getDashboardUserChartData,
+  getFriendRequestsAdminQuery,
+  getFriendshipsAdminQuery,
+  unblockBlockRelationAsAdminCommand,
+  updateUserRoleLegacyCommand,
+} from "../../application/admin-read.service.js";
 import { sendServerError } from "../../../../utils/controllerResponses.js";
 
-const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
-  _id: conversation._id,
-  type: conversation.type,
-  groupName:
-    conversation.type === "group" ? (conversation.group?.name ?? "Nhóm") : null,
-  membersCount: Array.isArray(conversation.participants)
-    ? conversation.participants.length
-    : 0,
-  messagesCount,
-  lastMessage: mapAdminLastMessage(conversation.lastMessage),
-  updatedAt: conversation.updatedAt,
-  createdAt: conversation.createdAt,
-});
+const sendSuccess = (res, data, status = 200) => res.status(status).json(data);
 
-const getAdminConversationSort = (sort = "updatedAt-desc") => {
-  switch (sort) {
-    case "createdAt-asc":
-      return { createdAt: 1 };
-    case "createdAt-desc":
-      return { createdAt: -1 };
-    case "updatedAt-asc":
-      return { updatedAt: 1 };
-    case "updatedAt-desc":
-    default:
-      return { updatedAt: -1 };
-  }
-};
-
-const buildAdminConversationFilter = async ({ type = "", q = "" }) => {
-  const filter = {
-    type: { $in: ["direct", "group"] },
-  };
-  const trimmedType = String(type || "").trim();
-  const trimmedQuery = String(q || "").trim();
-
-  if (trimmedType && ["direct", "group"].includes(trimmedType)) {
-    filter.type = trimmedType;
-  }
-
-  if (!trimmedQuery) {
-    return filter;
-  }
-
-  const regex = new RegExp(escapeRegex(trimmedQuery), "i");
-  const matchedUsers = await User.find({
-    $or: [{ userName: regex }, { displayName: regex }, { email: regex }],
-  })
-    .select("_id")
-    .lean();
-
-  const matchedUserIds = matchedUsers.map((user) => user._id);
-  const queryConditions = [];
-
-  if (matchedUserIds.length) {
-    queryConditions.push({ "participants.userId": { $in: matchedUserIds } });
-  }
-
-  queryConditions.push({ "group.name": regex });
-
-  if (queryConditions.length === 0) {
-    filter._id = null;
-    return filter;
-  }
-
-  filter.$or = queryConditions;
-
-  return filter;
-};
-
-const getMessagesCountMap = async (conversationIds = []) => {
-  if (!conversationIds.length) {
-    return new Map();
-  }
-
-  const counts = await Message.aggregate([
-    {
-      $match: {
-        conversationId: { $in: conversationIds },
-      },
-    },
-    {
-      $group: {
-        _id: "$conversationId",
-        count: { $sum: 1 },
-      },
-    },
-  ]);
-
-  return new Map(counts.map((item) => [item._id.toString(), item.count]));
-};
-
-const getDirectBlockStatusForAdmin = async (participantIds = []) => {
-  if (participantIds.length !== 2) {
-    return null;
-  }
-
-  const [userAId, userBId] = participantIds;
-  const activeBlocks = await Blocking.find({
-    isActive: { $ne: false },
-    $or: [
-      { userId: userAId, blockedUserId: userBId },
-      { userId: userBId, blockedUserId: userAId },
-    ],
-  }).lean();
-
-  const blockedByA = activeBlocks.some(
-    (block) =>
-      block.userId?.toString() === userAId.toString() &&
-      block.blockedUserId?.toString() === userBId.toString(),
-  );
-  const blockedByB = activeBlocks.some(
-    (block) =>
-      block.userId?.toString() === userBId.toString() &&
-      block.blockedUserId?.toString() === userAId.toString(),
-  );
-
-  return {
-    blockedByUserA: blockedByA,
-    blockedByUserB: blockedByB,
-    hasDirectBlock: blockedByA || blockedByB,
-    note: "Block chỉ ảnh hưởng direct 1-1, không ảnh hưởng group chat.",
-  };
-};
-
-// Admin Dashboard - Thống kê chung
-export const getDashboardStats = async (req, res) => {
+export const getDashboardStats = async (_req, res) => {
   try {
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
       data: await getDashboardStatsSummary(),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy thống kê dashboard:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy thống kê dashboard",
-    });
+    console.error("Lá»—i khi láº¥y thá»‘ng kÃª dashboard:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y thá»‘ng kÃª dashboard",
+      },
+      500,
+    );
   }
 };
 
-// Danh sách người dùng
-export const getDashboardOverview = async (req, res) => {
+export const getDashboardOverview = async (_req, res) => {
   try {
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
       data: await getDashboardOverviewSummary(),
     });
   } catch (error) {
     console.error("Loi khi lay dashboard overview:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay du lieu dashboard overview",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay du lieu dashboard overview",
+      },
+      500,
+    );
   }
-};
-
-const clampDashboardDays = (value, fallback = 7) => {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed)) return fallback;
-  if (parsed <= 7) return 7;
-  if (parsed <= 30) return 30;
-  return 30;
-};
-
-const getDateRangeStart = (days) => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
-  return start;
-};
-
-const buildDateBuckets = (days) => {
-  const start = getDateRangeStart(days);
-  return Array.from({ length: days }, (_, index) => {
-    const current = new Date(start);
-    current.setDate(start.getDate() + index);
-
-    return {
-      key: current.toISOString().slice(0, 10),
-      label: current.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
-    };
-  });
 };
 
 export const getDashboardUserChart = async (req, res) => {
   try {
-    const days = clampDashboardDays(req.query.days, 7);
-    const startDate = getDateRangeStart(days);
-    const buckets = buildDateBuckets(days);
-
-    const rows = await User.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startDate },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d",
-              date: "$createdAt",
-            },
-          },
-          total: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { _id: 1 },
-      },
-    ]);
-
-    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        days,
-        points: buckets.map((bucket) => ({
-          date: bucket.key,
-          label: bucket.label,
-          total: rowMap.get(bucket.key) ?? 0,
-        })),
-      },
+      data: await getDashboardUserChartData({ days: req.query.days }),
     });
   } catch (error) {
     console.error("Loi khi lay chart user dashboard:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay du lieu chart nguoi dung",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay du lieu chart nguoi dung",
+      },
+      500,
+    );
   }
 };
 
 export const getDashboardMessageChart = async (req, res) => {
   try {
-    const days = clampDashboardDays(req.query.days, 7);
-    const startDate = getDateRangeStart(days);
-    const buckets = buildDateBuckets(days);
-
-    const rows = await Message.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startDate },
-        },
-      },
-      {
-        $lookup: {
-          from: "conversations",
-          localField: "conversationId",
-          foreignField: "_id",
-          as: "conversation",
-        },
-      },
-      {
-        $unwind: "$conversation",
-      },
-      {
-        $match: {
-          "conversation.type": { $in: ["direct", "group", "support"] },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            date: {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: "$createdAt",
-              },
-            },
-            type: "$conversation.type",
-          },
-          total: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { "_id.date": 1 },
-      },
-    ]);
-
-    const rowMap = new Map(
-      rows.map((row) => [`${row._id.date}:${row._id.type}`, row.total]),
-    );
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        days,
-        points: buckets.map((bucket) => {
-          const direct = rowMap.get(`${bucket.key}:direct`) ?? 0;
-          const group = rowMap.get(`${bucket.key}:group`) ?? 0;
-          const support = rowMap.get(`${bucket.key}:support`) ?? 0;
-
-          return {
-            date: bucket.key,
-            label: bucket.label,
-            direct,
-            group,
-            support,
-            total: direct + group + support,
-          };
-        }),
-      },
+      data: await getDashboardMessageChartData({ days: req.query.days }),
     });
   } catch (error) {
     console.error("Loi khi lay chart message dashboard:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay du lieu chart tin nhan",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay du lieu chart tin nhan",
+      },
+      500,
+    );
   }
 };
 
-export const getDashboardReportChart = async (req, res) => {
+export const getDashboardReportChart = async (_req, res) => {
   try {
-    const rows = await Report.aggregate([
-      {
-        $group: {
-          _id: "$status",
-          total: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        items: [
-          {
-            status: "pending",
-            label: "Chờ xử lý",
-            total: rowMap.get("pending") ?? 0,
-          },
-          {
-            status: "reviewing",
-            label: "Đang xem xét",
-            total: rowMap.get("reviewing") ?? 0,
-          },
-          {
-            status: "resolved",
-            label: "Đã xử lý",
-            total: rowMap.get("resolved") ?? 0,
-          },
-          {
-            status: "rejected",
-            label: "Từ chối",
-            total: rowMap.get("rejected") ?? 0,
-          },
-        ],
-      },
+      data: await getDashboardReportChartData(),
     });
   } catch (error) {
     console.error("Loi khi lay chart report dashboard:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay du lieu chart bao cao",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay du lieu chart bao cao",
+      },
+      500,
+    );
   }
 };
 
-export const getDashboardSupportChart = async (req, res) => {
+export const getDashboardSupportChart = async (_req, res) => {
   try {
-    const rows = await Conversation.aggregate([
-      {
-        $match: {
-          type: "support",
-        },
-      },
-      {
-        $group: {
-          _id: "$supportStatus",
-          total: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const rowMap = new Map(rows.map((row) => [row._id, row.total]));
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        items: [
-          { status: "open", label: "Mở", total: rowMap.get("open") ?? 0 },
-          {
-            status: "in_progress",
-            label: "Đang xử lý",
-            total: rowMap.get("in_progress") ?? 0,
-          },
-          {
-            status: "resolved",
-            label: "Đã giải quyết",
-            total: rowMap.get("resolved") ?? 0,
-          },
-          { status: "closed", label: "Đóng", total: rowMap.get("closed") ?? 0 },
-        ],
-      },
+      data: await getDashboardSupportChartData(),
     });
   } catch (error) {
     console.error("Loi khi lay chart support dashboard:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay du lieu chart ho tro",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay du lieu chart ho tro",
+      },
+      500,
+    );
   }
 };
 
 export const getUsers = async (req, res) => {
   try {
-    const data = await getUsersQuery({ actor: req.user, query: req.query });
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data,
+      data: await getUsersQuery({ actor: req.user, query: req.query }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách người dùng:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách người dùng",
-    });
+    console.error("Lá»—i khi láº¥y danh sÃ¡ch ngÆ°á»i dÃ¹ng:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch ngÆ°á»i dÃ¹ng",
+      },
+      500,
+    );
   }
 };
 
-// Lấy thông tin người dùng
-// Cập nhật role người dùng
 export const getUserDetail = async (req, res) => {
   try {
-    const data = await getUserDetailQuery({
-      actor: req.user,
-      userId: req.params.id,
-    });
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data,
+      data: await getUserDetailQuery({
+        actor: req.user,
+        userId: req.params.id,
+      }),
     });
   } catch (error) {
-    console.error("Lá»—i khi láº¥y thÃ´ng tin ngÆ°á»i dÃ¹ng:", error);
-    return res.status(error.status || 500).json({
-      success: false,
-      message: error.message || "KhÃ´ng thá»ƒ láº¥y thÃ´ng tin ngÆ°á»i dÃ¹ng",
-    });
+    console.error("LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng",
+      },
+      error.status || 500,
+    );
   }
 };
 
@@ -514,21 +205,23 @@ export const updateUserStatus = async (req, res) => {
       status: req.body?.status,
     });
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
       message: result.message,
-      data: {
-        user: result.user,
-      },
+      data: { user: result.user },
     });
   } catch (error) {
-    console.error("Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng:", error);
-    return res.status(error.status || 500).json({
-      success: false,
-      message:
-        error.message ||
-        "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng.",
-    });
+    console.error("LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message:
+          error.message ||
+          "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng.",
+      },
+      error.status || 500,
+    );
   }
 };
 
@@ -545,529 +238,248 @@ export const deleteUserAsAdmin = async (req, res) => {
       reason,
     });
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
       message: result.message,
       data: result.summary,
     });
   } catch (error) {
-    return res.status(error.status || 500).json({
-      success: false,
-      message: error.message || "KhÃ´ng thá»ƒ xÃ³a tÃ i khoáº£n.",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a tÃƒÂ i khoÃ¡ÂºÂ£n.",
+      },
+      error.status || 500,
+    );
   }
 };
 
 export const updateUserRole = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { role } = req.body;
-
-    if (!["user", "admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Role không hợp lệ",
-      });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { role },
-      { new: true },
-    ).select(
-      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Người dùng không tồn tại",
-      });
-    }
-
-    emitToAdmins(ADMIN_SOCKET_EVENTS.USER_DELETED, {
-      user: buildAdminActor(user),
-      actor: buildAdminActor(req.user),
-      changedAt: new Date().toISOString(),
-      summary,
-    });
-    emitAdminNotification({
-      type: "user",
-      title: "Tai khoan da bi xoa",
-      message: `${req.user.displayName} vua xoa @${user.userName}`,
-      link: "/admin/users",
-      entityId: user._id.toString(),
-      actor: buildAdminActor(req.user),
-      severity: "warning",
-    });
-    await emitDashboardStatsUpdated({
-      reason: "user:deleted",
-      userId: user._id.toString(),
+    const user = await updateUserRoleLegacyCommand({
+      userId: req.params.userId,
+      role: req.body?.role,
     });
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      message: "Cập nhật role thành công",
+      message: "Cáº­p nháº­t role thÃ nh cÃ´ng",
       data: user,
     });
   } catch (error) {
-    console.error("Lỗi khi cập nhật role:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể cập nhật role",
-    });
+    console.error("Lá»—i khi cáº­p nháº­t role:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "KhÃ´ng thá»ƒ cáº­p nháº­t role",
+      },
+      error.status || 500,
+    );
   }
 };
 
-// Danh sách lời mời kết bạn chưa xử lý
 export const getFriendRequestsAdmin = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const q = req.query.q || "";
-    const status = req.query.status || "";
-    const sort = req.query.sort || "createdAt-desc";
-    const filter = await buildAdminFriendRequestFilter({ q, status });
-
-    const requests = await FriendRequest.find(filter)
-      .populate("from", "displayName userName email avatarUrl")
-      .populate("to", "displayName userName email avatarUrl")
-      .limit(limit)
-      .skip(skip)
-      .sort(getAdminFriendRequestSort(sort));
-
-    const total = await FriendRequest.countDocuments(filter);
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        requests: requests.map(mapAdminFriendRequestRelation),
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: await getFriendRequestsAdminQuery({ query: req.query }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách lời mời kết bạn:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách lời mời kết bạn",
-    });
+    console.error("Lá»—i khi láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n",
+      },
+      500,
+    );
   }
 };
 
 export const getFriendships = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const q = req.query.q || "";
-    const sort = req.query.sort || "createdAt-desc";
-    const filter = await buildAdminFriendFilter({ q });
-
-    const friendships = await Friend.find(filter)
-      .populate("userA", "displayName userName email avatarUrl")
-      .populate("userB", "displayName userName email avatarUrl")
-      .limit(limit)
-      .skip(skip)
-      .sort(getAdminFriendSort(sort));
-
-    const total = await Friend.countDocuments(filter);
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        friendships: friendships.map(mapAdminFriendRelation),
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: await getFriendshipsAdminQuery({ query: req.query }),
     });
   } catch (error) {
     console.error("Loi khi lay danh sach friendship da accepted:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay danh sach friendship da accepted",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay danh sach friendship da accepted",
+      },
+      500,
+    );
   }
 };
 
-// Danh sách các cuộc trò chuyện
 export const getConversations = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const type = req.query.type || "";
-    const q = req.query.q || "";
-    const sort = req.query.sort || "updatedAt-desc";
-    const filter = await buildAdminConversationFilter({ type, q });
-
-    const conversations = await Conversation.find(filter)
-      .limit(limit)
-      .skip(skip)
-      .sort(getAdminConversationSort(sort));
-
-    const total = await Conversation.countDocuments(filter);
-    const conversationIds = conversations.map(
-      (conversation) => conversation._id,
-    );
-    const messagesCountMap = await getMessagesCountMap(conversationIds);
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        conversations: conversations.map((conversation) =>
-          mapAdminConversationSummary(
-            conversation,
-            messagesCountMap.get(conversation._id.toString()) ?? 0,
-          ),
-        ),
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: await getConversationsAdminQuery({ query: req.query }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách cuộc trò chuyện:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách cuộc trò chuyện",
-    });
+    console.error("Lá»—i khi láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n",
+      },
+      500,
+    );
   }
 };
 
-// Danh sách tin nhắn
 export const getMessages = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-
-    const messages = await Message.find()
-      .populate("senderId", "displayName userName email avatarUrl")
-      .populate("conversationId", "conversationName conversationType")
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 });
-
-    const total = await Message.countDocuments();
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        messages,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: await getAdminMessagesQuery({ query: req.query }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách tin nhắn:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách tin nhắn",
-    });
+    console.error("Lá»—i khi láº¥y danh sÃ¡ch tin nháº¯n:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch tin nháº¯n",
+      },
+      500,
+    );
   }
 };
 
-// Danh sách các khối người dùng
 export const getBlockedUsers = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-
-    const blocks = await Blocking.find()
-      .populate("userId", "displayName userName email avatarUrl")
-      .populate("blockedUserId", "displayName userName email avatarUrl")
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 });
-
-    const total = await Blocking.countDocuments();
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        blocks,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data: await getAdminBlockedUsersQuery({ query: req.query }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách khối người dùng:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy danh sách khối người dùng",
-    });
+    console.error("Lá»—i khi láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng",
+      },
+      500,
+    );
   }
 };
 
 export const getConversationDetail = async (req, res) => {
   try {
-    const { id } = req.params;
-    const conversation = await Conversation.findById(id)
-      .populate("participants.userId", "displayName userName email avatarUrl")
-      .populate("group.createdBy", "displayName userName email avatarUrl");
-
-    if (!conversation) {
-      return res.status(404).json({
-        success: false,
-        message: "Cuộc trò chuyện không tồn tại.",
-      });
-    }
-
-    const messagesCount = await Message.countDocuments({
-      conversationId: conversation._id,
-    });
-
-    const members = (conversation.participants || []).map((participant) => ({
-      _id: participant.userId?._id ?? null,
-      displayName: participant.userId?.displayName ?? null,
-      userName: participant.userId?.userName ?? null,
-      email: participant.userId?.email ?? null,
-      avatarUrl: participant.userId?.avatarUrl ?? null,
-      joinedAt: participant.joinedAt ?? null,
-    }));
-
-    const participantIds = members.map((member) => member._id).filter(Boolean);
-    const directBlockStatus =
-      conversation.type === "direct"
-        ? await getDirectBlockStatusForAdmin(participantIds)
-        : null;
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        conversation: {
-          _id: conversation._id,
-          type: conversation.type,
-          groupName:
-            conversation.type === "group"
-              ? (conversation.group?.name ?? "Nhóm")
-              : null,
-          creator:
-            conversation.type === "group" && conversation.group?.createdBy
-              ? {
-                  _id: conversation.group.createdBy._id,
-                  displayName: conversation.group.createdBy.displayName,
-                  userName: conversation.group.createdBy.userName,
-                  email: conversation.group.createdBy.email ?? null,
-                  avatarUrl: conversation.group.createdBy.avatarUrl ?? null,
-                }
-              : null,
-          members,
-          membersCount: members.length,
-          messagesCount,
-          lastMessage: mapAdminLastMessage(conversation.lastMessage),
-          updatedAt: conversation.updatedAt,
-          createdAt: conversation.createdAt,
-          directBlockStatus,
-          note:
-            conversation.type === "group"
-              ? "Group chat vẫn hoạt động bình thường kể cả khi một số thành viên block nhau ở direct."
-              : "Block status ở đây chỉ phản ánh direct 1-1 giữa hai thành viên.",
-        },
-      },
+      data: await getConversationDetailAdminQuery({
+        conversationId: req.params.id,
+      }),
     });
   } catch (error) {
-    console.error("Lỗi khi lấy chi tiết cuộc trò chuyện:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể lấy chi tiết cuộc trò chuyện",
-    });
+    console.error("Lá»—i khi láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n:", error);
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n",
+      },
+      error.status || 500,
+    );
   }
 };
 
 export const getBlocks = async (req, res) => {
   try {
-    await syncBlockingDocumentsFromEmbeddedState();
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const sort = req.query.sort || "createdAt-desc";
-    const q = req.query.q || "";
-    const status = req.query.status || "";
-    const filter = await buildAdminBlockFilter({ q, status });
-
-    const blocks = await Blocking.find(filter)
-      .populate("userId", "displayName userName email avatarUrl")
-      .populate("blockedUserId", "displayName userName email avatarUrl")
-      .limit(limit)
-      .skip(skip)
-      .sort(getAdminBlockSort(sort));
-
-    const total = await Blocking.countDocuments(filter);
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        blocks: blocks.map(mapAdminBlockRelation),
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-        auditNote:
-          "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
-      },
+      data: await getBlocksAdminQuery({ query: req.query }),
     });
   } catch (error) {
     console.error("Loi khi lay danh sach quan he chan:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay danh sach quan he chan",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: "Khong the lay danh sach quan he chan",
+      },
+      500,
+    );
   }
 };
 
 export const getBlockDetail = async (req, res) => {
   try {
-    await syncBlockingDocumentsFromEmbeddedState();
-
-    const { id } = req.params;
-    const block = await Blocking.findById(id)
-      .populate("userId", "displayName userName email avatarUrl")
-      .populate("blockedUserId", "displayName userName email avatarUrl");
-
-    if (!block) {
-      return res.status(404).json({
-        success: false,
-        message: "Quan he chan khong ton tai.",
-      });
-    }
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
-      data: {
-        block: mapAdminBlockRelation(block),
-        auditNote:
-          "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
-      },
+      data: await getBlockDetailAdminQuery({ blockId: req.params.id }),
     });
   } catch (error) {
     console.error("Loi khi lay chi tiet quan he chan:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the lay chi tiet quan he chan.",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "Khong the lay chi tiet quan he chan.",
+      },
+      error.status || 500,
+    );
   }
 };
 
 export const unblockBlockRelationAsAdmin = async (req, res) => {
   try {
-    const { id } = req.params;
-    const currentBlock = await Blocking.findById(id).select(
-      "userId blockedUserId isActive",
-    );
-
-    if (!currentBlock) {
-      return res.status(404).json({
-        success: false,
-        message: "Quan he chan khong ton tai.",
-      });
-    }
-
-    if (currentBlock.isActive === false) {
-      return res.status(400).json({
-        success: false,
-        message: "Quan he chan nay da o trang thai inactive.",
-      });
-    }
-
-    const unblockedAt = new Date();
-
-    const [updatedBlock] = await Promise.all([
-      Blocking.findByIdAndUpdate(
-        id,
-        {
-          $set: {
-            isActive: false,
-            unblockedAt,
-            type: BLOCKING_TYPE_DIRECT_ONLY,
-          },
-        },
-        { new: true },
-      )
-        .populate("userId", "displayName userName email avatarUrl")
-        .populate("blockedUserId", "displayName userName email avatarUrl"),
-      User.findByIdAndUpdate(currentBlock.userId, {
-        $pull: { blockedUsers: { userId: currentBlock.blockedUserId } },
-      }),
-    ]);
-
-    await emitDirectBlockStatusChanged({
-      blockerUserId: currentBlock.userId,
-      blockedUserId: currentBlock.blockedUserId,
-      isBlocked: false,
-    });
-
-    return res.status(200).json({
+    return sendSuccess(res, {
       success: true,
       message: "Admin da go block relation thanh cong.",
       data: {
-        block: mapAdminBlockRelation(updatedBlock),
+        block: (await unblockBlockRelationAsAdminCommand({ blockId: req.params.id })).block,
       },
     });
   } catch (error) {
     console.error("Loi khi admin go block relation:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Khong the go block relation.",
-    });
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || "Khong the go block relation.",
+      },
+      error.status || 500,
+    );
   }
 };
 
-// ========== QUAN LY BAO CAO ==========
-
 export const getReports = async (req, res) => {
   try {
-    const data = await getReportsQuery(req.query);
-
-    res.json({
-      message: "Lấy danh sách báo cáo thành công",
-      data,
+    return res.json({
+      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      data: await getReportsQuery(req.query),
     });
   } catch (error) {
     return sendServerError(res, error, {
-      logMessage: "Lỗi khi lấy danh sách báo cáo:",
-      message: "Không thể lấy danh sách báo cáo",
+      logMessage: "Lá»—i khi láº¥y danh sÃ¡ch bÃ¡o cÃ¡o:",
+      message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch bÃ¡o cÃ¡o",
     });
   }
 };
 
 export const getReportDetail = async (req, res) => {
   try {
-    const data = await getReportDetailQuery({ reportId: req.params.id });
-
-    res.json({
-      message: "Lấy chi tiết báo cáo thành công",
-      data,
+    return res.json({
+      message: "Láº¥y chi tiáº¿t bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      data: await getReportDetailQuery({ reportId: req.params.id }),
     });
   } catch (error) {
     return sendServerError(res, error, {
-      logMessage: "Lỗi khi lấy chi tiết báo cáo:",
-      message: "Không thể lấy chi tiết báo cáo",
+      logMessage: "Lá»—i khi láº¥y chi tiáº¿t bÃ¡o cÃ¡o:",
+      message: "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t bÃ¡o cÃ¡o",
     });
   }
 };
@@ -1081,101 +493,108 @@ export const updateReportStatus = async (req, res) => {
       adminId: req.user._id,
     });
 
-    res.json({
-      message: "Cập nhật trạng thái báo cáo thành công",
+    return res.json({
+      message: "Cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: { report },
     });
   } catch (error) {
     return sendServerError(res, error, {
-      logMessage: "Lỗi khi cập nhật trạng thái báo cáo:",
-      message: "Không thể cập nhật trạng thái báo cáo",
+      logMessage: "Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o:",
+      message: "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o",
     });
   }
 };
 
 export const resolveReportWithAction = async (req, res) => {
   try {
-    const data = await resolveReportWithActionCommand({
-      reportId: req.params.id,
-      action: req.body.action,
-      resolutionNote: req.body.resolutionNote,
-      adminId: req.user._id,
-    });
-
-    res.json({
-      message: "Xử lý báo cáo bằng hành động thành công",
-      data,
+    return res.json({
+      message: "Xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng thÃ nh cÃ´ng",
+      data: await resolveReportWithActionCommand({
+        reportId: req.params.id,
+        action: req.body.action,
+        resolutionNote: req.body.resolutionNote,
+        adminId: req.user._id,
+      }),
     });
   } catch (error) {
     return sendServerError(res, error, {
-      logMessage: "Lỗi khi xử lý báo cáo bằng hành động:",
-      message: "Không thể xử lý báo cáo bằng hành động",
+      logMessage: "Lá»—i khi xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng:",
+      message: "KhÃ´ng thá»ƒ xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng",
     });
   }
 };
 
-// ==================== MAINTENANCE MODE ENDPOINTS ====================
-
-export const getSystemHealth = async (req, res) => {
+export const getSystemHealth = async (_req, res) => {
   try {
-    return res.status(200).json(await getSystemHealthSummary());
+    return sendSuccess(res, await getSystemHealthSummary());
   } catch (error) {
     console.error("Error checking system health:", error);
-    return res.status(500).json({
-      status: "unhealthy",
-      message: error.message,
-    });
+    return sendSuccess(
+      res,
+      {
+        status: "unhealthy",
+        message: error.message,
+      },
+      500,
+    );
   }
 };
 
-export const getMaintenanceInfo = async (req, res) => {
+export const getMaintenanceInfo = async (_req, res) => {
   try {
-    return res.status(200).json(await getMaintenanceInfoQuery());
+    return sendSuccess(res, await getMaintenanceInfoQuery());
   } catch (error) {
-    console.error("Lỗi khi lấy thông tin bảo trì:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i khi láº¥y thÃ´ng tin báº£o trÃ¬:", error);
+    return sendSuccess(res, { message: "Lá»—i há»‡ thá»‘ng" }, 500);
   }
 };
 
 export const requestMaintenancePasswordVerification = async (req, res) => {
   try {
-    return res.status(200).json(
+    return sendSuccess(
+      res,
       await requestMaintenancePasswordVerificationCommand({
         adminId: req.user._id,
       }),
     );
   } catch (error) {
-    console.error("Lỗi khi yêu cầu xác minh mật khẩu:", error);
-    return res.status(error.status || 500).json({
-      message: error.message || "Lỗi hệ thống",
-    });
+    console.error("Lá»—i khi yÃªu cáº§u xÃ¡c minh máº­t kháº©u:", error);
+    return sendSuccess(
+      res,
+      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
+      error.status || 500,
+    );
   }
 };
 
 export const verifyMaintenancePassword = async (req, res) => {
   try {
-    return res.status(200).json(
+    return sendSuccess(
+      res,
       await verifyMaintenancePasswordCommand({
         adminId: req.user._id,
         password: req.body.password,
       }),
     );
   } catch (error) {
-    console.error("Lỗi khi xác minh mật khẩu bảo trì:", {
+    console.error("Lá»—i khi xÃ¡c minh máº­t kháº©u báº£o trÃ¬:", {
       adminId: req.user?._id,
       error: error.message,
       code: error.code,
       stack: error.stack,
     });
-    return res.status(error.status || 500).json({
-      message: error.message || "Lỗi hệ thống",
-    });
+    return sendSuccess(
+      res,
+      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
+      error.status || 500,
+    );
   }
 };
 
 export const confirmMaintenanceToggle = async (req, res) => {
   try {
-    return res.status(200).json(
+    return sendSuccess(
+      res,
       await confirmMaintenanceToggleCommand({
         adminId: req.user._id,
         code: req.body.code,
@@ -1183,24 +602,29 @@ export const confirmMaintenanceToggle = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("Lỗi khi xác nhận thay đổi trạng thái bảo trì:", error);
-    return res
-      .status(error.status || 500)
-      .json(error.payload || { message: error.message || "Lỗi hệ thống" });
+    console.error("Lá»—i khi xÃ¡c nháº­n thay Ä‘á»•i tráº¡ng thÃ¡i báº£o trÃ¬:", error);
+    return sendSuccess(
+      res,
+      error.payload || { message: error.message || "Lá»—i há»‡ thá»‘ng" },
+      error.status || 500,
+    );
   }
 };
 
 export const updateMaintenanceMessage = async (req, res) => {
   try {
-    return res.status(200).json(
+    return sendSuccess(
+      res,
       await updateMaintenanceMessageCommand({
         message: req.body.message,
       }),
     );
   } catch (error) {
-    console.error("Lỗi khi cập nhật thông báo bảo trì:", error);
-    return res.status(error.status || 500).json({
-      message: error.message || "Lỗi hệ thống",
-    });
+    console.error("Lá»—i khi cáº­p nháº­t thÃ´ng bÃ¡o báº£o trÃ¬:", error);
+    return sendSuccess(
+      res,
+      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
+      error.status || 500,
+    );
   }
 };
