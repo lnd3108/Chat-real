@@ -35,9 +35,7 @@ import {
 } from "../../../../services/adminNotificationService.js";
 import {
   emitDashboardStatsUpdated,
-  getAdminDashboardRealtimeStats,
 } from "../../../../services/dashboardRealtimeService.js";
-import { emitReportUpdated } from "../../../../services/reportRealtimeService.js";
 import { escapeRegex } from "../../../../utils/regex.js";
 import {
   buildAdminBlockFilter,
@@ -53,13 +51,6 @@ import {
   syncBlockingDocumentsFromEmbeddedState,
 } from "../../../../services/adminQueryHelpers.js";
 import {
-  buildAdminReportQuery,
-  buildModerationTargetUser,
-  getAdminReportSort,
-  validateAdminReportStatusUpdate,
-} from "../../../../services/adminReportService.js";
-import {
-  buildAdminStaffQuery,
   buildManageableUserFilter,
   canManageUser,
   serializeUserAccess,
@@ -74,7 +65,7 @@ import {
   resolveReportWithActionCommand,
   updateReportStatusCommand,
 } from "../../../moderation/application/report-admin.service.js";
-import { sendError, sendServerError } from "../../../../utils/controllerResponses.js";
+import { sendServerError } from "../../../../utils/controllerResponses.js";
 
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
   _id: conversation._id,
@@ -1317,44 +1308,11 @@ export const unblockBlockRelationAsAdmin = async (req, res) => {
 
 export const getReports = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      targetType,
-      q,
-      sort = "createdAt-desc",
-    } = req.query;
-
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
-    const skip = (pageNum - 1) * limitNum;
-
-    const query = buildAdminReportQuery({ status, targetType, q });
-    const sortObj = getAdminReportSort(sort);
-
-    const reports = await Report.find(query)
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
-      .populate("reporterId", "displayName userName avatarUrl")
-      .populate("targetUserId", "displayName userName avatarUrl")
-      .populate("reviewedByAdminId", "displayName userName")
-      .lean();
-
-    const total = await Report.countDocuments(query);
+    const data = await getReportsQuery(req.query);
 
     res.json({
       message: "Lấy danh sách báo cáo thành công",
-      data: {
-        reports,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          pages: Math.ceil(total / limitNum),
-        },
-      },
+      data,
     });
   } catch (error) {
     return sendServerError(res, error, {
@@ -1366,87 +1324,11 @@ export const getReports = async (req, res) => {
 
 export const getReportDetail = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const report = await Report.findById(id)
-      .populate("reporterId", "displayName userName email avatarUrl")
-      .populate("targetUserId", "displayName userName email avatarUrl status")
-      .populate({
-        path: "targetMessageId",
-        select: "content imgUrl senderId senderDisplayName createdAt",
-        populate: {
-          path: "senderId",
-          select: "displayName userName email avatarUrl status",
-        },
-      })
-      .populate("targetConversationId", "type groupName members createdAt")
-      .populate("reviewedByAdminId", "displayName userName email")
-      .lean();
-
-    if (!report) {
-      return sendError(res, 404, "Không tìm thấy báo cáo");
-    }
-
-    let moderationTargetUser = null;
-
-    if (report.targetUserId) {
-      moderationTargetUser = {
-        _id: report.targetUserId._id,
-        displayName:
-          report.targetUserId.displayName ??
-          report.targetUserSnapshot?.displayName ??
-          "Người dùng đã xóa",
-        userName:
-          report.targetUserId.userName ??
-          report.targetUserSnapshot?.userName ??
-          "deleted-user",
-        email:
-          report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
-        avatarUrl:
-          report.targetUserId.avatarUrl ??
-          report.targetUserSnapshot?.avatarUrl ??
-          null,
-        status: report.targetUserId.status ?? "active",
-        source: "target_user",
-      };
-    } else if (report.targetType === "message") {
-      const sender = report.targetMessageId?.senderId;
-
-      if (sender) {
-        moderationTargetUser = {
-          _id: sender._id,
-          displayName:
-            sender.displayName ??
-            report.targetMessagePreview?.senderDisplayName ??
-            "Người gửi",
-          userName: sender.userName ?? "unknown",
-          email: sender.email ?? null,
-          avatarUrl: sender.avatarUrl ?? null,
-          status: sender.status ?? "active",
-          source: "message_sender",
-        };
-      } else if (report.targetMessagePreview?.senderDisplayName) {
-        moderationTargetUser = {
-          _id: null,
-          displayName: report.targetMessagePreview.senderDisplayName,
-          userName: "deleted-user",
-          email: null,
-          avatarUrl: null,
-          status: "deleted",
-          source: "message_sender_deleted",
-        };
-      }
-    }
-
-    moderationTargetUser =
-      buildModerationTargetUser(report) ?? moderationTargetUser;
+    const data = await getReportDetailQuery({ reportId: req.params.id });
 
     res.json({
       message: "Lấy chi tiết báo cáo thành công",
-      data: {
-        report,
-        moderationTargetUser,
-      },
+      data,
     });
   } catch (error) {
     return sendServerError(res, error, {
@@ -1458,41 +1340,11 @@ export const getReportDetail = async (req, res) => {
 
 export const updateReportStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status, resolutionNote } = req.body;
-    const adminId = req.user._id;
-
-    const validationError = validateAdminReportStatusUpdate({
-      status,
-      resolutionNote,
-    });
-    if (validationError) {
-      return sendError(res, 400, validationError);
-    }
-
-    const updateData = {
-      status,
-      reviewedByAdminId: adminId,
-      reviewedAt: new Date(),
-    };
-
-    if (resolutionNote) {
-      updateData.resolutionNote = resolutionNote.trim();
-    }
-
-    const report = await Report.findByIdAndUpdate(id, updateData, { new: true })
-      .populate("reporterId", "displayName userName avatarUrl")
-      .populate("targetUserId", "displayName userName avatarUrl")
-      .populate("reviewedByAdminId", "displayName userName")
-      .lean();
-
-    if (!report) {
-      return sendError(res, 404, "Không tìm thấy báo cáo");
-    }
-
-    await emitReportUpdated(report._id, {
-      action: "status-updated",
-      actorId: adminId.toString(),
+    const report = await updateReportStatusCommand({
+      reportId: req.params.id,
+      status: req.body.status,
+      resolutionNote: req.body.resolutionNote,
+      adminId: req.user._id,
     });
 
     res.json({
@@ -1509,67 +1361,16 @@ export const updateReportStatus = async (req, res) => {
 
 export const resolveReportWithAction = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { action, resolutionNote } = req.body;
-    const adminId = req.user._id;
-
-    const report = await Report.findById(id);
-    if (!report) {
-      return sendError(res, 404, "Không tìm thấy báo cáo");
-    }
-
-    let actionResult = null;
-
-    // Xử lý hành động tương ứng với báo cáo
-    if (action === "ban-user" && report.targetUserId) {
-      await User.findByIdAndUpdate(report.targetUserId, { status: "banned" });
-      actionResult = "Đã khóa người dùng";
-    } else if (action === "unban-user" && report.targetUserId) {
-      await User.findByIdAndUpdate(report.targetUserId, { status: "active" });
-      actionResult = "Đã mở khóa người dùng";
-    } else if (action === "delete-account" && report.targetUserId) {
-      // Tạm thời đánh dấu tài khoản để xử lý tiếp theo
-      await User.findByIdAndUpdate(report.targetUserId, { status: "inactive" });
-      actionResult = "Đã đánh dấu tài khoản để xóa";
-    } else if (action === "delete-message" && report.targetMessageId) {
-      await Message.findByIdAndUpdate(report.targetMessageId, {
-        isDeletedForEveryone: true,
-      });
-      actionResult = "Đã xóa tin nhắn";
-    }
-
-    // Cập nhật trạng thái báo cáo
-    const updateData = {
-      status: "resolved",
-      reviewedByAdminId: adminId,
-      reviewedAt: new Date(),
-    };
-
-    if (resolutionNote) {
-      updateData.resolutionNote = `[${action}] ${resolutionNote.trim()}`;
-    } else {
-      updateData.resolutionNote = `[${action}] Đã xử lý theo hành động`;
-    }
-
-    const updatedReport = await Report.findByIdAndUpdate(id, updateData, {
-      new: true,
-    })
-      .populate("reporterId", "displayName userName avatarUrl")
-      .populate("targetUserId", "displayName userName avatarUrl")
-      .populate("reviewedByAdminId", "displayName userName")
-      .lean();
-
-    await emitReportUpdated(updatedReport._id, {
-      action,
-      actorId: adminId.toString(),
+    const data = await resolveReportWithActionCommand({
+      reportId: req.params.id,
+      action: req.body.action,
+      resolutionNote: req.body.resolutionNote,
+      adminId: req.user._id,
     });
 
     res.json({
       message: "Xử lý báo cáo bằng hành động thành công",
-      data: {
-        report: updatedReport,
-        action: actionResult,
-      },
+      data,
     });
   } catch (error) {
     return sendServerError(res, error, {
@@ -1798,3 +1599,4 @@ export const updateMaintenanceMessage = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+
