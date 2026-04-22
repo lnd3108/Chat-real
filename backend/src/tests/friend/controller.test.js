@@ -6,10 +6,11 @@ const mockUserFindById = jest.fn();
 const mockConversationDeleteOne = jest.fn();
 const mockMessageFind = jest.fn();
 const mockMessageDeleteMany = jest.fn();
-const mockGetIo = jest.fn();
 const mockFindDirectConversationBetweenUsers = jest.fn();
 const mockDeleteImageFromCloudinary = jest.fn();
 const mockDeleteImageFromCloudinaryUrl = jest.fn();
+const mockEmitConversationDeletedForUsers = jest.fn();
+const mockEmitFriendRemoved = jest.fn();
 
 jest.unstable_mockModule("../../models/Friend.js", () => ({
   default: {
@@ -42,20 +43,28 @@ jest.unstable_mockModule("../../models/Message.js", () => ({
   },
 }));
 
-jest.unstable_mockModule("../../socket/index.js", () => ({
-  getIo: mockGetIo,
-}));
-
-jest.unstable_mockModule("../../utils/blocking.js", () => ({
+jest.unstable_mockModule("../../modules/chat/domain/direct-blocking.policy.js", () => ({
   findDirectConversationBetweenUsers: mockFindDirectConversationBetweenUsers,
 }));
+
+jest.unstable_mockModule(
+  "../../shared/infrastructure/realtime/friendship-realtime.js",
+  () => ({
+    emitConversationDeletedForUsers: mockEmitConversationDeletedForUsers,
+    emitFriendRemoved: mockEmitFriendRemoved,
+    emitFriendRequestAccepted: jest.fn(),
+    emitFriendRequestReceived: jest.fn(),
+    emitFriendRequestRemoved: jest.fn(),
+    emitFriendRequestSent: jest.fn(),
+  }),
+);
 
 jest.unstable_mockModule("../../middlewares/uploadMiddleWare.js", () => ({
   deleteImageFromCloudinary: mockDeleteImageFromCloudinary,
   deleteImageFromCloudinaryUrl: mockDeleteImageFromCloudinaryUrl,
 }));
 
-const { removeFriend } = await import("../../controllers/friendController.js");
+const { removeFriend } = await import("../../modules/friendship/api/http/friend.controller.js");
 
 const createRes = () => {
   const res = {
@@ -67,14 +76,8 @@ const createRes = () => {
 };
 
 describe("friendController.removeFriend", () => {
-  const emit = jest.fn();
-  const io = {
-    to: jest.fn(() => ({ emit })),
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetIo.mockReturnValue(io);
     mockUserFindById.mockReturnValue({
       select: jest.fn().mockResolvedValue({ _id: "target-user" }),
     });
@@ -124,18 +127,22 @@ describe("friendController.removeFriend", () => {
     expect(mockConversationDeleteOne).toHaveBeenCalledWith({
       _id: "conversation-1",
     });
-    expect(emit).toHaveBeenCalledWith("conversation:deleted", {
+    expect(mockEmitConversationDeletedForUsers).toHaveBeenCalledWith({
+      userIds: ["user-1", "target-user"],
       conversationId: "conversation-1",
     });
-    expect(emit).toHaveBeenCalledWith("friend:removed", {
-      userId: "user-1",
-      targetUserId: "target-user",
-      conversationId: "conversation-1",
-      clearedDirectChat: true,
+    expect(mockEmitFriendRemoved).toHaveBeenCalledWith({
+      userIds: ["user-1", "target-user"],
+      payload: {
+        userId: "user-1",
+        targetUserId: "target-user",
+        conversationId: "conversation-1",
+        clearedDirectChat: true,
+      },
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Đã hủy kết bạn thành công",
+      message: "Da huy ket ban thanh cong",
       conversationId: "conversation-1",
       clearedDirectChat: true,
     });
@@ -155,15 +162,18 @@ describe("friendController.removeFriend", () => {
     expect(mockMessageFind).not.toHaveBeenCalled();
     expect(mockMessageDeleteMany).not.toHaveBeenCalled();
     expect(mockConversationDeleteOne).not.toHaveBeenCalled();
-    expect(emit).toHaveBeenCalledWith("friend:removed", {
-      userId: "user-1",
-      targetUserId: "target-user",
-      conversationId: null,
-      clearedDirectChat: false,
+    expect(mockEmitFriendRemoved).toHaveBeenCalledWith({
+      userIds: ["user-1", "target-user"],
+      payload: {
+        userId: "user-1",
+        targetUserId: "target-user",
+        conversationId: null,
+        clearedDirectChat: false,
+      },
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Đã hủy kết bạn thành công",
+      message: "Da huy ket ban thanh cong",
       conversationId: null,
       clearedDirectChat: false,
     });

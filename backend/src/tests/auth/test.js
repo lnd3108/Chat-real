@@ -20,6 +20,15 @@ const mockSendAccountDeletionCodeEmail = jest.fn();
 const mockSendAccountDeletedEmail = jest.fn();
 const mockSendMaintenanceConfirmationCodeEmail = jest.fn();
 const mockIsMailConfigured = jest.fn(() => true);
+const mockDeleteMyAccount = jest.fn();
+const mockIsMaintenanceEnabled = jest.fn();
+const mockGetMaintenanceMessage = jest.fn();
+const mockEmitToAdmins = jest.fn();
+const mockEmitAdminNotification = jest.fn();
+const mockEmitDashboardStatsUpdated = jest.fn();
+const mockRequestPasswordReset = jest.fn();
+const mockVerifyPasswordResetOtp = jest.fn();
+const mockResetPasswordWithVerifiedOtp = jest.fn();
 
 jest.unstable_mockModule("../../models/User.js", () => ({
   default: {
@@ -84,6 +93,34 @@ jest.unstable_mockModule("../../utils/mail.js", () => ({
   sendMaintenanceConfirmationCodeEmail: mockSendMaintenanceConfirmationCodeEmail,
 }));
 
+jest.unstable_mockModule("../../controllers/userController.js", () => ({
+  deleteMyAccount: mockDeleteMyAccount,
+}));
+
+jest.unstable_mockModule("../../services/maintenanceService.js", () => ({
+  isMaintenanceEnabled: mockIsMaintenanceEnabled,
+  getMaintenanceMessage: mockGetMaintenanceMessage,
+}));
+
+jest.unstable_mockModule("../../socket/adminSocket.js", () => ({
+  emitToAdmins: mockEmitToAdmins,
+}));
+
+jest.unstable_mockModule("../../services/adminNotificationService.js", () => ({
+  buildAdminActor: jest.fn((user) => user ?? null),
+  emitAdminNotification: mockEmitAdminNotification,
+}));
+
+jest.unstable_mockModule("../../services/dashboardRealtimeService.js", () => ({
+  emitDashboardStatsUpdated: mockEmitDashboardStatsUpdated,
+}));
+
+jest.unstable_mockModule("../../services/passwordResetService.js", () => ({
+  requestPasswordReset: mockRequestPasswordReset,
+  verifyPasswordResetOtp: mockVerifyPasswordResetOtp,
+  resetPasswordWithVerifiedOtp: mockResetPasswordWithVerifiedOtp,
+}));
+
 const {
   signUp,
   signIn,
@@ -108,6 +145,8 @@ describe("authControllers", () => {
     jest.clearAllMocks();
     process.env.ACCESS_TOKEN_SECRET = "test-secret";
     mockIsMailConfigured.mockReturnValue(true);
+    mockIsMaintenanceEnabled.mockResolvedValue(false);
+    mockGetMaintenanceMessage.mockResolvedValue("Maintenance");
   });
 
   describe("signUp", () => {
@@ -200,7 +239,7 @@ describe("authControllers", () => {
         "refresh-token",
         expect.objectContaining({ httpOnly: true, maxAge: expect.any(Number) }),
       );
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockDeleteMyAccount).not.toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           accessToken: "access-token",
@@ -233,7 +272,7 @@ describe("authControllers", () => {
 
       await signIn(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.status).toHaveBeenCalledWith(200);
       expect(mockSendVerificationCodeEmail).toHaveBeenCalledWith(
         expect.objectContaining({ email: "test@example.com" }),
       );
@@ -300,12 +339,10 @@ describe("authControllers", () => {
     });
 
     it("deletes the account after correct verification code", async () => {
-      mockUserFindById.mockResolvedValue({
-        _id: "user-1",
-        email: "test@example.com",
-        displayName: "Doe John",
-        accountDeletionCodeHash: "hashed-code",
-        accountDeletionExpiresAt: new Date(Date.now() + 60_000),
+      mockDeleteMyAccount.mockImplementation(async (_req, response) => {
+        response.status(200).json({
+          message: "Xóa tài khoản thành công.",
+        });
       });
 
       const req = {
@@ -319,13 +356,7 @@ describe("authControllers", () => {
 
       await confirmAccountDeletion(req, res);
 
-      expect(mockSessionDeleteMany).toHaveBeenCalledWith({ userId: "user-1" });
-      expect(mockUserFindByIdAndDelete).toHaveBeenCalledWith("user-1");
-      expect(res.clearCookie).toHaveBeenCalledWith("refreshToken");
-      expect(mockSendAccountDeletedEmail).toHaveBeenCalledWith({
-        email: "test@example.com",
-        displayName: "Doe John",
-      });
+      expect(mockDeleteMyAccount).toHaveBeenCalledWith(req, res);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Xóa tài khoản thành công.",

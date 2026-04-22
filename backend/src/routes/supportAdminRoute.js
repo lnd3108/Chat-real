@@ -7,7 +7,7 @@ import {
   sendSupportReply,
   updateSupportStatus,
   assignSupportAdmin,
-} from "../controllers/supportAdminController.js";
+} from "../modules/support/api/http/support-admin.controller.js";
 
 const router = express.Router();
 

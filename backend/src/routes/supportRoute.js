@@ -7,7 +7,7 @@ import {
   sendSupportMessage,
   getSupportConversationDetail,
   deleteSupportConversation,
-} from "../controllers/supportController.js";
+} from "../modules/support/api/http/support.controller.js";
 
 const router = express.Router();
 

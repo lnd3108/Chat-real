@@ -38,13 +38,13 @@ import {
   verifyMaintenancePassword,
   confirmMaintenanceToggle,
   updateMaintenanceMessage,
-} from "../controllers/adminController.js";
+} from "../modules/admin-panel/api/http/admin.controller.js";
 import {
   getAdminAuditLogs,
   getAdminRoles,
   getAdminUserPermissions,
   patchAdminUserRoles,
-} from "../controllers/adminRoleController.js";
+} from "../modules/admin-panel/api/http/admin-role.controller.js";
 
 const router = express.Router();
 
