@@ -1,126 +1,42 @@
-import Report from "../../../../models/Report.js";
-import { emitNewReportCreated } from "../../../../services/reportRealtimeService.js";
 import {
-  buildReporterSnapshot,
-  buildTargetConversationSnapshot,
-  buildTargetMessagePreview,
-  buildTargetUserSnapshot,
-  validateReportInput,
-  validateReportTarget,
-} from "../../../../services/reportService.js";
-import { sendError, sendServerError } from "../../../../utils/controllerResponses.js";
+  createReportCommand,
+  getMyReportsQuery,
+} from "../../application/report-user.service.js";
 
-/**
- * Tạo báo cáo mới
- * POST /reports
- */
 export const createReport = async (req, res) => {
   try {
-    const { targetType, targetUserId, targetMessageId, targetConversationId, reason, description } =
-      req.body;
-    const reporterId = req.user._id;
+    const report = await createReportCommand({ user: req.user, body: req.body });
 
-    const inputError = validateReportInput({ targetType, reason, description });
-    if (inputError) {
-      return sendError(res, 400, inputError);
-    }
-
-    const targetError = await validateReportTarget({
-      reporterId,
-      targetType,
-      targetUserId,
-      targetMessageId,
-      targetConversationId,
-    });
-    if (targetError) {
-      return sendError(res, targetError.status, targetError.message);
-    }
-
-    const reporterSnapshot = buildReporterSnapshot(req.user);
-    const [targetUserSnapshot, targetMessagePreview, targetConversationSnapshot] =
-      await Promise.all([
-        buildTargetUserSnapshot(targetType, targetUserId),
-        buildTargetMessagePreview(targetType, targetMessageId),
-        buildTargetConversationSnapshot(targetType, targetConversationId),
-      ]);
-
-    // Tạo báo cáo
-    const report = new Report({
-      reporterId,
-      targetType,
-      targetUserId: targetType === "user" ? targetUserId : null,
-      targetMessageId: targetType === "message" ? targetMessageId : null,
-      targetConversationId: targetType === "conversation" ? targetConversationId : null,
-      reason: reason.trim(),
-      description: description ? description.trim() : null,
-      reporterSnapshot,
-      targetUserSnapshot,
-      targetMessagePreview,
-      targetConversationSnapshot,
-    });
-
-    await report.save();
-    await emitNewReportCreated(report._id);
-
-    res.status(201).json({
-      message: "Tạo báo cáo thành công",
+    return res.status(201).json({
+      message: "Táº¡o bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: { report },
     });
   } catch (error) {
-    return sendServerError(res, error, {
-      logMessage: "Lỗi khi tạo báo cáo:",
-      message: "Không thể tạo báo cáo",
+    console.error("Loi khi tao bao cao:", error);
+    return res.status(error?.status || 500).json({
+      message: error?.message || "KhÃ´ng thá»ƒ táº¡o bÃ¡o cÃ¡o",
     });
   }
 };
 
-/**
- * Lấy danh sách báo cáo của người dùng hiện tại
- * GET /reports/me
- */
 export const getMyReports = async (req, res) => {
   try {
-    const reporterId = req.user._id;
-    const { page = 1, limit = 20, status, targetType } = req.query;
+    const data = await getMyReportsQuery({
+      reporterId: req.user._id,
+      page: req.query.page,
+      limit: req.query.limit,
+      status: req.query.status,
+      targetType: req.query.targetType,
+    });
 
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
-    const skip = (pageNum - 1) * limitNum;
-
-    const query = { reporterId };
-
-    if (status && ["pending", "reviewing", "resolved", "rejected"].includes(status)) {
-      query.status = status;
-    }
-
-    if (targetType && ["user", "message", "conversation"].includes(targetType)) {
-      query.targetType = targetType;
-    }
-
-    const reports = await Report.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
-
-    const total = await Report.countDocuments(query);
-
-    res.json({
-      message: "Lấy danh sách báo cáo thành công",
-      data: {
-        reports,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          pages: Math.ceil(total / limitNum),
-        },
-      },
+    return res.json({
+      message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
+      data,
     });
   } catch (error) {
-    return sendServerError(res, error, {
-      logMessage: "Lỗi khi lấy danh sách báo cáo của người dùng:",
-      message: "Không thể lấy danh sách báo cáo",
+    console.error("Loi khi lay danh sach bao cao:", error);
+    return res.status(error?.status || 500).json({
+      message: error?.message || "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch bÃ¡o cÃ¡o",
     });
   }
 };

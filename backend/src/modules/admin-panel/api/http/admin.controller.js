@@ -64,6 +64,16 @@ import {
   canManageUser,
   serializeUserAccess,
 } from "../../../../services/rbacService.js";
+import {
+  getDashboardOverviewSummary,
+  getDashboardStatsSummary,
+} from "../../application/dashboard.service.js";
+import {
+  getReportDetailQuery,
+  getReportsQuery,
+  resolveReportWithActionCommand,
+  updateReportStatusCommand,
+} from "../../../moderation/application/report-admin.service.js";
 import { sendError, sendServerError } from "../../../../utils/controllerResponses.js";
 
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
@@ -193,23 +203,9 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
 // Admin Dashboard - Thống kê chung
 export const getDashboardStats = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalAdmins = await User.countDocuments(buildAdminStaffQuery());
-    const totalConversations = await Conversation.countDocuments();
-    const totalMessages = await Message.countDocuments();
-    const totalFriendRequests = await FriendRequest.countDocuments();
-    const totalBlocks = await Blocking.countDocuments();
-
     return res.status(200).json({
       success: true,
-      data: {
-        totalUsers,
-        totalAdmins,
-        totalConversations,
-        totalMessages,
-        totalFriendRequests,
-        totalBlocks,
-      },
+      data: await getDashboardStatsSummary(),
     });
   } catch (error) {
     console.error("Lỗi khi lấy thống kê dashboard:", error);
@@ -223,86 +219,9 @@ export const getDashboardStats = async (req, res) => {
 // Danh sách người dùng
 export const getDashboardOverview = async (req, res) => {
   try {
-    const last7Days = new Date();
-    last7Days.setDate(last7Days.getDate() - 7);
-
-    const [
-      totalUsers,
-      activeUsers,
-      bannedUsers,
-      newUsersLast7Days,
-      totalDirectConversations,
-      totalGroupConversations,
-      totalSupportConversations,
-      totalMessages,
-      newGroupsLast7Days,
-      totalAcceptedFriends,
-      totalPendingFriendRequests,
-      totalActiveBlocks,
-      totalPendingReports,
-      totalReviewingReports,
-      totalOpenSupportConversations,
-      totalInProgressSupportConversations,
-      dashboardRealtime,
-    ] = await Promise.all([
-      User.countDocuments(),
-      User.countDocuments({ status: "active" }),
-      User.countDocuments({ status: "banned" }),
-      User.countDocuments({ createdAt: { $gte: last7Days } }),
-      Conversation.countDocuments({ type: "direct" }),
-      Conversation.countDocuments({ type: "group" }),
-      Conversation.countDocuments({ type: "support" }),
-      Message.countDocuments(),
-      Conversation.countDocuments({
-        type: "group",
-        createdAt: { $gte: last7Days },
-      }),
-      Friend.countDocuments(),
-      FriendRequest.countDocuments({
-        $or: [
-          { status: "pending" },
-          { status: { $exists: false } },
-          { status: null },
-        ],
-      }),
-      Blocking.countDocuments({ isActive: { $ne: false } }),
-      Report.countDocuments({ status: "pending" }),
-      Report.countDocuments({ status: "reviewing" }),
-      Conversation.countDocuments({ type: "support", supportStatus: "open" }),
-      Conversation.countDocuments({
-        type: "support",
-        supportStatus: "in_progress",
-      }),
-      getAdminDashboardRealtimeStats(),
-    ]);
-
     return res.status(200).json({
       success: true,
-      data: {
-        totalUsers,
-        activeUsers,
-        bannedUsers,
-        deletedUsers: 0,
-        newUsersLast7Days,
-        totalDirectConversations,
-        totalGroupConversations,
-        totalSupportConversations,
-        totalMessages,
-        newGroupsLast7Days,
-        totalAcceptedFriends,
-        totalPendingFriendRequests,
-        totalActiveBlocks,
-        totalPendingReports,
-        totalReviewingReports,
-        totalOpenSupportConversations,
-        totalInProgressSupportConversations,
-        totalOnlineUsers: dashboardRealtime.totalOnlineUsers,
-        newUsersToday: dashboardRealtime.newUsersToday,
-        totalUnreadSupportConversations:
-          dashboardRealtime.totalUnreadSupportConversations,
-        latestUsers: dashboardRealtime.latestUsers,
-        maintenance: dashboardRealtime.maintenance,
-      },
+      data: await getDashboardOverviewSummary(),
     });
   } catch (error) {
     console.error("Loi khi lay dashboard overview:", error);
