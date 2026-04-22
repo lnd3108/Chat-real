@@ -10,7 +10,7 @@ import {
   getGroupDetails,
   uploadGroupAvatar,
   updateGroupName,
-} from "../controllers/conversationController.js";
+} from "../modules/chat/api/http/conversation.controller.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
 import { validateRequest } from "../middlewares/validationMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleWare.js";

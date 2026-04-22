@@ -14,6 +14,8 @@ const mockRandomBytes = jest.fn();
 const mockSignUpParse = jest.fn();
 const mockSignInParse = jest.fn();
 const mockSendVerificationCodeEmail = jest.fn();
+const mockSendEmailChangeVerificationEmail = jest.fn();
+const mockSendPasswordResetOtpEmail = jest.fn();
 const mockSendAccountDeletionCodeEmail = jest.fn();
 const mockSendAccountDeletedEmail = jest.fn();
 const mockSendMaintenanceConfirmationCodeEmail = jest.fn();
@@ -75,6 +77,8 @@ jest.unstable_mockModule("../../libs/validation.js", () => ({
 jest.unstable_mockModule("../../utils/mail.js", () => ({
   isMailConfigured: mockIsMailConfigured,
   sendVerificationCodeEmail: mockSendVerificationCodeEmail,
+  sendEmailChangeVerificationEmail: mockSendEmailChangeVerificationEmail,
+  sendPasswordResetOtpEmail: mockSendPasswordResetOtpEmail,
   sendAccountDeletionCodeEmail: mockSendAccountDeletionCodeEmail,
   sendAccountDeletedEmail: mockSendAccountDeletedEmail,
   sendMaintenanceConfirmationCodeEmail: mockSendMaintenanceConfirmationCodeEmail,

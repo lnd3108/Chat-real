@@ -6,15 +6,16 @@ import {
   deleteImageFromCloudinaryUrl,
   uploadImageFromBuffer,
 } from "../../../middlewares/uploadMiddleWare.js";
-import { ensureDirectMessagingAllowed } from "../../../utils/blocking.js";
+import { ensureDirectMessagingAllowed } from "../domain/direct-blocking.policy.js";
 import {
   buildDeletedSenderSnapshot,
   emitMessageUpdated,
   emitNewMessage,
   syncConversationLastMessage,
   updateConversationAfterCreateMessage,
-} from "../../../utils/messageHelper.js";
-import { getIo, isConversationActiveForUser } from "../../../socket/index.js";
+} from "../infrastructure/realtime/message-realtime.js";
+import { getIo } from "../../../shared/infrastructure/realtime/socket-registry.js";
+import { isConversationActiveForUser } from "../../../shared/infrastructure/realtime/user-presence.js";
 
 const RECALL_PLACEHOLDER = "Ban da xoa mot tin nhan";
 
