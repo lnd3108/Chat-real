@@ -4,38 +4,15 @@ import Message from "../../../../models/Message.js";
 import FriendRequest from "../../../../models/FriendRequest.js";
 import Friend from "../../../../models/Friend.js";
 import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../../../../models/Blocking.js";
-import Session from "../../../../models/Session.js";
 import Report from "../../../../models/Report.js";
-import {
-  disconnectUserSockets,
-  emitToUser,
-  disconnectAllUserSockets,
-  getIo,
-} from "../../../../socket/index.js";
-import { permanentlyDeleteUserAccount } from "../../../../services/accountDeletionService.js";
-import { isMailConfigured, sendAccountDeletedEmail } from "../../../../utils/mail.js";
 import { emitDirectBlockStatusChanged } from "../../../chat/api/http/conversation.controller.js";
-import {
-  getMaintenanceStatus,
-  requestPasswordVerification,
-  verifyPasswordAndPrepareConfirmation,
-  sendConfirmationCode,
-  verifyConfirmationCode,
-  toggleMaintenanceMode,
-  updateMaintenanceMessage as updateMaintenanceMessageInDb,
-} from "../../../../services/maintenanceService.js";
-import {
-  ADMIN_SOCKET_EVENTS,
-  USER_SOCKET_EVENTS,
-} from "../../../../constants/socketEvents.js";
+import { ADMIN_SOCKET_EVENTS } from "../../../../constants/socketEvents.js";
 import { emitToAdmins } from "../../../../shared/infrastructure/realtime/admin-room.js";
 import {
   buildAdminActor,
   emitAdminNotification,
 } from "../../../../services/adminNotificationService.js";
-import {
-  emitDashboardStatsUpdated,
-} from "../../../../services/dashboardRealtimeService.js";
+import { emitDashboardStatsUpdated } from "../../../../services/dashboardRealtimeService.js";
 import { escapeRegex } from "../../../../utils/regex.js";
 import {
   buildAdminBlockFilter,
@@ -51,20 +28,29 @@ import {
   syncBlockingDocumentsFromEmbeddedState,
 } from "../../../../services/adminQueryHelpers.js";
 import {
-  buildManageableUserFilter,
-  canManageUser,
-  serializeUserAccess,
-} from "../../../../services/rbacService.js";
-import {
   getDashboardOverviewSummary,
   getDashboardStatsSummary,
 } from "../../application/dashboard.service.js";
+import {
+  deleteUserAsAdminCommand,
+  getUserDetailQuery,
+  getUsersQuery,
+  updateUserStatusCommand,
+} from "../../application/user-management.service.js";
 import {
   getReportDetailQuery,
   getReportsQuery,
   resolveReportWithActionCommand,
   updateReportStatusCommand,
 } from "../../../moderation/application/report-admin.service.js";
+import {
+  confirmMaintenanceToggleCommand,
+  getMaintenanceInfoQuery,
+  getSystemHealthSummary,
+  requestMaintenancePasswordVerificationCommand,
+  updateMaintenanceMessageCommand,
+  verifyMaintenancePasswordCommand,
+} from "../../../system/application/admin-maintenance.service.js";
 import { sendServerError } from "../../../../utils/controllerResponses.js";
 
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
@@ -481,69 +467,11 @@ export const getDashboardSupportChart = async (req, res) => {
 
 export const getUsers = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const searchQuery = req.query.q || "";
-    const status = req.query.status || "";
-    const sort = req.query.sort || "createdAt";
-
-    // Build filter object
-    const filter = buildManageableUserFilter(req.user);
-
-    // Search by username, displayName, or email
-    if (searchQuery.trim()) {
-      filter.$or = [
-        { userName: { $regex: searchQuery, $options: "i" } },
-        { displayName: { $regex: searchQuery, $options: "i" } },
-        { email: { $regex: searchQuery, $options: "i" } },
-      ];
-    }
-
-    // Filter by status
-    if (
-      status &&
-      ["active", "inactive", "suspended", "banned"].includes(status)
-    ) {
-      filter.status = status;
-    }
-
-    // Build sort object
-    let sortObj = {};
-    if (sort === "username") {
-      sortObj = { userName: 1 };
-    } else if (sort === "displayName") {
-      sortObj = { displayName: 1 };
-    } else {
-      sortObj = { createdAt: -1 };
-    }
-
-    // Execute query
-    const users = await User.find(filter)
-      .select(
-        "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
-      )
-      .limit(limit)
-      .skip(skip)
-      .sort(sortObj);
-
-    const total = await User.countDocuments(filter);
+    const data = await getUsersQuery({ actor: req.user, query: req.query });
 
     return res.status(200).json({
       success: true,
-      data: {
-        users: users.map((user) =>
-          serializeUserAccess(
-            typeof user.toObject === "function" ? user.toObject() : user,
-          ),
-        ),
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
+      data,
     });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách người dùng:", error);
@@ -555,96 +483,77 @@ export const getUsers = async (req, res) => {
 };
 
 // Lấy thông tin người dùng
+// Cập nhật role người dùng
 export const getUserDetail = async (req, res) => {
   try {
-    const { id } = req.params;
-    const user = await User.findById(id).select(
-      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Người dùng không tồn tại",
-      });
-    }
-
-    if (!canManageUser(req.user, user)) {
-      return res.status(403).json({
-        success: false,
-        message: "Bạn không có quyền thao tác trên tài khoản này.",
-      });
-    }
-
-    // Get statistics
-    const friendsCount = await Friend.countDocuments({
-      $or: [{ userA: id }, { userB: id }],
+    const data = await getUserDetailQuery({
+      actor: req.user,
+      userId: req.params.id,
     });
-
-    const directConversationsCount = await Conversation.countDocuments({
-      "participants.userId": id,
-      type: "direct",
-    });
-
-    const groupConversationsCount = await Conversation.countDocuments({
-      "participants.userId": id,
-      type: "group",
-    });
-
-    const blockingCount = await Blocking.countDocuments({
-      userId: id,
-      isActive: { $ne: false },
-    });
-    const blockedByCount = await Blocking.countDocuments({
-      blockedUserId: id,
-      isActive: { $ne: false },
-    });
-    const messagesCount = await Message.countDocuments({ senderId: id });
-
-    const userAccess = serializeUserAccess(
-      typeof user.toObject === "function" ? user.toObject() : user,
-    );
 
     return res.status(200).json({
       success: true,
-      data: {
-        user: {
-          _id: user._id,
-          avatar: user.avatarUrl ?? null,
-          avatarUrl: user.avatarUrl ?? null,
-          username: user.userName,
-          userName: user.userName,
-          displayName: user.displayName,
-          email: user.email,
-          status: user.status,
-          createdAt: user.createdAt,
-          role: userAccess.role,
-          roleLabel: userAccess.roleLabel,
-          roleLevel: userAccess.roleLevel,
-          roles: userAccess.roles,
-          primaryRole: userAccess.primaryRole,
-          permissions: userAccess.permissions,
-        },
-        stats: {
-          friendsCount,
-          directConversationsCount,
-          groupConversationsCount,
-          blockingCount,
-          blockedByCount,
-          messagesCount,
-        },
-      },
+      data,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy thông tin người dùng:", error);
-    return res.status(500).json({
+    console.error("Lá»—i khi láº¥y thÃ´ng tin ngÆ°á»i dÃ¹ng:", error);
+    return res.status(error.status || 500).json({
       success: false,
-      message: "Không thể lấy thông tin người dùng",
+      message: error.message || "KhÃ´ng thá»ƒ láº¥y thÃ´ng tin ngÆ°á»i dÃ¹ng",
     });
   }
 };
 
-// Cập nhật role người dùng
+export const updateUserStatus = async (req, res) => {
+  try {
+    const result = await updateUserStatusCommand({
+      actor: req.user,
+      userId: req.params.id,
+      status: req.body?.status,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    console.error("Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng:", error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng.",
+    });
+  }
+};
+
+export const deleteUserAsAdmin = async (req, res) => {
+  try {
+    const reason =
+      typeof req.body?.reason === "string" && req.body.reason.trim()
+        ? req.body.reason.trim()
+        : null;
+
+    const result = await deleteUserAsAdminCommand({
+      actor: req.user,
+      targetUserId: req.params.id,
+      reason,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.summary,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "KhÃ´ng thá»ƒ xÃ³a tÃ i khoáº£n.",
+    });
+  }
+};
+
 export const updateUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -702,185 +611,6 @@ export const updateUserRole = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể cập nhật role",
-    });
-  }
-};
-
-export const updateUserStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body || {};
-    const adminUserId = req.user?._id?.toString();
-
-    if (!["active", "banned"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Trạng thái không hợp lệ. Chỉ hỗ trợ `active` hoặc `banned`.",
-      });
-    }
-
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Người dùng không tồn tại.",
-      });
-    }
-
-    if (adminUserId && adminUserId === user._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: "Bạn không thể tự khóa tài khoản của chính mình.",
-      });
-    }
-
-    if (!canManageUser(req.user, user)) {
-      return res.status(403).json({
-        success: false,
-        message: "Bạn không có quyền thao tác trên tài khoản này.",
-      });
-    }
-
-    user.status = status;
-    await user.save();
-
-    if (status === "banned") {
-      await Session.deleteMany({ userId: user._id });
-      emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_LOCKED, {
-        message: "Tai khoan cua ban da bi khoa boi quan tri vien.",
-      });
-      emitToUser(user._id, "account:banned", {
-        message: "Tài khoản của bạn đã bị khóa bởi quản trị viên.",
-      });
-      disconnectUserSockets(user._id);
-      emitToAdmins(ADMIN_SOCKET_EVENTS.USER_LOCKED, {
-        user: buildAdminActor(user),
-        actor: buildAdminActor(req.user),
-        changedAt: new Date().toISOString(),
-      });
-      emitAdminNotification({
-        type: "user",
-        title: "Tai khoan da bi khoa",
-        message: `${req.user.displayName} vua khoa @${user.userName}`,
-        link: `/admin/users/${user._id}`,
-        entityId: user._id.toString(),
-        actor: buildAdminActor(req.user),
-      });
-    } else {
-      emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_UNLOCKED, {
-        message: "Tai khoan cua ban da duoc mo khoa.",
-      });
-      emitToAdmins(ADMIN_SOCKET_EVENTS.USER_UNLOCKED, {
-        user: buildAdminActor(user),
-        actor: buildAdminActor(req.user),
-        changedAt: new Date().toISOString(),
-      });
-      emitAdminNotification({
-        type: "user",
-        title: "Tai khoan da duoc mo khoa",
-        message: `${req.user.displayName} vua mo khoa @${user.userName}`,
-        link: `/admin/users/${user._id}`,
-        entityId: user._id.toString(),
-        actor: buildAdminActor(req.user),
-      });
-    }
-
-    emitToAdmins(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, {
-      user: buildAdminActor(user),
-      changedAt: new Date().toISOString(),
-    });
-    await emitDashboardStatsUpdated({
-      reason: status === "banned" ? "user:locked" : "user:unlocked",
-      userId: user._id.toString(),
-    });
-
-    return res.status(200).json({
-      success: true,
-      message:
-        status === "banned"
-          ? "Đã khóa tài khoản người dùng."
-          : "Đã mở khóa tài khoản người dùng.",
-      data: {
-        user: {
-          _id: user._id,
-          avatar: user.avatarUrl ?? null,
-          username: user.userName,
-          displayName: user.displayName,
-          email: user.email,
-          status: user.status,
-          createdAt: user.createdAt,
-          role: user.role,
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể cập nhật trạng thái người dùng.",
-    });
-  }
-};
-
-export const deleteUserAsAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const adminUserId = req.user?._id?.toString();
-    const reason =
-      typeof req.body?.reason === "string" && req.body.reason.trim()
-        ? req.body.reason.trim()
-        : null;
-
-    if (adminUserId && adminUserId === id) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
-      });
-    }
-
-    const targetUser = await User.findById(id).select("role");
-    if (!targetUser) {
-      return res.status(404).json({
-        success: false,
-        message: "Người dùng không tồn tại.",
-      });
-    }
-
-    if (!canManageUser(req.user, targetUser)) {
-      return res.status(403).json({
-        success: false,
-        message: "Bạn không có quyền thao tác trên tài khoản này.",
-      });
-    }
-
-    const { user, summary } = await permanentlyDeleteUserAccount({
-      targetUserId: id,
-      actorUserId: req.user?._id ?? null,
-      initiatedBy: "admin",
-      reason,
-    });
-
-    try {
-      await sendAccountDeletedEmail({
-        email: user.email,
-        displayName: user.displayName,
-        deletedByAdmin: true,
-        reason,
-      });
-    } catch (mailError) {
-      console.error("Lỗi gửi email sau khi admin xóa tài khoản", mailError);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Tài khoản đã được xóa.",
-      data: summary,
-    });
-  } catch (error) {
-    return res.status(error.status || 500).json({
-      success: false,
-      message: error.message || "Không thể xóa tài khoản.",
     });
   }
 };
@@ -1384,20 +1114,7 @@ export const resolveReportWithAction = async (req, res) => {
 
 export const getSystemHealth = async (req, res) => {
   try {
-    const health = {
-      status: "healthy",
-      checks: {
-        database: true,
-        smtp: isMailConfigured(),
-      },
-    };
-
-    if (!health.checks.smtp) {
-      health.status = "warning";
-      health.message = "SMTP chưa được cấu hình - không thể gửi email";
-    }
-
-    return res.status(200).json(health);
+    return res.status(200).json(await getSystemHealthSummary());
   } catch (error) {
     console.error("Error checking system health:", error);
     return res.status(500).json({
@@ -1409,194 +1126,77 @@ export const getSystemHealth = async (req, res) => {
 
 export const getMaintenanceInfo = async (req, res) => {
   try {
-    const status = await getMaintenanceStatus();
-    return res.status(200).json(status);
+    return res.status(200).json(await getMaintenanceInfoQuery());
   } catch (error) {
-    console.error("Lỗi khi lấy thông tin bảo trì:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi khi lay thong tin bao tri:", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// Step 1: Request password verification
 export const requestMaintenancePasswordVerification = async (req, res) => {
   try {
-    const adminId = req.user._id;
-    const admin = await User.findById(adminId).select("hashedPassword email");
-
-    if (!admin) {
-      return res.status(404).json({ message: "Không tìm thấy quản trị viên" });
-    }
-
-    // For testing purposes, you might want to return the code
-    // In production, only admin should request it and check email
-    return res.status(200).json({
-      message:
-        "Yêu cầu xác minh mật khẩu đã được tạo. Vui lòng kiểm tra email.",
-      email: admin.email,
-    });
+    return res.status(200).json(
+      await requestMaintenancePasswordVerificationCommand({
+        adminId: req.user._id,
+      }),
+    );
   } catch (error) {
-    console.error("Lỗi khi yêu cầu xác minh mật khẩu:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi khi yeu cau xac minh mat khau:", error);
+    return res.status(error.status || 500).json({
+      message: error.message || "Loi he thong",
+    });
   }
 };
 
-// Step 2: Verify admin password and send confirmation code
 export const verifyMaintenancePassword = async (req, res) => {
   try {
-    const adminId = req.user._id;
-    const { password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({ message: "Thiếu mật khẩu" });
-    }
-
-    const admin = await User.findById(adminId).select("hashedPassword email");
-    if (!admin) {
-      return res.status(404).json({ message: "Không tìm thấy quản trị viên" });
-    }
-
-    // Kiểm tra mật khẩu
-    const isPasswordValid = await verifyPasswordAndPrepareConfirmation(
-      password,
-      admin.hashedPassword,
+    return res.status(200).json(
+      await verifyMaintenancePasswordCommand({
+        adminId: req.user._id,
+        password: req.body.password,
+      }),
     );
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Mật khẩu không chính xác" });
-    }
-
-    // Gửi mã xác nhận
-    const result = await sendConfirmationCode(admin.email);
-    if (!result.ok) {
-      return res.status(500).json({ message: result.message });
-    }
-
-    return res.status(200).json({
-      message: "Mã xác nhận đã được gửi tới email của bạn",
-      expiresAt: result.expiresAt,
-    });
   } catch (error) {
-    console.error("Lỗi khi xác minh mật khẩu bảo trì:", {
+    console.error("Loi khi xac minh mat khau bao tri:", {
       adminId: req.user?._id,
       error: error.message,
       code: error.code,
       stack: error.stack,
     });
-
-    // Trả về thông báo cụ thể theo loại lỗi
-    if (error.message?.includes("SMTP")) {
-      return res.status(500).json({
-        message:
-          "Hệ thống email chưa được cấu hình. Vui lòng liên hệ với quản trị viên.",
-      });
-    }
-
-    return res.status(500).json({ message: "Lỗi hệ thống: " + error.message });
+    return res.status(error.status || 500).json({
+      message: error.message || "Loi he thong",
+    });
   }
 };
 
-// Bước 3: Xác minh mã xác nhận và bật/tắt chế độ bảo trì
 export const confirmMaintenanceToggle = async (req, res) => {
   try {
-    const adminId = req.user._id;
-    const { code, enable } = req.body;
-
-    if (!code || typeof enable !== "boolean") {
-      return res
-        .status(400)
-        .json({ message: "Thiếu code hoặc giá trị enable" });
-    }
-
-    // Kiểm tra mã xác nhận
-    const verifyResult = await verifyConfirmationCode(code);
-    if (!verifyResult.ok) {
-      return res.status(400).json({
-        message: verifyResult.message,
-        attempts: verifyResult.attempts,
-        maxAttempts: verifyResult.maxAttempts,
-      });
-    }
-
-    // Bật hoặc tắt chế độ bảo trì
-    const result = await toggleMaintenanceMode(adminId, enable);
-
-    // Nếu bật bảo trì thì ngắt kết nối toàn bộ người dùng không phải admin
-    if (enable) {
-      const message = result.message;
-      disconnectAllUserSockets(message);
-    }
-
-    const actor = await User.findById(adminId).select(
-      "displayName userName email avatarUrl role status createdAt",
+    return res.status(200).json(
+      await confirmMaintenanceToggleCommand({
+        adminId: req.user._id,
+        code: req.body.code,
+        enable: req.body.enable,
+      }),
     );
-    const maintenancePayload = {
-      isEnabled: result.isEnabled,
-      message: result.message,
-      enabledAt: result.enabledAt,
-      disabledAt: result.disabledAt,
-      actor: buildAdminActor(actor),
-      createdAt: new Date().toISOString(),
-    };
-
-    emitToAdmins(
-      enable
-        ? ADMIN_SOCKET_EVENTS.MAINTENANCE_ON
-        : ADMIN_SOCKET_EVENTS.MAINTENANCE_OFF,
-      maintenancePayload,
-    );
-    emitAdminNotification({
-      type: "system",
-      title: enable ? "Đã bật maintenance mode" : "Đã tắt maintenance mode",
-      message: enable
-        ? `${actor?.displayName ?? "Admin"} vừa bật chế độ bảo trì`
-        : `${actor?.displayName ?? "Admin"} vừa tắt chế độ bảo trì`,
-      link: "/admin/maintenance",
-      actor: buildAdminActor(actor),
-      severity: enable ? "warning" : "success",
-    });
-    getIo().emit(
-      enable
-        ? USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_ON
-        : USER_SOCKET_EVENTS.SYSTEM_MAINTENANCE_OFF,
-      { message: result.message, isEnabled: result.isEnabled },
-    );
-    await emitDashboardStatsUpdated({
-      reason: enable ? "maintenance:on" : "maintenance:off",
-    });
-
-    return res.status(200).json({
-      message: enable
-        ? "Bảo trì hệ thống đã được bật"
-        : "Bảo trì hệ thống đã được tắt",
-      isEnabled: result.isEnabled,
-      enabledAt: result.enabledAt,
-      disabledAt: result.disabledAt,
-    });
   } catch (error) {
-    console.error("Lỗi khi xác nhận thay đổi trạng thái bảo trì:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi khi xac nhan thay doi trang thai bao tri:", error);
+    return res.status(error.status || 500).json(
+      error.payload || { message: error.message || "Loi he thong" },
+    );
   }
 };
 
-// Cập nhật thông báo bảo trì
 export const updateMaintenanceMessage = async (req, res) => {
   try {
-    const { message } = req.body;
-
-    if (!message || typeof message !== "string" || !message.trim()) {
-      return res.status(400).json({ message: "Tin nhắn bảo trì không hợp lệ" });
-    }
-
-    const result = await updateMaintenanceMessageInDb(message.trim());
-    await emitDashboardStatsUpdated({ reason: "maintenance:message-updated" });
-
-    return res.status(200).json({
-      message: "Tin nhắn bảo trì đã được cập nhật",
-      maintenanceMessage: result.message,
-    });
+    return res.status(200).json(
+      await updateMaintenanceMessageCommand({
+        message: req.body.message,
+      }),
+    );
   } catch (error) {
-    console.error("Lỗi khi cập nhật thông báo bảo trì:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi khi cap nhat thong bao bao tri:", error);
+    return res.status(error.status || 500).json({
+      message: error.message || "Loi he thong",
+    });
   }
 };
-
