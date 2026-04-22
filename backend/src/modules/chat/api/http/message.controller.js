@@ -6,111 +6,89 @@ import {
   sendGroupMessageCommand,
   toggleMessageReactionCommand,
 } from "../../application/message.command-service.js";
+import {
+  handleController,
+  respondCommandResult,
+} from "../../../../utils/controllerResponses.js";
 
-const sendCommandResult = (res, result) => {
-  if (result?.error) {
-    return res.status(result.error.status).json({
-      message: result.error.message,
-      code: result.error.code,
-    });
-  }
+const sendChatServerError = (_error, _req, res) =>
+  res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
 
-  return res.status(result.status).json(result.payload);
-};
-
-export const sendDirectMessage = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const sendDirectMessage = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await sendDirectMessageCommand({
+      sendDirectMessageCommand({
         user: req.user,
         body: req.body,
         file: req.file,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i xáº£y ra khi gá»­i tin nháº¯n trá»±c tiáº¿p", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
-export const sendGroupMessage = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const sendGroupMessage = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await sendGroupMessageCommand({
+      sendGroupMessageCommand({
         user: req.user,
         conversation: req.conversation,
         body: req.body,
         file: req.file,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i xáº£y ra khi gá»­i tin nháº¯n nhÃ³m", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
-export const editMessage = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const editMessage = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await editMessageCommand({
+      editMessageCommand({
         user: req.user,
         messageId: req.params.messageId,
         content: req.body?.content,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi sá»­a tin nháº¯n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
-export const deleteMessageForMe = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const deleteMessageForMe = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await deleteMessageForMeCommand({
+      deleteMessageForMeCommand({
         user: req.user,
         messageId: req.params.messageId,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi xÃ³a tin nháº¯n á»Ÿ phÃ­a mÃ¬nh", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
-export const deleteMessageForEveryone = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const deleteMessageForEveryone = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await deleteMessageForEveryoneCommand({
+      deleteMessageForEveryoneCommand({
         user: req.user,
         messageId: req.params.messageId,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi thu há»“i tin nháº¯n cho táº¥t cáº£", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
-export const toggleReaction = async (req, res) => {
-  try {
-    return sendCommandResult(
+export const toggleReaction = handleController(
+  (req, res) =>
+    respondCommandResult(
       res,
-      await toggleMessageReactionCommand({
+      toggleMessageReactionCommand({
         user: req.user,
         messageId: req.params.messageId,
         emoji: req.body?.emoji,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi tháº£ biá»ƒu cáº£m vÃ o tin nháº¯n", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
-};
+    ),
+  sendChatServerError,
+);
 
 export const sendMessageWithImage = sendGroupMessage;

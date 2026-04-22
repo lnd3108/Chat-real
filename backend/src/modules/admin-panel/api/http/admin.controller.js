@@ -38,167 +38,145 @@ import {
   unblockBlockRelationAsAdminCommand,
   updateUserRoleLegacyCommand,
 } from "../../application/admin-read.service.js";
-import { sendServerError } from "../../../../utils/controllerResponses.js";
+import {
+  handleController,
+  sendServerError,
+  sendSuccess,
+} from "../../../../utils/controllerResponses.js";
 
-const sendSuccess = (res, data, status = 200) => res.status(status).json(data);
+const sendAdminFailure = (message, logMessage = null) => (error, _req, res) => {
+  if (error?.status) {
+    return sendSuccess(
+      res,
+      {
+        success: false,
+        message: error.message || message,
+      },
+      error.status,
+    );
+  }
 
-export const getDashboardStats = async (_req, res) => {
-  try {
-    return sendSuccess(res, {
+  if (logMessage) {
+    console.error(logMessage, error);
+  }
+
+  return sendSuccess(
+    res,
+    {
+      success: false,
+      message,
+    },
+    500,
+  );
+};
+
+const jsonSuccess = (factory, status = 200) =>
+  handleController(
+    async (req, res) => sendSuccess(res, await factory(req), status),
+    sendAdminFailure("Loi he thong"),
+  );
+
+export const getDashboardStats = handleController(
+  async (_req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardStatsSummary(),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y thá»‘ng kÃª dashboard:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y thá»‘ng kÃª dashboard",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y thÃ¡Â»â€˜ng kÃƒÂª dashboard",
+    "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y thÃ¡Â»â€˜ng kÃƒÂª dashboard:",
+  ),
+);
 
-export const getDashboardOverview = async (_req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getDashboardOverview = handleController(
+  async (_req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardOverviewSummary(),
-    });
-  } catch (error) {
-    console.error("Loi khi lay dashboard overview:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay du lieu dashboard overview",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay du lieu dashboard overview",
+    "Loi khi lay dashboard overview:",
+  ),
+);
 
-export const getDashboardUserChart = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getDashboardUserChart = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardUserChartData({ days: req.query.days }),
-    });
-  } catch (error) {
-    console.error("Loi khi lay chart user dashboard:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay du lieu chart nguoi dung",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay du lieu chart nguoi dung",
+    "Loi khi lay chart user dashboard:",
+  ),
+);
 
-export const getDashboardMessageChart = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getDashboardMessageChart = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardMessageChartData({ days: req.query.days }),
-    });
-  } catch (error) {
-    console.error("Loi khi lay chart message dashboard:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay du lieu chart tin nhan",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay du lieu chart tin nhan",
+    "Loi khi lay chart message dashboard:",
+  ),
+);
 
-export const getDashboardReportChart = async (_req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getDashboardReportChart = handleController(
+  async (_req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardReportChartData(),
-    });
-  } catch (error) {
-    console.error("Loi khi lay chart report dashboard:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay du lieu chart bao cao",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay du lieu chart bao cao",
+    "Loi khi lay chart report dashboard:",
+  ),
+);
 
-export const getDashboardSupportChart = async (_req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getDashboardSupportChart = handleController(
+  async (_req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getDashboardSupportChartData(),
-    });
-  } catch (error) {
-    console.error("Loi khi lay chart support dashboard:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay du lieu chart ho tro",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay du lieu chart ho tro",
+    "Loi khi lay chart support dashboard:",
+  ),
+);
 
-export const getUsers = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getUsers = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getUsersQuery({ actor: req.user, query: req.query }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch ngÆ°á»i dÃ¹ng:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch ngÆ°á»i dÃ¹ng",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng",
+    "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:",
+  ),
+);
 
-export const getUserDetail = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getUserDetail = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getUserDetailQuery({
         actor: req.user,
         userId: req.params.id,
       }),
-    });
-  } catch (error) {
-    console.error("LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng",
-      },
-      error.status || 500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng",
+    "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y thÃƒÆ’Ã‚Â´ng tin ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng:",
+  ),
+);
 
-export const updateUserStatus = async (req, res) => {
-  try {
+export const updateUserStatus = handleController(
+  async (req, res) => {
     const result = await updateUserStatusCommand({
       actor: req.user,
       userId: req.params.id,
@@ -210,23 +188,15 @@ export const updateUserStatus = async (req, res) => {
       message: result.message,
       data: { user: result.user },
     });
-  } catch (error) {
-    console.error("LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message:
-          error.message ||
-          "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng.",
-      },
-      error.status || 500,
-    );
-  }
-};
+  },
+  sendAdminFailure(
+    "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng.",
+    "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t trÃƒÂ¡Ã‚ÂºÃ‚Â¡ng thÃƒÆ’Ã‚Â¡i ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng:",
+  ),
+);
 
-export const deleteUserAsAdmin = async (req, res) => {
-  try {
+export const deleteUserAsAdmin = handleController(
+  async (req, res) => {
     const reason =
       typeof req.body?.reason === "string" && req.body.reason.trim()
         ? req.body.reason.trim()
@@ -243,271 +213,188 @@ export const deleteUserAsAdmin = async (req, res) => {
       message: result.message,
       data: result.summary,
     });
-  } catch (error) {
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a tÃƒÂ i khoÃ¡ÂºÂ£n.",
-      },
-      error.status || 500,
-    );
-  }
-};
+  },
+  sendAdminFailure("KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a tÃƒÂ i khoÃ¡ÂºÂ£n."),
+);
 
-export const updateUserRole = async (req, res) => {
-  try {
-    const user = await updateUserRoleLegacyCommand({
-      userId: req.params.userId,
-      role: req.body?.role,
-    });
-
-    return sendSuccess(res, {
+export const updateUserRole = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       message: "Cáº­p nháº­t role thÃ nh cÃ´ng",
-      data: user,
-    });
-  } catch (error) {
-    console.error("Lá»—i khi cáº­p nháº­t role:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "KhÃ´ng thá»ƒ cáº­p nháº­t role",
-      },
-      error.status || 500,
-    );
-  }
-};
+      data: await updateUserRoleLegacyCommand({
+        userId: req.params.userId,
+        role: req.body?.role,
+      }),
+    }),
+  sendAdminFailure("KhÃ´ng thá»ƒ cáº­p nháº­t role", "Lá»—i khi cáº­p nháº­t role:"),
+);
 
-export const getFriendRequestsAdmin = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getFriendRequestsAdmin = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getFriendRequestsAdminQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n",
+    "Lá»—i khi láº¥y danh sÃ¡ch lá»i má»i káº¿t báº¡n:",
+  ),
+);
 
-export const getFriendships = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getFriendships = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getFriendshipsAdminQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Loi khi lay danh sach friendship da accepted:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay danh sach friendship da accepted",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay danh sach friendship da accepted",
+    "Loi khi lay danh sach friendship da accepted:",
+  ),
+);
 
-export const getConversations = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getConversations = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getConversationsAdminQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n",
+    "Lá»—i khi láº¥y danh sÃ¡ch cuá»™c trÃ² chuyá»‡n:",
+  ),
+);
 
-export const getMessages = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getMessages = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getAdminMessagesQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch tin nháº¯n:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch tin nháº¯n",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch tin nháº¯n",
+    "Lá»—i khi láº¥y danh sÃ¡ch tin nháº¯n:",
+  ),
+);
 
-export const getBlockedUsers = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getBlockedUsers = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getAdminBlockedUsersQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng",
+    "Lá»—i khi láº¥y danh sÃ¡ch khá»‘i ngÆ°á»i dÃ¹ng:",
+  ),
+);
 
-export const getConversationDetail = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getConversationDetail = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getConversationDetailAdminQuery({
         conversationId: req.params.id,
       }),
-    });
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n",
-      },
-      error.status || 500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n",
+    "Lá»—i khi láº¥y chi tiáº¿t cuá»™c trÃ² chuyá»‡n:",
+  ),
+);
 
-export const getBlocks = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getBlocks = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getBlocksAdminQuery({ query: req.query }),
-    });
-  } catch (error) {
-    console.error("Loi khi lay danh sach quan he chan:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: "Khong the lay danh sach quan he chan",
-      },
-      500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay danh sach quan he chan",
+    "Loi khi lay danh sach quan he chan:",
+  ),
+);
 
-export const getBlockDetail = async (req, res) => {
-  try {
-    return sendSuccess(res, {
+export const getBlockDetail = handleController(
+  async (req, res) =>
+    sendSuccess(res, {
       success: true,
       data: await getBlockDetailAdminQuery({ blockId: req.params.id }),
-    });
-  } catch (error) {
-    console.error("Loi khi lay chi tiet quan he chan:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "Khong the lay chi tiet quan he chan.",
-      },
-      error.status || 500,
-    );
-  }
-};
+    }),
+  sendAdminFailure(
+    "Khong the lay chi tiet quan he chan.",
+    "Loi khi lay chi tiet quan he chan:",
+  ),
+);
 
-export const unblockBlockRelationAsAdmin = async (req, res) => {
-  try {
+export const unblockBlockRelationAsAdmin = handleController(
+  async (req, res) => {
+    const result = await unblockBlockRelationAsAdminCommand({
+      blockId: req.params.id,
+    });
+
     return sendSuccess(res, {
       success: true,
       message: "Admin da go block relation thanh cong.",
-      data: {
-        block: (await unblockBlockRelationAsAdminCommand({ blockId: req.params.id })).block,
-      },
+      data: { block: result.block },
     });
-  } catch (error) {
-    console.error("Loi khi admin go block relation:", error);
-    return sendSuccess(
-      res,
-      {
-        success: false,
-        message: error.message || "Khong the go block relation.",
-      },
-      error.status || 500,
-    );
-  }
-};
+  },
+  sendAdminFailure(
+    "Khong the go block relation.",
+    "Loi khi admin go block relation:",
+  ),
+);
 
-export const getReports = async (req, res) => {
-  try {
-    return res.json({
+export const getReports = handleController(
+  async (req, res) =>
+    res.json({
       message: "Láº¥y danh sÃ¡ch bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: await getReportsQuery(req.query),
-    });
-  } catch (error) {
-    return sendServerError(res, error, {
+    }),
+  (error, _req, res) =>
+    sendServerError(res, error, {
       logMessage: "Lá»—i khi láº¥y danh sÃ¡ch bÃ¡o cÃ¡o:",
       message: "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch bÃ¡o cÃ¡o",
-    });
-  }
-};
+    }),
+);
 
-export const getReportDetail = async (req, res) => {
-  try {
-    return res.json({
+export const getReportDetail = handleController(
+  async (req, res) =>
+    res.json({
       message: "Láº¥y chi tiáº¿t bÃ¡o cÃ¡o thÃ nh cÃ´ng",
       data: await getReportDetailQuery({ reportId: req.params.id }),
-    });
-  } catch (error) {
-    return sendServerError(res, error, {
+    }),
+  (error, _req, res) =>
+    sendServerError(res, error, {
       logMessage: "Lá»—i khi láº¥y chi tiáº¿t bÃ¡o cÃ¡o:",
       message: "KhÃ´ng thá»ƒ láº¥y chi tiáº¿t bÃ¡o cÃ¡o",
-    });
-  }
-};
+    }),
+);
 
-export const updateReportStatus = async (req, res) => {
-  try {
-    const report = await updateReportStatusCommand({
-      reportId: req.params.id,
-      status: req.body.status,
-      resolutionNote: req.body.resolutionNote,
-      adminId: req.user._id,
-    });
-
-    return res.json({
+export const updateReportStatus = handleController(
+  async (req, res) =>
+    res.json({
       message: "Cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o thÃ nh cÃ´ng",
-      data: { report },
-    });
-  } catch (error) {
-    return sendServerError(res, error, {
+      data: {
+        report: await updateReportStatusCommand({
+          reportId: req.params.id,
+          status: req.body.status,
+          resolutionNote: req.body.resolutionNote,
+          adminId: req.user._id,
+        }),
+      },
+    }),
+  (error, _req, res) =>
+    sendServerError(res, error, {
       logMessage: "Lá»—i khi cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o:",
       message: "KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i bÃ¡o cÃ¡o",
-    });
-  }
-};
+    }),
+);
 
-export const resolveReportWithAction = async (req, res) => {
-  try {
-    return res.json({
+export const resolveReportWithAction = handleController(
+  async (req, res) =>
+    res.json({
       message: "Xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng thÃ nh cÃ´ng",
       data: await resolveReportWithActionCommand({
         reportId: req.params.id,
@@ -515,116 +402,86 @@ export const resolveReportWithAction = async (req, res) => {
         resolutionNote: req.body.resolutionNote,
         adminId: req.user._id,
       }),
-    });
-  } catch (error) {
-    return sendServerError(res, error, {
+    }),
+  (error, _req, res) =>
+    sendServerError(res, error, {
       logMessage: "Lá»—i khi xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng:",
       message: "KhÃ´ng thá»ƒ xá»­ lÃ½ bÃ¡o cÃ¡o báº±ng hÃ nh Ä‘á»™ng",
-    });
-  }
-};
+    }),
+);
 
-export const getSystemHealth = async (_req, res) => {
-  try {
-    return sendSuccess(res, await getSystemHealthSummary());
-  } catch (error) {
-    console.error("Error checking system health:", error);
-    return sendSuccess(
+export const getSystemHealth = handleController(
+  async (_req, res) => sendSuccess(res, await getSystemHealthSummary()),
+  (error, _req, res) =>
+    sendSuccess(
       res,
       {
         status: "unhealthy",
         message: error.message,
       },
       500,
-    );
-  }
-};
+    ),
+);
 
-export const getMaintenanceInfo = async (_req, res) => {
-  try {
-    return sendSuccess(res, await getMaintenanceInfoQuery());
-  } catch (error) {
-    console.error("Lá»—i khi láº¥y thÃ´ng tin báº£o trÃ¬:", error);
-    return sendSuccess(res, { message: "Lá»—i há»‡ thá»‘ng" }, 500);
-  }
-};
+export const getMaintenanceInfo = handleController(
+  async (_req, res) => sendSuccess(res, await getMaintenanceInfoQuery()),
+  sendAdminFailure("Lá»—i há»‡ thá»‘ng", "Lá»—i khi láº¥y thÃ´ng tin báº£o trÃ¬:"),
+);
 
-export const requestMaintenancePasswordVerification = async (req, res) => {
-  try {
-    return sendSuccess(
+export const requestMaintenancePasswordVerification = handleController(
+  async (req, res) =>
+    sendSuccess(
       res,
       await requestMaintenancePasswordVerificationCommand({
         adminId: req.user._id,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi yÃªu cáº§u xÃ¡c minh máº­t kháº©u:", error);
-    return sendSuccess(
-      res,
-      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
-      error.status || 500,
-    );
-  }
-};
+    ),
+  sendAdminFailure("Lá»—i há»‡ thá»‘ng", "Lá»—i khi yÃªu cáº§u xÃ¡c minh máº­t kháº©u:"),
+);
 
-export const verifyMaintenancePassword = async (req, res) => {
-  try {
-    return sendSuccess(
+export const verifyMaintenancePassword = handleController(
+  async (req, res) =>
+    sendSuccess(
       res,
       await verifyMaintenancePasswordCommand({
         adminId: req.user._id,
         password: req.body.password,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi xÃ¡c minh máº­t kháº©u báº£o trÃ¬:", {
-      adminId: req.user?._id,
-      error: error.message,
-      code: error.code,
-      stack: error.stack,
-    });
-    return sendSuccess(
-      res,
-      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
-      error.status || 500,
-    );
-  }
-};
+    ),
+  sendAdminFailure(
+    "Lá»—i há»‡ thá»‘ng",
+    "Lá»—i khi xÃ¡c minh máº­t kháº©u báº£o trÃ¬:",
+  ),
+);
 
-export const confirmMaintenanceToggle = async (req, res) => {
-  try {
-    return sendSuccess(
+export const confirmMaintenanceToggle = handleController(
+  async (req, res) =>
+    sendSuccess(
       res,
       await confirmMaintenanceToggleCommand({
         adminId: req.user._id,
         code: req.body.code,
         enable: req.body.enable,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi xÃ¡c nháº­n thay Ä‘á»•i tráº¡ng thÃ¡i báº£o trÃ¬:", error);
-    return sendSuccess(
+    ),
+  (error, _req, res) =>
+    sendSuccess(
       res,
       error.payload || { message: error.message || "Lá»—i há»‡ thá»‘ng" },
       error.status || 500,
-    );
-  }
-};
+    ),
+);
 
-export const updateMaintenanceMessage = async (req, res) => {
-  try {
-    return sendSuccess(
+export const updateMaintenanceMessage = handleController(
+  async (req, res) =>
+    sendSuccess(
       res,
       await updateMaintenanceMessageCommand({
         message: req.body.message,
       }),
-    );
-  } catch (error) {
-    console.error("Lá»—i khi cáº­p nháº­t thÃ´ng bÃ¡o báº£o trÃ¬:", error);
-    return sendSuccess(
-      res,
-      { message: error.message || "Lá»—i há»‡ thá»‘ng" },
-      error.status || 500,
-    );
-  }
-};
+    ),
+  sendAdminFailure(
+    "Lá»—i há»‡ thá»‘ng",
+    "Lá»—i khi cáº­p nháº­t thÃ´ng bÃ¡o báº£o trÃ¬:",
+  ),
+);

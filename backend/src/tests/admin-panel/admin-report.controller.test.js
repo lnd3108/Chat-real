@@ -228,6 +228,14 @@ jest.unstable_mockModule("../../services/rbacService.js", () => ({
 }));
 
 jest.unstable_mockModule("../../utils/controllerResponses.js", () => ({
+  handleController: (handler, onError) => async (req, res) => {
+    try {
+      return await handler(req, res);
+    } catch (error) {
+      return onError(error, req, res);
+    }
+  },
+  sendSuccess: (res, payload, status = 200) => res.status(status).json(payload),
   sendServerError: jest.fn((res, _error, { message }) =>
     res.status(500).json({ message }),
   ),
