@@ -1,8 +1,5 @@
 import User from "../../../models/User.js";
-import {
-  disconnectAllUserSockets,
-  getIo,
-} from "../../../socket/index.js";
+import { disconnectAllUserSockets, getIo } from "../../../socket/index.js";
 import { isMailConfigured } from "../../../utils/mail.js";
 import {
   getMaintenanceStatus,
@@ -34,7 +31,7 @@ export const getSystemHealthSummary = async () => {
 
   if (!health.checks.smtp) {
     health.status = "warning";
-    health.message = "SMTP chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh - khÃ´ng thá»ƒ gá»­i email";
+    health.message = "SMTP chưa được cấu hình - không thể gửi email";
   }
 
   return health;
@@ -42,32 +39,36 @@ export const getSystemHealthSummary = async () => {
 
 export const getMaintenanceInfoQuery = async () => getMaintenanceStatus();
 
-export const requestMaintenancePasswordVerificationCommand = async ({ adminId }) => {
+export const requestMaintenancePasswordVerificationCommand = async ({
+  adminId,
+}) => {
   const admin = await User.findById(adminId).select("hashedPassword email");
 
   if (!admin) {
-    const error = new Error("KhÃ´ng tÃ¬m tháº¥y quáº£n trá»‹ viÃªn");
+    const error = new Error("Không tìm thấy quản trị viên");
     error.status = 404;
     throw error;
   }
 
   return {
-    message:
-      "YÃªu cáº§u xÃ¡c minh máº­t kháº©u Ä‘Ã£ Ä‘Æ°á»£c táº¡o. Vui lÃ²ng kiá»ƒm tra email.",
+    message: "Yêu cầu xác minh mật khẩu đã được tạo. Vui lòng kiểm tra email.",
     email: admin.email,
   };
 };
 
-export const verifyMaintenancePasswordCommand = async ({ adminId, password }) => {
+export const verifyMaintenancePasswordCommand = async ({
+  adminId,
+  password,
+}) => {
   if (!password) {
-    const error = new Error("Thiáº¿u máº­t kháº©u");
+    const error = new Error("Thiếu mật khẩu");
     error.status = 400;
     throw error;
   }
 
   const admin = await User.findById(adminId).select("hashedPassword email");
   if (!admin) {
-    const error = new Error("KhÃ´ng tÃ¬m tháº¥y quáº£n trá»‹ viÃªn");
+    const error = new Error("Không tìm thấy quản trị viên");
     error.status = 404;
     throw error;
   }
@@ -78,7 +79,7 @@ export const verifyMaintenancePasswordCommand = async ({ adminId, password }) =>
   );
 
   if (!isPasswordValid) {
-    const error = new Error("Máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c");
+    const error = new Error("Mật khẩu không chính xác");
     error.status = 401;
     throw error;
   }
@@ -91,14 +92,18 @@ export const verifyMaintenancePasswordCommand = async ({ adminId, password }) =>
   }
 
   return {
-    message: "MÃ£ xÃ¡c nháº­n Ä‘Ã£ Ä‘Æ°á»£c gá»­i tá»›i email cá»§a báº¡n",
+    message: "Mã xác nhận đã được gửi tới email của bạn",
     expiresAt: result.expiresAt,
   };
 };
 
-export const confirmMaintenanceToggleCommand = async ({ adminId, code, enable }) => {
+export const confirmMaintenanceToggleCommand = async ({
+  adminId,
+  code,
+  enable,
+}) => {
   if (!code || typeof enable !== "boolean") {
-    const error = new Error("Thiáº¿u code hoáº·c giÃ¡ trá»‹ enable");
+    const error = new Error("Thiếu code hoặc giá trị enable");
     error.status = 400;
     throw error;
   }
@@ -141,10 +146,10 @@ export const confirmMaintenanceToggleCommand = async ({ adminId, code, enable })
   );
   emitAdminNotification({
     type: "system",
-    title: enable ? "ÄÃ£ báº­t maintenance mode" : "ÄÃ£ táº¯t maintenance mode",
+    title: enable ? "Đã bật maintenance mode" : "Đã tắt maintenance mode",
     message: enable
-      ? `${actor?.displayName ?? "Admin"} vá»«a báº­t cháº¿ Ä‘á»™ báº£o trÃ¬`
-      : `${actor?.displayName ?? "Admin"} vá»«a táº¯t cháº¿ Ä‘á»™ báº£o trÃ¬`,
+      ? `${actor?.displayName ?? "Admin"} vừa bật chế độ bảo trì`
+      : `${actor?.displayName ?? "Admin"} vừa tắt chế độ bảo trì`,
     link: "/admin/maintenance",
     actor: buildAdminActor(actor),
     severity: enable ? "warning" : "success",
@@ -161,8 +166,8 @@ export const confirmMaintenanceToggleCommand = async ({ adminId, code, enable })
 
   return {
     message: enable
-      ? "Báº£o trÃ¬ há»‡ thá»‘ng Ä‘Ã£ Ä‘Æ°á»£c báº­t"
-      : "Báº£o trÃ¬ há»‡ thá»‘ng Ä‘Ã£ Ä‘Æ°á»£c táº¯t",
+      ? "Bảo trì hệ thống đã được bật"
+      : "Bảo trì hệ thống đã được tắt",
     isEnabled: result.isEnabled,
     enabledAt: result.enabledAt,
     disabledAt: result.disabledAt,
@@ -171,7 +176,7 @@ export const confirmMaintenanceToggleCommand = async ({ adminId, code, enable })
 
 export const updateMaintenanceMessageCommand = async ({ message }) => {
   if (!message || typeof message !== "string" || !message.trim()) {
-    const error = new Error("Tin nháº¯n báº£o trÃ¬ khÃ´ng há»£p lá»‡");
+    const error = new Error("Tin nhắn bảo trì không hợp lệ");
     error.status = 400;
     throw error;
   }
@@ -180,7 +185,7 @@ export const updateMaintenanceMessageCommand = async ({ message }) => {
   await emitDashboardStatsUpdated({ reason: "maintenance:message-updated" });
 
   return {
-    message: "Tin nháº¯n báº£o trÃ¬ Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t",
+    message: "Tin nhắn bảo trì đã được cập nhật",
     maintenanceMessage: result.message,
   };
 };

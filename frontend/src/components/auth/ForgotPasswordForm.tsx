@@ -44,7 +44,9 @@ export const ForgotPasswordForm = () => {
           <p className="text-sm text-destructive">{errors.email.message}</p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Nhập email đã đăng ký. Nếu email hợp lệ trong hệ thống, mã xác nhận sẽ được gửi.
+            Nhập email đã đăng ký bằng mật khẩu. Nếu email hợp lệ trong hệ thống và tài khoản dùng
+            đăng nhập local, mã xác nhận sẽ được gửi. Tài khoản đăng nhập bằng Google sẽ không
+            nhận mã quên mật khẩu.
           </p>
         )}
       </div>

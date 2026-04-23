@@ -18,11 +18,11 @@ import {
 import { isMailConfigured } from "../infrastructure/auth-mail.service.js";
 
 const GENERIC_FORGOT_PASSWORD_MESSAGE =
-  "Náº¿u email há»£p lá»‡ trong há»‡ thá»‘ng, mÃ£ xÃ¡c nháº­n Ä‘Ã£ Ä‘Æ°á»£c gá»­i.";
+  "Nếu email hợp lệ trong hệ thống, mã xác nhận đã được gửi.";
 const GENERIC_VERIFY_OTP_MESSAGE =
-  "MÃ£ xÃ¡c nháº­n khÃ´ng há»£p lá»‡, Ä‘Ã£ háº¿t háº¡n hoáº·c Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng.";
+  "Mã xác nhận không hợp lệ, đã hết hạn hoặc đã được sử dụng.";
 const INVALID_RESET_TOKEN_MESSAGE =
-  "PhiÃªn Ä‘áº·t láº¡i máº­t kháº©u khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n. Vui lÃ²ng thá»±c hiá»‡n láº¡i tá»« Ä‘áº§u.";
+  "Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng thực hiện lại từ đầu.";
 const PASSWORD_RESET_MAX_SENDS_PER_IP_PER_HOUR = 20;
 
 const forgotPasswordSchemaError = (message, extra = {}) => ({
@@ -31,7 +31,25 @@ const forgotPasswordSchemaError = (message, extra = {}) => ({
   ...extra,
 });
 
-const getNormalizedEmail = (email) => String(email || "").trim().toLowerCase();
+const getNormalizedEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
+
+const maskEmailForLog = (email) => {
+  const normalizedEmail = getNormalizedEmail(email);
+  const [localPart, domain] = normalizedEmail.split("@");
+
+  if (!localPart || !domain) {
+    return normalizedEmail || "<empty>";
+  }
+
+  if (localPart.length <= 2) {
+    return `${localPart[0] || "*"}*@${domain}`;
+  }
+
+  return `${localPart.slice(0, 2)}***@${domain}`;
+};
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -106,22 +124,28 @@ export const requestPasswordReset = async ({ email, req }) => {
   const requestIp = getRequestIp(req);
 
   if (!normalizedEmail) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.");
+    throw forgotPasswordSchemaError("Email không được để trống.");
   }
 
   if (!validateEmail(normalizedEmail)) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng.");
+    throw forgotPasswordSchemaError("Email không đúng định dạng.");
   }
 
   if (!isMailConfigured()) {
     throw {
       status: 500,
-      message: "Há»‡ thá»‘ng chÆ°a cáº¥u hÃ¬nh gá»­i email Ä‘áº·t láº¡i máº­t kháº©u.",
+      message: "Hệ thống chưa cấu hình gửi email đặt lại mật khẩu.",
     };
   }
 
   const user = await User.findOne({ email: normalizedEmail });
   if (!user || user.authProvider !== "local") {
+    console.info("[PasswordReset] OTP email skipped", {
+      email: maskEmailForLog(normalizedEmail),
+      reason: !user ? "user_not_found" : "non_local_auth_provider",
+      authProvider: user?.authProvider ?? null,
+    });
+
     return {
       message: GENERIC_FORGOT_PASSWORD_MESSAGE,
       resendAvailableAt: Date.now() + PASSWORD_RESET_RESEND_COOLDOWN_MS,
@@ -143,7 +167,7 @@ export const requestPasswordReset = async ({ email, req }) => {
   ) {
     throw {
       status: 429,
-      message: "Báº¡n chá»‰ cÃ³ thá»ƒ gá»­i láº¡i mÃ£ sau 60 giÃ¢y.",
+      message: "Bạn chỉ có thể gửi lại mã sau 60 giây.",
       resendAvailableAt: latestSentAt + PASSWORD_RESET_RESEND_COOLDOWN_MS,
     };
   }
@@ -157,7 +181,7 @@ export const requestPasswordReset = async ({ email, req }) => {
   if (hourlySendCount >= PASSWORD_RESET_MAX_SENDS_PER_HOUR) {
     throw {
       status: 429,
-      message: "Báº¡n Ä‘Ã£ gá»­i mÃ£ quÃ¡ nhiá»u láº§n. Vui lÃ²ng thá»­ láº¡i sau.",
+      message: "Bạn đã gửi mã quá nhiều lần. Vui lòng thử lại sau.",
       resendAvailableAt: Date.now() + PASSWORD_RESET_RESEND_COOLDOWN_MS,
     };
   }
@@ -171,14 +195,16 @@ export const requestPasswordReset = async ({ email, req }) => {
     if (ipHourlySendCount >= PASSWORD_RESET_MAX_SENDS_PER_IP_PER_HOUR) {
       throw {
         status: 429,
-        message:
-          "Báº¡n Ä‘Ã£ gá»­i mÃ£ quÃ¡ nhiá»u láº§n. Vui lÃ²ng thá»­ láº¡i sau.",
+        message: "Bạn đã gửi mã quá nhiều lần. Vui lòng thử lại sau.",
         resendAvailableAt: Date.now() + PASSWORD_RESET_RESEND_COOLDOWN_MS,
       };
     }
   }
 
-  await invalidateActiveOtpRequests({ userId: user._id, email: normalizedEmail });
+  await invalidateActiveOtpRequests({
+    userId: user._id,
+    email: normalizedEmail,
+  });
 
   const otp = generatePasswordResetOtp();
   const now = new Date();
@@ -205,7 +231,7 @@ export const requestPasswordReset = async ({ email, req }) => {
     await PasswordResetOtp.deleteOne({ _id: otpRecord._id });
     throw {
       status: 500,
-      message: "KhÃ´ng thá»ƒ gá»­i email xÃ¡c nháº­n lÃºc nÃ y. Vui lÃ²ng thá»­ láº¡i sau.",
+      message: "Không thể gửi email xác nhận lúc này. Vui lòng thử lại sau.",
     };
   }
 
@@ -220,15 +246,15 @@ export const verifyPasswordResetOtp = async ({ email, otp }) => {
   const trimmedOtp = String(otp || "").trim();
 
   if (!normalizedEmail) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.");
+    throw forgotPasswordSchemaError("Email không được để trống.");
   }
 
   if (!validateEmail(normalizedEmail)) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng.");
+    throw forgotPasswordSchemaError("Email không đúng định dạng.");
   }
 
   if (!isOtpFormatValid(trimmedOtp)) {
-    throw forgotPasswordSchemaError("MÃ£ xÃ¡c nháº­n pháº£i gá»“m Ä‘Ãºng 6 chá»¯ sá»‘.");
+    throw forgotPasswordSchemaError("Mã xác nhận phải gồm đúng 6 chữ số.");
   }
 
   const request = await getLatestPasswordResetRequest(normalizedEmail);
@@ -244,7 +270,7 @@ export const verifyPasswordResetOtp = async ({ email, otp }) => {
     await request.save();
     throw {
       status: 400,
-      message: "MÃ£ xÃ¡c nháº­n Ä‘Ã£ háº¿t háº¡n. Vui lÃ²ng yÃªu cáº§u gá»­i mÃ£ má»›i.",
+      message: "Mã xác nhận đã hết hạn. Vui lòng yêu cầu gửi mã mới.",
     };
   }
 
@@ -253,7 +279,7 @@ export const verifyPasswordResetOtp = async ({ email, otp }) => {
     await request.save();
     throw {
       status: 429,
-      message: "MÃ£ xÃ¡c nháº­n Ä‘Ã£ bá»‹ khÃ³a do nháº­p sai quÃ¡ sá»‘ láº§n cho phÃ©p.",
+      message: "Mã xác nhận đã bị khóa do nhập sai quá số lần cho phép.",
     };
   }
 
@@ -271,21 +297,23 @@ export const verifyPasswordResetOtp = async ({ email, otp }) => {
       status: request.attempts >= request.maxAttempts ? 429 : 400,
       message:
         request.attempts >= request.maxAttempts
-          ? "MÃ£ xÃ¡c nháº­n Ä‘Ã£ bá»‹ khÃ³a do nháº­p sai quÃ¡ sá»‘ láº§n cho phÃ©p."
-          : "MÃ£ xÃ¡c nháº­n khÃ´ng Ä‘Ãºng.",
+          ? "Mã xác nhận đã bị khóa do nhập sai quá số lần cho phép."
+          : "Mã xác nhận không đúng.",
       attemptsRemaining: Math.max(request.maxAttempts - request.attempts, 0),
     };
   }
 
   const resetToken = generatePasswordResetToken();
   request.resetTokenHash = hashOtpValue(resetToken);
-  request.resetTokenExpiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+  request.resetTokenExpiresAt = new Date(
+    Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+  );
   request.verifiedAt = new Date();
   request.attempts = 0;
   await request.save();
 
   return {
-    message: "XÃ¡c nháº­n mÃ£ thÃ nh cÃ´ng. Báº¡n cÃ³ thá»ƒ Ä‘áº·t máº­t kháº©u má»›i.",
+    message: "Xác nhận mã thành công. Bạn có thể đặt mật khẩu mới.",
     resetToken: buildResetToken({
       otpId: request._id.toString(),
       userId: request.userId.toString(),
@@ -306,33 +334,33 @@ export const resetPasswordWithVerifiedOtp = async ({
   const normalizedEmail = getNormalizedEmail(email);
 
   if (!normalizedEmail) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.");
+    throw forgotPasswordSchemaError("Email không được để trống.");
   }
 
   if (!validateEmail(normalizedEmail)) {
-    throw forgotPasswordSchemaError("Email khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng.");
+    throw forgotPasswordSchemaError("Email không đúng định dạng.");
   }
 
   if (!resetToken || !resetTokenValue) {
     throw forgotPasswordSchemaError(
-      "Thiáº¿u thÃ´ng tin xÃ¡c thá»±c phiÃªn Ä‘áº·t láº¡i máº­t kháº©u.",
+      "Thiếu thông tin xác thực phiên đặt lại mật khẩu.",
     );
   }
 
   if (!newPassword || !confirmPassword) {
     throw forgotPasswordSchemaError(
-      "Vui lÃ²ng nháº­p máº­t kháº©u má»›i vÃ  xÃ¡c nháº­n máº­t kháº©u má»›i.",
+      "Vui lòng nhập mật khẩu mới và xác nhận mật khẩu mới.",
     );
   }
 
   if (!validateStrongPassword(newPassword)) {
     throw forgotPasswordSchemaError(
-      "Máº­t kháº©u má»›i pháº£i cÃ³ Ã­t nháº¥t 8 kÃ½ tá»±, gá»“m chá»¯ hoa, chá»¯ thÆ°á»ng vÃ  sá»‘.",
+      "Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.",
     );
   }
 
   if (newPassword !== confirmPassword) {
-    throw forgotPasswordSchemaError("XÃ¡c nháº­n máº­t kháº©u khÃ´ng khá»›p.");
+    throw forgotPasswordSchemaError("Xác nhận mật khẩu không khớp.");
   }
 
   const tokenStatus = verifyResetTokenJwt(resetToken);
@@ -370,7 +398,7 @@ export const resetPasswordWithVerifiedOtp = async ({
   if (!user || user.email !== normalizedEmail) {
     throw {
       status: 404,
-      message: "KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i dÃ¹ng tÆ°Æ¡ng á»©ng.",
+      message: "Không tìm thấy người dùng tương ứng.",
     };
   }
 
@@ -378,7 +406,7 @@ export const resetPasswordWithVerifiedOtp = async ({
   if (isSamePassword) {
     throw {
       status: 400,
-      message: "Máº­t kháº©u má»›i khÃ´ng Ä‘Æ°á»£c trÃ¹ng vá»›i máº­t kháº©u hiá»‡n táº¡i.",
+      message: "Mật khẩu mới không được trùng với mật khẩu hiện tại.",
     };
   }
 
@@ -409,6 +437,6 @@ export const resetPasswordWithVerifiedOtp = async ({
   await Session.deleteMany({ userId: user._id });
 
   return {
-    message: "Äá»•i máº­t kháº©u thÃ nh cÃ´ng. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.",
+    message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.",
   };
 };

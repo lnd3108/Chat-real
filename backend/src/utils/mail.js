@@ -47,6 +47,17 @@ const getTransporter = () => {
 
 const getAppName = () => process.env.APP_NAME || "ChatRealTime";
 
+const normalizeRecipients = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const sendMail = async ({ to, subject, text, html }) => {
   if (!isMailConfigured()) {
     throw new Error("SMTP not configured. Please set mail environment variables.");
@@ -54,21 +65,46 @@ const sendMail = async ({ to, subject, text, html }) => {
 
   const mailer = getTransporter();
   const config = getMailConfig();
+  const recipients = normalizeRecipients(to);
 
   try {
-    await mailer.sendMail({
+    const info = await mailer.sendMail({
       from: config.from,
       to,
       subject,
       text,
       html,
     });
+
+    const rejectedRecipients = [
+      ...(Array.isArray(info.rejected) ? info.rejected : []),
+      ...(Array.isArray(info.pending) ? info.pending : []),
+    ]
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+
+    if (rejectedRecipients.length > 0) {
+      const error = new Error(
+        `SMTP rejected recipient(s): ${rejectedRecipients.join(", ")}`,
+      );
+      error.code = "SMTP_RECIPIENT_REJECTED";
+      error.rejectedRecipients = rejectedRecipients;
+      throw error;
+    }
+
+    console.log("Mail sent:", {
+      to: recipients,
+      accepted: Array.isArray(info.accepted) ? info.accepted : [],
+      response: info.response,
+      messageId: info.messageId,
+    });
   } catch (error) {
     console.error("Error sending mail:", {
-      to,
+      to: recipients,
       subject,
       error: error.message,
       code: error.code,
+      rejectedRecipients: error.rejectedRecipients || [],
     });
     throw error;
   }
