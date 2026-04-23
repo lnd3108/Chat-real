@@ -9,21 +9,21 @@ import { hasAdminPanelAccess } from "../../../services/rbacService.js";
 
 const AUTH_LIFECYCLE_CONFIG = {
   [ADMIN_SOCKET_EVENTS.USER_NEW]: {
-    title: "Nguoi dung moi dang ky",
-    message: (user) => `${user.displayName} vua tao tai khoan`,
+    title: "Người dùng mới đăng ký",
+    message: (user) => `${user.displayName} vừa tạo tài khoản`,
     reason: "user:register",
   },
   [ADMIN_SOCKET_EVENTS.USER_LOGIN]: {
-    title: "NgÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p",
-    message: (user) => `${user.displayName} vÃ¡Â»Â«a Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p`,
+    title: "Người dùng đăng nhập",
+    message: (user) => `${user.displayName} vừa đăng nhập`,
     reason: "user:login",
   },
   [ADMIN_SOCKET_EVENTS.USER_LOGOUT]: {
-    title: "Nguoi dung dang xuat",
+    title: "Người dùng đăng xuất",
     message: (user) =>
       user
-        ? `${user.displayName} vua dang xuat`
-        : "Mot nguoi dung vua dang xuat",
+        ? `${user.displayName} vừa đăng xuất`
+        : "Một người dùng vừa đăng xuất",
     reason: "user:logout",
   },
 };

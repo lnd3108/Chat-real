@@ -80,6 +80,11 @@ interface ApiState<T> {
 
 const formatNumber = (value: number) => value.toLocaleString("vi-VN");
 
+const getAxiosMessage = (error: unknown, fallback: string) =>
+  axios.isAxiosError(error) && typeof error.response?.data?.message === "string"
+    ? error.response.data.message
+    : fallback;
+
 const chartLegend = {
   direct: {
     label: "Direct",
@@ -521,13 +526,9 @@ const AdminDashboard = () => {
       const response = await axiosInstance.get("/admin/dashboard/overview");
       setOverview(response.data.data);
     } catch (err: unknown) {
-      logger.error("Khong the tai overview admin", getErrorMeta(err));
+      logger.error("Không thể tải overview admin", getErrorMeta(err));
       setOverview(null);
-      setOverviewError(
-        axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
-          ? err.response.data.message
-          : "Không thể tải dữ liệu tổng quan dashboard.",
-      );
+      setOverviewError(getAxiosMessage(err, "Không thể tải dữ liệu tổng quan dashboard."));
     } finally {
       setOverviewLoading(false);
     }
@@ -548,10 +549,7 @@ const AdminDashboard = () => {
       setUserChart({
         data: null,
         loading: false,
-        error:
-          axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
-            ? err.response.data.message
-            : "Không thể tải biểu đồ người dùng mới.",
+        error: getAxiosMessage(err, "Không thể tải biểu đồ người dùng mới."),
       });
     }
   };
@@ -571,10 +569,7 @@ const AdminDashboard = () => {
       setMessageChart({
         data: null,
         loading: false,
-        error:
-          axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
-            ? err.response.data.message
-            : "Không thể tải biểu đồ tin nhắn.",
+        error: getAxiosMessage(err, "Không thể tải biểu đồ tin nhắn."),
       });
     }
   };
@@ -592,10 +587,7 @@ const AdminDashboard = () => {
       setReportChart({
         data: null,
         loading: false,
-        error:
-          axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
-            ? err.response.data.message
-            : "Không thể tải biểu đồ báo cáo.",
+        error: getAxiosMessage(err, "Không thể tải biểu đồ báo cáo."),
       });
     }
   };
@@ -613,10 +605,7 @@ const AdminDashboard = () => {
       setSupportChart({
         data: null,
         loading: false,
-        error:
-          axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
-            ? err.response.data.message
-            : "Không thể tải biểu đồ hỗ trợ.",
+        error: getAxiosMessage(err, "Không thể tải biểu đồ hỗ trợ."),
       });
     }
   };

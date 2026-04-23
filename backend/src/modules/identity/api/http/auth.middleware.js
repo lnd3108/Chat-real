@@ -18,7 +18,7 @@ export const protectedRoute = async (req, res, next) => {
 
     if (!result.ok) {
       if (result.cause) {
-        logger.warn("Access token khong hop le hoac da het han", {
+        logger.warn("Access token không hợp lệ hoặc đã hết hạn", {
           name: result.cause?.name,
           message: result.cause?.message,
           code: result.code,
@@ -34,12 +34,12 @@ export const protectedRoute = async (req, res, next) => {
     req.user = result.user;
     return next();
   } catch (error) {
-    logger.error("Loi xac minh access user trong auth middleware", {
+    logger.error("Lỗi xác minh access user trong auth middleware", {
       name: error?.name,
       message: error?.message,
       code: error?.code,
     });
-    return res.status(500).json({ message: "Loi he thong." });
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
 
@@ -49,7 +49,7 @@ export const requireAdmin = (req, res, next) => {
   }
 
   return res.status(403).json({
-    message: "Ban khong co quyen truy cap khu vuc quan tri.",
+    message: "Bạn không có quyền truy cập khu vực quản trị.",
   });
 };
 
@@ -59,7 +59,7 @@ export const requirePermission = (permission) => (req, res, next) => {
   }
 
   return res.status(403).json({
-    message: "Ban khong co quyen thuc hien thao tac nay.",
+    message: "Bạn không có quyền thực hiện thao tác này.",
   });
 };
 
@@ -69,6 +69,6 @@ export const requireAnyPermission = (permissions = []) => (req, res, next) => {
   }
 
   return res.status(403).json({
-    message: "Ban khong co quyen thuc hien thao tac nay.",
+    message: "Bạn không có quyền thực hiện thao tác này.",
   });
 };

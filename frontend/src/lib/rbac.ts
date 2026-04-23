@@ -58,6 +58,36 @@ export const ROLE_BADGE_CLASS_MAP: Record<AppRole, string> = {
   [APP_ROLES.SUPER_ADMIN]: "border-rose-500/20 bg-rose-500/10 text-rose-700",
 };
 
+export const ROLE_PERMISSION_MAP: Record<AppRole, AppPermission[]> = {
+  [APP_ROLES.USER]: [],
+  [APP_ROLES.SUPPORT]: [
+    APP_PERMISSIONS.SUPPORT_VIEW,
+    APP_PERMISSIONS.SUPPORT_REPLY,
+  ],
+  [APP_ROLES.MODERATOR]: [
+    APP_PERMISSIONS.USER_VIEW,
+    APP_PERMISSIONS.REPORT_VIEW,
+    APP_PERMISSIONS.REPORT_HANDLE,
+  ],
+  [APP_ROLES.ADMIN]: [
+    APP_PERMISSIONS.DASHBOARD_VIEW,
+    APP_PERMISSIONS.USER_VIEW,
+    APP_PERMISSIONS.USER_LOCK,
+    APP_PERMISSIONS.USER_UNLOCK,
+    APP_PERMISSIONS.USER_DELETE,
+    APP_PERMISSIONS.ROLE_VIEW,
+    APP_PERMISSIONS.ROLE_ASSIGN,
+    APP_PERMISSIONS.PERMISSION_VIEW,
+    APP_PERMISSIONS.REPORT_VIEW,
+    APP_PERMISSIONS.REPORT_HANDLE,
+    APP_PERMISSIONS.SUPPORT_VIEW,
+    APP_PERMISSIONS.SUPPORT_REPLY,
+    APP_PERMISSIONS.MAINTENANCE_TOGGLE,
+    APP_PERMISSIONS.AUDIT_LOG_VIEW,
+  ],
+  [APP_ROLES.SUPER_ADMIN]: Object.values(APP_PERMISSIONS),
+};
+
 const LEGACY_TO_APP_ROLE: Record<string, AppRole> = {
   user: APP_ROLES.USER,
   support: APP_ROLES.SUPPORT,
@@ -106,8 +136,21 @@ export const getRoleLevel = (role: AppRole) => ROLE_LEVEL_MAP[role];
 
 export const getRoleBadgeClassName = (role: AppRole) => ROLE_BADGE_CLASS_MAP[role];
 
+export const getPermissionsForUser = (
+  user: AccessLike | null | undefined,
+): AppPermission[] => {
+  const rolePermissions = ROLE_PERMISSION_MAP[normalizeRole(user)] ?? [];
+  const explicitPermissions = Array.isArray(user?.permissions)
+    ? user.permissions.filter((permission): permission is AppPermission =>
+        Object.values(APP_PERMISSIONS).includes(permission as AppPermission),
+      )
+    : [];
+
+  return [...new Set([...rolePermissions, ...explicitPermissions])];
+};
+
 export const hasPermission = (user: AccessLike | null | undefined, permission: AppPermission) =>
-  Array.isArray(user?.permissions) && user.permissions.includes(permission);
+  getPermissionsForUser(user).includes(permission);
 
 export const hasAnyPermission = (
   user: AccessLike | null | undefined,

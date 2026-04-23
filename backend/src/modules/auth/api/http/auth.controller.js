@@ -38,9 +38,9 @@ export const signUp = makeCommandHandler({
   execute: (req) => signUpUser(parseBody(signUpSchema, req.body)),
   present: presentCommandResult,
   onError: makeValidationErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi signUp",
-    serverMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
-    validationMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i xÃƒÆ’Ã‚Â¡c thÃƒÂ¡Ã‚Â»Ã‚Â±c dÃƒÂ¡Ã‚Â»Ã‚Â¯ liÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡u",
+    logMessage: "Lỗi khi gọi signUp",
+    serverMessage: "Lỗi hệ thống",
+    validationMessage: "Lỗi xác thực dữ liệu",
   }),
 });
 
@@ -52,9 +52,9 @@ export const signIn = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeValidationErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i signIn",
-    serverMessage: "Loi he thong",
-    validationMessage: "Loi xac thuc du lieu",
+    logMessage: "Lỗi signIn",
+    serverMessage: "Lỗi hệ thống",
+    validationMessage: "Lỗi xác thực dữ liệu",
   }),
 });
 
@@ -67,7 +67,7 @@ export const startGoogleAuth = makeCommandHandler({
     ) {
       throw Object.assign(
         new Error(
-          "Google OAuth chÃƒâ€ Ã‚Â°a Ãƒâ€žÃ¢â‚¬ËœÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Â£c cÃƒÂ¡Ã‚ÂºÃ‚Â¥u hÃƒÆ’Ã‚Â¬nh Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§y Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã‚Â§.",
+          "Google OAuth chưa được cấu hình đầy đủ.",
         ),
         { status: 500 },
       );
@@ -77,8 +77,8 @@ export const startGoogleAuth = makeCommandHandler({
   },
   present: (location) => presentRedirect(location),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i startGoogleAuth",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ bÃƒÂ¡Ã‚ÂºÃ‚Â¯t Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§u Ãƒâ€žÃ¢â‚¬ËœÃƒâ€žÃ†â€™ng nhÃƒÂ¡Ã‚ÂºÃ‚Â­p Google",
+    logMessage: "Lỗi startGoogleAuth",
+    fallbackMessage: "Không thể bắt đầu đăng nhập Google",
   }),
 });
 
@@ -90,8 +90,8 @@ export const googleCallback = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i googleCallback",
-    message: "Ãƒâ€žÃ‚ÂÃƒâ€žÃ†â€™ng nhÃƒÂ¡Ã‚ÂºÃ‚Â­p Google thÃƒÂ¡Ã‚ÂºÃ‚Â¥t bÃƒÂ¡Ã‚ÂºÃ‚Â¡i",
+    logMessage: "Lỗi googleCallback",
+    message: "Đăng nhập Google thất bại",
   }),
 });
 
@@ -104,8 +104,8 @@ export const verifyEmailCode = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i verifyEmailCode",
-    message: "XÃƒÆ’Ã‚Â¡c minh email thÃƒÂ¡Ã‚ÂºÃ‚Â¥t bÃƒÂ¡Ã‚ÂºÃ‚Â¡i",
+    logMessage: "Lỗi verifyEmailCode",
+    message: "Xác minh email thất bại",
   }),
 });
 
@@ -116,8 +116,8 @@ export const resendVerificationCode = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i resendVerificationCode",
-    message: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÂ¡Ã‚Â»Ã‚Â­i lÃƒÂ¡Ã‚ÂºÃ‚Â¡i mÃƒÆ’Ã‚Â£ xÃƒÆ’Ã‚Â¡c minh",
+    logMessage: "Lỗi resendVerificationCode",
+    message: "Không thể gửi lại mã xác minh",
   }),
 });
 
@@ -130,7 +130,7 @@ export const forgotPassword = makeCommandHandler({
   }),
   present: ({ payload }) => presentJson({ body: payload }),
   onError: makeStatusMessageErrorHandler({
-    fallbackMessage: "Khong the xu ly yeu cau quen mat khau.",
+    fallbackMessage: "Không thể xử lý yêu cầu quên mật khẩu.",
     extraKeys: ["resendAvailableAt", "attemptsRemaining"],
   }),
 });
@@ -144,7 +144,7 @@ export const verifyForgotPasswordOtp = makeCommandHandler({
   }),
   present: ({ payload }) => presentJson({ body: payload }),
   onError: makeStatusMessageErrorHandler({
-    fallbackMessage: "Khong the xac minh ma dat lai mat khau.",
+    fallbackMessage: "Không thể xác minh mã đặt lại mật khẩu.",
     extraKeys: ["attemptsRemaining"],
   }),
 });
@@ -166,7 +166,7 @@ export const resetForgottenPassword = makeCommandHandler({
   },
   present: ({ payload }) => presentJson({ body: payload }),
   onError: makeStatusMessageErrorHandler({
-    fallbackMessage: "Khong the dat lai mat khau.",
+    fallbackMessage: "Không thể đặt lại mật khẩu.",
   }),
 });
 
@@ -179,8 +179,8 @@ export const signOut = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi signOut",
-    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+    logMessage: "Lỗi khi gọi signOut",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -192,8 +192,8 @@ export const refreshToken = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi refreshToken",
-    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+    logMessage: "Lỗi khi gọi refreshToken",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -208,8 +208,8 @@ export const changePassword = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Âi changePassword",
-    message: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i hÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡ thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng",
+    logMessage: "Lỗi khi gọi changePassword",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -220,9 +220,9 @@ export const requestAccountDeletion = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i requestAccountDeletion",
+    logMessage: "Lỗi requestAccountDeletion",
     message:
-      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ bÃƒÂ¡Ã‚ÂºÃ‚Â¯t Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚ÂºÃ‚Â§u yÃƒÆ’Ã‚Âªu cÃƒÂ¡Ã‚ÂºÃ‚Â§u xÃƒÆ’Ã‚Â³a tÃƒÆ’Ã‚Â i khoÃƒÂ¡Ã‚ÂºÃ‚Â£n.",
+      "Không thể bắt đầu yêu cầu xóa tài khoản.",
   }),
 });
 
@@ -235,7 +235,7 @@ export const confirmAccountDeletion = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "Loi confirmAccountDeletion",
-    message: "Khong the xoa tai khoan.",
+    logMessage: "Lỗi confirmAccountDeletion",
+    message: "Không thể xóa tài khoản.",
   }),
 });

@@ -139,7 +139,29 @@ export const useForgotPasswordStore = create<ForgotPasswordState>((set, get) => 
 
   resetPassword: async (newPassword, confirmPassword) => {
     try {
-      const { email, resetToken, resetTokenValue } = get();
+      const { email, resetToken, resetTokenValue, resetTokenExpiresAt } = get();
+
+      if (!email || !resetToken || !resetTokenValue) {
+        const message =
+          "Thiếu thông tin xác thực phiên đặt lại mật khẩu. Vui lòng thực hiện lại từ đầu.";
+        set({ step: "email", errorMessage: message });
+        toast.error(message);
+        return false;
+      }
+
+      if (resetTokenExpiresAt && resetTokenExpiresAt <= Date.now()) {
+        const message =
+          "Phiên đặt lại mật khẩu đã hết hạn. Vui lòng xác minh lại mã OTP.";
+        set({
+          step: "otp",
+          resetToken: null,
+          resetTokenValue: null,
+          resetTokenExpiresAt: null,
+          errorMessage: message,
+        });
+        toast.error(message);
+        return false;
+      }
 
       set({ loading: true, errorMessage: null, successMessage: null });
       const result = await authService.resetPassword({

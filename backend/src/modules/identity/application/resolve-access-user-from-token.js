@@ -7,7 +7,7 @@ import { resolveMaintenanceAccess } from "../../system/application/maintenance-a
 const bannedResponse = {
   status: 403,
   code: "ACCOUNT_BANNED",
-  message: "Tai khoan cua ban da bi khoa.",
+  message: "Tài khoản của bạn đã bị khóa.",
 };
 
 const createFailure = (status, message, code, extra = {}) => ({
@@ -33,7 +33,7 @@ export const resolveAccessUserFromToken = async ({
   isAuthRoute = false,
 }) => {
   if (!token) {
-    return createFailure(401, "Khong tim thay access token.", "TOKEN_MISSING");
+    return createFailure(401, "Không tìm thấy access token.", "TOKEN_MISSING");
   }
 
   let decoded;
@@ -41,19 +41,19 @@ export const resolveAccessUserFromToken = async ({
     decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
   } catch (error) {
     if (error?.name === "TokenExpiredError") {
-      return createFailure(403, "Access token da het han hoac khong hop le.", "TOKEN_EXPIRED", {
+      return createFailure(403, "Access token đã hết hạn hoặc không hợp lệ.", "TOKEN_EXPIRED", {
         cause: error,
       });
     }
 
-    return createFailure(403, "Access token da het han hoac khong hop le.", "TOKEN_INVALID", {
+    return createFailure(403, "Access token đã hết hạn hoặc không hợp lệ.", "TOKEN_INVALID", {
       cause: error,
     });
   }
 
   const user = await User.findById(decoded.userId).select("-hashedPassword");
   if (!user) {
-    return createFailure(404, "Nguoi dung khong ton tai.", "USER_NOT_FOUND");
+    return createFailure(404, "Người dùng không tồn tại.", "USER_NOT_FOUND");
   }
 
   const accessUser = serializeUserAccess(user.toObject());

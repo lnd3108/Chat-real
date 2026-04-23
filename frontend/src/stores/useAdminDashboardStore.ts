@@ -1,6 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 import { getErrorMeta, logger } from "@/lib/logger";
 import { create } from "zustand";
+import axios from "axios";
 
 export interface AdminDashboardOverview {
   totalUsers: number;
@@ -52,6 +53,11 @@ interface AdminDashboardState {
   applyRealtimeStats: (payload: Partial<AdminDashboardOverview>) => void;
 }
 
+const getAxiosMessage = (error: unknown, fallback: string) =>
+  axios.isAxiosError(error) && typeof error.response?.data?.message === "string"
+    ? error.response.data.message
+    : fallback;
+
 export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   overview: null,
   loading: false,
@@ -66,10 +72,13 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
         error: null,
       });
     } catch (error) {
-      logger.error("Khong the tai tong quan dashboard admin", getErrorMeta(error));
+      logger.error("Không thể tải tổng quan dashboard admin", getErrorMeta(error));
       set({
         loading: false,
-        error: "Khong the tai du lieu tong quan dashboard.",
+        error: getAxiosMessage(
+          error,
+          "Không thể tải dữ liệu tổng quan dashboard.",
+        ),
       });
     }
   },

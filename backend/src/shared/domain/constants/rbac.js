@@ -40,9 +40,9 @@ export const ROLE_LEVEL_MAP = {
 };
 
 export const ROLE_LABEL_MAP = {
-  [APP_ROLES.USER]: "Nguoi dung",
-  [APP_ROLES.SUPPORT]: "Ho tro",
-  [APP_ROLES.MODERATOR]: "Kiem duyet",
+  [APP_ROLES.USER]: "Người dùng",
+  [APP_ROLES.SUPPORT]: "Hỗ trợ",
+  [APP_ROLES.MODERATOR]: "Kiểm duyệt",
   [APP_ROLES.ADMIN]: "Admin",
   [APP_ROLES.SUPER_ADMIN]: "Super Admin",
 };
