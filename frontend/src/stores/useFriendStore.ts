@@ -28,7 +28,10 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ loading: true });
       return await friendService.searchByUserName(userName);
     } catch (error) {
-      logger.error("Loi xay ra khi tim ban be theo ten nguoi dung", getErrorMeta(error));
+      logger.error(
+        "Lỗi xảy ra khi tìm bạn bè theo tên người dùng",
+        getErrorMeta(error),
+      );
       return null;
     } finally {
       set({ loading: false });
@@ -40,7 +43,10 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ loading: true, searchLoading: true });
       return await friendService.searchUsers(query, limit);
     } catch (error) {
-      logger.error("Loi xay ra khi tim danh sach nguoi dung", getErrorMeta(error));
+      logger.error(
+        "Lỗi xảy ra khi tìm danh sách người dùng",
+        getErrorMeta(error),
+      );
       return [];
     } finally {
       set({ loading: false, searchLoading: false });
@@ -55,7 +61,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ suggestions: limitedSuggestions });
       return limitedSuggestions;
     } catch (error) {
-      logger.error("Loi xay ra khi lay goi y nguoi dung", getErrorMeta(error));
+      logger.error("Lỗi xảy ra khi lấy gợi ý người dùng", getErrorMeta(error));
       set({ suggestions: [] });
       return [];
     } finally {
@@ -66,7 +72,9 @@ export const useFriendStore = create<FriendState>((set) => ({
   markRequestSent: (userId) =>
     set((state) => ({
       suggestions: state.suggestions.map((user) =>
-        user._id === userId ? { ...user, requestSent: true, requestReceived: false } : user,
+        user._id === userId
+          ? { ...user, requestSent: true, requestReceived: false }
+          : user,
       ),
     })),
 
@@ -78,7 +86,9 @@ export const useFriendStore = create<FriendState>((set) => ({
       set((state) => ({
         friends:
           result.autoAccepted && result.newFriend
-            ? state.friends.some((friend) => friend._id === result.newFriend?._id)
+            ? state.friends.some(
+                (friend) => friend._id === result.newFriend?._id,
+              )
               ? state.friends
               : [result.newFriend, ...state.friends]
             : state.friends,
@@ -93,34 +103,42 @@ export const useFriendStore = create<FriendState>((set) => ({
             : user,
         ),
         receivedList: result.matchedRequestId
-          ? state.receivedList.filter((request) => request._id !== result.matchedRequestId)
+          ? state.receivedList.filter(
+              (request) => request._id !== result.matchedRequestId,
+            )
           : state.receivedList,
         sentList: result.request
-          ? state.sentList.some((request) => request._id === result.request?._id)
+          ? state.sentList.some(
+              (request) => request._id === result.request?._id,
+            )
             ? state.sentList
             : [result.request, ...state.sentList]
           : state.sentList.filter((request) => request.to?._id !== to),
       }));
 
       if (result.matchedRequestId) {
-        useNotificationStore.getState().removeNotificationByEntity(result.matchedRequestId);
+        useNotificationStore
+          .getState()
+          .removeNotificationByEntity(result.matchedRequestId);
       }
 
       return result;
     } catch (error) {
-      logger.error("Loi xay ra khi them ban be", getErrorMeta(error));
+      logger.error("Lỗi xảy ra khi thêm bạn bè", getErrorMeta(error));
       const apiMessage =
         typeof error === "object" &&
         error !== null &&
         "response" in error &&
-        typeof (error as { response?: { data?: { message?: unknown } } }).response?.data
-          ?.message === "string"
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        typeof (error as { response?: { data?: { message?: unknown } } })
+          .response?.data?.message === "string"
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
           : null;
 
       return {
         success: false,
-        message: apiMessage ?? "Loi xay ra khi gui loi moi ket ban. Hay thu lai!",
+        message:
+          apiMessage ?? "Lỗi xảy ra khi gửi lời mời kết bạn. Hãy thử lại!",
         autoAccepted: false,
         newFriend: null,
         request: null,
@@ -142,7 +160,10 @@ export const useFriendStore = create<FriendState>((set) => ({
       set({ receivedList: received, sentList: sent });
       useNotificationStore.getState().syncFriendRequestNotifications(received);
     } catch (error) {
-      logger.error("Loi xay ra khi lay danh sach loi moi ket ban", getErrorMeta(error));
+      logger.error(
+        "Lỗi xảy ra khi lấy danh sách lời mời kết bạn",
+        getErrorMeta(error),
+      );
     } finally {
       set({ loading: false });
     }
@@ -155,10 +176,13 @@ export const useFriendStore = create<FriendState>((set) => ({
 
       set((state) => ({
         friends:
-          newFriend && !state.friends.some((friend) => friend._id === newFriend._id)
+          newFriend &&
+          !state.friends.some((friend) => friend._id === newFriend._id)
             ? [newFriend, ...state.friends]
             : state.friends,
-        receivedList: state.receivedList.filter((request) => request._id !== requestId),
+        receivedList: state.receivedList.filter(
+          (request) => request._id !== requestId,
+        ),
         suggestions: newFriend
           ? state.suggestions.map((user) =>
               user._id === newFriend._id
@@ -174,7 +198,10 @@ export const useFriendStore = create<FriendState>((set) => ({
       }));
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
-      logger.error("Loi xay ra khi chap nhan loi moi ket ban", getErrorMeta(error));
+      logger.error(
+        "Lỗi xảy ra khi chấp nhận lời mời kết bạn",
+        getErrorMeta(error),
+      );
       throw error;
     } finally {
       set({ loading: false });
@@ -187,11 +214,16 @@ export const useFriendStore = create<FriendState>((set) => ({
       await friendService.declineRequest(requestId);
 
       set((state) => ({
-        receivedList: state.receivedList.filter((request) => request._id !== requestId),
+        receivedList: state.receivedList.filter(
+          (request) => request._id !== requestId,
+        ),
       }));
       useNotificationStore.getState().removeNotificationByEntity(requestId);
     } catch (error) {
-      logger.error("Loi xay ra khi tu choi loi moi ket ban", getErrorMeta(error));
+      logger.error(
+        "Lỗi xảy ra khi từ chối lời mời kết bạn",
+        getErrorMeta(error),
+      );
     } finally {
       set({ loading: false });
     }
@@ -213,7 +245,7 @@ export const useFriendStore = create<FriendState>((set) => ({
           : state.suggestions,
       }));
     } catch (error) {
-      logger.error("Loi xay ra khi huy loi moi da gui", getErrorMeta(error));
+      logger.error("Lỗi xảy ra khi hủy lời mời đã gửi", getErrorMeta(error));
       throw error;
     } finally {
       set({ loading: false });
@@ -237,13 +269,17 @@ export const useFriendStore = create<FriendState>((set) => ({
               }
             : user,
         ),
-        receivedList: state.receivedList.filter((request) => request.from?._id !== targetUserId),
-        sentList: state.sentList.filter((request) => request.to?._id !== targetUserId),
+        receivedList: state.receivedList.filter(
+          (request) => request.from?._id !== targetUserId,
+        ),
+        sentList: state.sentList.filter(
+          (request) => request.to?._id !== targetUserId,
+        ),
       }));
 
-      return result.message ?? "Da huy ket ban";
+      return result.message ?? "Đã hủy kết bạn";
     } catch (error) {
-      logger.error("Loi xay ra khi huy ket ban", getErrorMeta(error));
+      logger.error("Lỗi xảy ra khi hủy kết bạn", getErrorMeta(error));
       throw error;
     } finally {
       set({ loading: false });
@@ -256,7 +292,7 @@ export const useFriendStore = create<FriendState>((set) => ({
       const friends = await friendService.getFriendList();
       set({ friends });
     } catch (error) {
-      logger.error("Loi xay ra khi tai danh sach ban be", getErrorMeta(error));
+      logger.error("Lỗi xảy ra khi tải danh sách bạn bè", getErrorMeta(error));
       set({ friends: [] });
     } finally {
       set({ loading: false });

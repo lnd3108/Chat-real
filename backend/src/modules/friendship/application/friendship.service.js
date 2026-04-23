@@ -57,18 +57,22 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
     return {
       error: {
         status: 400,
-        message: "Khong the gui loi moi ket ban cho chinh minh",
+        message: "Không thể gửi lời mời kết bạn cho chính mình",
       },
     };
   }
 
   const [fromUser, toUser] = await Promise.all([
-    User.findById(from).select("_id role userName status displayName avatarUrl").lean(),
-    User.findById(to).select("_id role userName status displayName avatarUrl").lean(),
+    User.findById(from)
+      .select("_id role userName status displayName avatarUrl")
+      .lean(),
+    User.findById(to)
+      .select("_id role userName status displayName avatarUrl")
+      .lean(),
   ]);
 
   if (!toUser) {
-    return { error: { status: 404, message: "Nguoi dung khong ton tai" } };
+    return { error: { status: 404, message: "Người dùng không tồn tại" } };
   }
 
   if (isProtectedAccount(fromUser) || isProtectedAccount(toUser)) {
@@ -79,7 +83,7 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
     return {
       error: {
         status: 400,
-        message: "Nguoi dung khong hop le de ket ban.",
+        message: "Người dùng không hợp lệ để kết bạn.",
       },
     };
   }
@@ -88,19 +92,23 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
   const [alreadyFriends, existingRequest] = await Promise.all([
     Friend.findOne({ userA, userB }),
     FriendRequest.findOne({
-      $or: [{ from, to }, { from: to, to: from }],
+      $or: [
+        { from, to },
+        { from: to, to: from },
+      ],
     }).sort({ updatedAt: -1 }),
   ]);
 
   if (alreadyFriends) {
-    return { error: { status: 400, message: "Hai nguoi da la ban be" } };
+    return { error: { status: 400, message: "Hai người đã là bạn bè" } };
   }
 
   if (existingRequest) {
     const isReverseRequest =
       existingRequest.from.toString() === to.toString() &&
       existingRequest.to.toString() === from.toString();
-    const isPendingRequest = (existingRequest.status ?? "pending") === "pending";
+    const isPendingRequest =
+      (existingRequest.status ?? "pending") === "pending";
 
     if (isReverseRequest && isPendingRequest) {
       await Friend.create({ userA: from, userB: to });
@@ -122,7 +130,7 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
       return {
         status: 200,
         payload: {
-          message: "Hai ban da tu dong tro thanh ban be",
+          message: "Hai bạn đã tự động trở thành bạn bè",
           autoAccepted: true,
           matchedRequestId: existingRequest._id,
           newFriend: mapBasicUser(toUser),
@@ -131,7 +139,9 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
     }
 
     if (!isReverseRequest && isPendingRequest) {
-      return { error: { status: 400, message: "Da co loi moi ket ban dang cho" } };
+      return {
+        error: { status: 400, message: "Đã có lời mời kết bạn đang chờ" },
+      };
     }
 
     if (!isReverseRequest) {
@@ -152,13 +162,19 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
         toUser,
       });
 
-      emitFriendRequestReceived({ toUserId: to.toString(), request: requestPayload });
-      emitFriendRequestSent({ fromUserId: from.toString(), request: requestPayload });
+      emitFriendRequestReceived({
+        toUserId: to.toString(),
+        request: requestPayload,
+      });
+      emitFriendRequestSent({
+        fromUserId: from.toString(),
+        request: requestPayload,
+      });
 
       return {
         status: 200,
         payload: {
-          message: "Gui lai loi moi ket ban thanh cong",
+          message: "Gửi lại lời mời kết bạn thành công",
           autoAccepted: false,
           request: requestPayload,
         },
@@ -166,16 +182,31 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
     }
   }
 
-  const request = await FriendRequest.create({ from, to, message, status: "pending" });
-  const requestPayload = toFriendRequestSocketPayload({ request, fromUser, toUser });
+  const request = await FriendRequest.create({
+    from,
+    to,
+    message,
+    status: "pending",
+  });
+  const requestPayload = toFriendRequestSocketPayload({
+    request,
+    fromUser,
+    toUser,
+  });
 
-  emitFriendRequestReceived({ toUserId: to.toString(), request: requestPayload });
-  emitFriendRequestSent({ fromUserId: from.toString(), request: requestPayload });
+  emitFriendRequestReceived({
+    toUserId: to.toString(),
+    request: requestPayload,
+  });
+  emitFriendRequestSent({
+    fromUserId: from.toString(),
+    request: requestPayload,
+  });
 
   return {
     status: 201,
     payload: {
-      message: "Gui loi moi ket ban thanh cong",
+      message: "Gửi lời mời kết bạn thành công",
       autoAccepted: false,
       request: requestPayload,
     },
@@ -186,20 +217,22 @@ export const acceptFriendRequestCommand = async ({ user, requestId }) => {
   const userId = user._id;
   const request = await FriendRequest.findById(requestId);
   if (!request) {
-    return { error: { status: 404, message: "Khong tim thay loi moi ket ban" } };
+    return {
+      error: { status: 404, message: "Không tìm thấy lời mời kết bạn" },
+    };
   }
 
   if (request.to.toString() !== userId.toString()) {
     return {
       error: {
         status: 403,
-        message: "Ban khong co quyen chap nhan loi moi ket ban nay",
+        message: "Bạn không có quyền chấp nhận lời mời kết bạn này",
       },
     };
   }
 
   if ((request.status ?? "pending") !== "pending") {
-    return { error: { status: 400, message: "Loi moi nay da duoc xu ly" } };
+    return { error: { status: 400, message: "Lời mời này đã được xử lý" } };
   }
 
   const { userA, userB } = toSortedFriendPair(request.from, request.to);
@@ -208,11 +241,17 @@ export const acceptFriendRequestCommand = async ({ user, requestId }) => {
     await Friend.create({ userA: request.from, userB: request.to });
   }
 
-  await FriendRequest.findByIdAndUpdate(requestId, { $set: { status: "accepted" } });
+  await FriendRequest.findByIdAndUpdate(requestId, {
+    $set: { status: "accepted" },
+  });
 
   const [fromUser, toUser] = await Promise.all([
-    User.findById(request.from).select("_id userName displayName avatarUrl").lean(),
-    User.findById(request.to).select("_id userName displayName avatarUrl").lean(),
+    User.findById(request.from)
+      .select("_id userName displayName avatarUrl")
+      .lean(),
+    User.findById(request.to)
+      .select("_id userName displayName avatarUrl")
+      .lean(),
   ]);
   const acceptancePayload = {
     requestId: requestId.toString(),
@@ -228,7 +267,7 @@ export const acceptFriendRequestCommand = async ({ user, requestId }) => {
   return {
     status: 200,
     payload: {
-      message: "Chap nhan loi moi thanh cong",
+      message: "Chấp nhận lời mời thành công",
       newFriend: mapBasicUser(fromUser),
     },
   };
@@ -238,23 +277,27 @@ export const declineFriendRequestCommand = async ({ user, requestId }) => {
   const userId = user._id;
   const request = await FriendRequest.findById(requestId);
   if (!request) {
-    return { error: { status: 404, message: "Khong tim thay loi moi ket ban" } };
+    return {
+      error: { status: 404, message: "Không tìm thấy lời mời kết bạn" },
+    };
   }
 
   if (request.to.toString() !== userId.toString()) {
     return {
       error: {
         status: 403,
-        message: "Ban khong co quyen tu choi loi moi ket ban nay",
+        message: "Bạn không có quyền từ chối lời mời kết bạn này",
       },
     };
   }
 
   if ((request.status ?? "pending") !== "pending") {
-    return { error: { status: 400, message: "Loi moi nay da duoc xu ly" } };
+    return { error: { status: 400, message: "Lời mời này đã được xử lý" } };
   }
 
-  await FriendRequest.findByIdAndUpdate(requestId, { $set: { status: "rejected" } });
+  await FriendRequest.findByIdAndUpdate(requestId, {
+    $set: { status: "rejected" },
+  });
 
   const payload = {
     requestId: requestId.toString(),
@@ -274,23 +317,27 @@ export const cancelSentFriendRequestCommand = async ({ user, requestId }) => {
   const userId = user._id;
   const request = await FriendRequest.findById(requestId);
   if (!request) {
-    return { error: { status: 404, message: "Khong tim thay loi moi ket ban" } };
+    return {
+      error: { status: 404, message: "Không tìm thấy lời mời kết bạn" },
+    };
   }
 
   if (request.from.toString() !== userId.toString()) {
     return {
       error: {
         status: 403,
-        message: "Ban khong co quyen huy loi moi ket ban nay",
+        message: "Bạn không có quyền hủy lời mời kết bạn này",
       },
     };
   }
 
   if ((request.status ?? "pending") !== "pending") {
-    return { error: { status: 400, message: "Loi moi nay da duoc xu ly" } };
+    return { error: { status: 400, message: "Lời mời này đã được xử lý" } };
   }
 
-  await FriendRequest.findByIdAndUpdate(requestId, { $set: { status: "cancelled" } });
+  await FriendRequest.findByIdAndUpdate(requestId, {
+    $set: { status: "cancelled" },
+  });
   const payload = {
     requestId: requestId.toString(),
     fromUserId: request.from.toString(),
@@ -304,7 +351,7 @@ export const cancelSentFriendRequestCommand = async ({ user, requestId }) => {
 
   return {
     status: 200,
-    payload: { message: "Da huy loi moi ket ban" },
+    payload: { message: "Đã hủy lời mời kết bạn" },
   };
 };
 
@@ -337,8 +384,14 @@ export const getFriendRequestsQuery = async ({ user }) => {
   const userId = user._id;
   const populateFields = "_id userName displayName avatarUrl";
   const [sent, received] = await Promise.all([
-    FriendRequest.find({ from: userId, status: "pending" }).populate("to", populateFields),
-    FriendRequest.find({ to: userId, status: "pending" }).populate("from", populateFields),
+    FriendRequest.find({ from: userId, status: "pending" }).populate(
+      "to",
+      populateFields,
+    ),
+    FriendRequest.find({ to: userId, status: "pending" }).populate(
+      "from",
+      populateFields,
+    ),
   ]);
 
   return { sent, received };
@@ -350,14 +403,14 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
     return {
       error: {
         status: 400,
-        message: "Khong the huy ket ban voi chinh minh",
+        message: "Không thể hủy kết bạn với chính mình",
       },
     };
   }
 
   const targetUser = await User.findById(targetUserId).select("_id");
   if (!targetUser) {
-    return { error: { status: 404, message: "Nguoi dung khong ton tai" } };
+    return { error: { status: 404, message: "Người dùng không tồn tại" } };
   }
 
   const { userA, userB } = toSortedFriendPair(userId, targetUserId);
@@ -366,7 +419,7 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
     return {
       error: {
         status: 404,
-        message: "Hai nguoi hien khong con la ban be",
+        message: "Hai người hiện không còn là bạn bè",
       },
     };
   }
@@ -379,7 +432,10 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
     ],
   });
 
-  const directConversation = await findDirectConversationBetweenUsers(userId, targetUserId);
+  const directConversation = await findDirectConversationBetweenUsers(
+    userId,
+    targetUserId,
+  );
   let conversationId = null;
 
   if (directConversation?._id) {
@@ -392,15 +448,20 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
     await Promise.all(
       messagesWithImages.map(async (message) => {
         if (message.imgPublicId) {
-          await deleteImageFromCloudinary(message.imgPublicId).catch((error) => {
-            console.error("Khong the xoa anh tin nhan tren Cloudinary:", error);
-          });
+          await deleteImageFromCloudinary(message.imgPublicId).catch(
+            (error) => {
+              console.error(
+                "Không thể xóa ảnh tin nhắn trên Cloudinary:",
+                error,
+              );
+            },
+          );
           return;
         }
 
         if (message.imgUrl) {
           await deleteImageFromCloudinaryUrl(message.imgUrl).catch((error) => {
-            console.error("Khong the xoa anh tin nhan tren Cloudinary:", error);
+            console.error("Không thể xóa ảnh tin nhắn trên Cloudinary:", error);
           });
         }
       }),
@@ -429,7 +490,7 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
   return {
     status: 200,
     payload: {
-      message: "Da huy ket ban thanh cong",
+      message: "Đã hủy kết bạn thành công",
       conversationId,
       clearedDirectChat: Boolean(conversationId),
     },

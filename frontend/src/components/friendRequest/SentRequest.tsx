@@ -13,7 +13,7 @@ const SentRequest = () => {
   if (!sentList || sentList.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Ban chua gui loi moi ket ban nao.
+        Bạn chưa gửi lời mời kết bạn nào.
       </p>
     );
   }
@@ -22,10 +22,10 @@ const SentRequest = () => {
     try {
       setPendingRequestId(requestId);
       await cancelSentRequest(requestId, targetUserId);
-      toast.success("Da huy loi moi ket ban");
+      toast.success("Đã hủy lời mời kết bạn");
     } catch (error) {
-      logger.error("Khong the huy loi moi ket ban", getErrorMeta(error));
-      toast.error("Khong the huy loi moi ket ban");
+      logger.error("Không thể hủy lời mời kết bạn", getErrorMeta(error));
+      toast.error("Không thể hủy lời mời kết bạn. Vui lòng thử lại.");
     } finally {
       setPendingRequestId(null);
     }
@@ -40,16 +40,18 @@ const SentRequest = () => {
           type="sent"
           actions={
             <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">Dang cho tra loi...</p>
+              <p className="text-sm text-muted-foreground">
+                Đang chờ trả lời...
+              </p>
               <Button
                 size="sm"
                 variant="destructiveOutline"
                 disabled={pendingRequestId !== null}
                 loading={pendingRequestId === request._id}
-                loadingText="Dang huy..."
+                loadingText="Đang hủy..."
                 onClick={() => void handleCancel(request._id, request.to?._id)}
               >
-                Huy loi moi
+                Hủy lời mời
               </Button>
             </div>
           }
