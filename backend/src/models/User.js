@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { APP_ROLES } from "../constants/rbac.js";
 
+// Bản schema người dùng với các trường cơ bản và nâng cao
+//  để quản lý tài khoản, xác thực, vai trò, quyền hạn, trạng thái và thông tin cá nhân.
 const userSchema = new mongoose.Schema(
   {
     userName: {
@@ -141,5 +143,6 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+// Tạo model User từ schema và xuất ra để sử dụng trong các phần khác của ứng dụng
 const User = mongoose.model("User", userSchema);
 export default User;

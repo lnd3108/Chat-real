@@ -22,6 +22,7 @@ import {
   sendGroupMessageSchema,
 } from "../../../../libs/validation.js";
 
+// khai báo lỗi chung và route
 export default createRouteModule({
   routerMiddlewares: [protectedRoute],
   routes: [

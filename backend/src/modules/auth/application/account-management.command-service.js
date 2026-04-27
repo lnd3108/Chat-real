@@ -4,6 +4,7 @@ import Session from "../../../models/Session.js";
 import { deleteMyAccountCommand } from "../../user-profile/application/user-profile.service.js";
 import { sendAccountDeletionCodeForUser } from "./verification.service.js";
 
+// Đổi mật khẩu cho người dùng đã xác thực
 export const changePasswordForUser = async ({
   userId,
   currentPassword,
@@ -15,7 +16,7 @@ export const changePasswordForUser = async ({
     return {
       status: 400,
       body: {
-        message: "ThiÃ¡ÂºÂ¿u currentPassword, newPassword hoÃ¡ÂºÂ·c confirmPassword",
+        message: "Thiếu currentPassword, newPassword hoặc confirmPassword",
       },
     };
   }
@@ -24,7 +25,7 @@ export const changePasswordForUser = async ({
     return {
       status: 400,
       body: {
-        message: "MÃ¡ÂºÂ­t khÃ¡ÂºÂ©u mÃ¡Â»â€ºi phÃ¡ÂºÂ£i cÃƒÂ³ ÃƒÂ­t nhÃ¡ÂºÂ¥t 6 kÃƒÂ½ tÃ¡Â»Â±",
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự",
       },
     };
   }
@@ -32,7 +33,7 @@ export const changePasswordForUser = async ({
   if (newPassword !== confirmPassword) {
     return {
       status: 400,
-      body: { message: "confirmPassword khÃƒÂ´ng khÃ¡Â»â€ºp vÃ¡Â»â€ºi newPassword" },
+      body: { message: "confirmPassword không khớp với newPassword" },
     };
   }
 
@@ -40,7 +41,7 @@ export const changePasswordForUser = async ({
   if (!user) {
     return {
       status: 404,
-      body: { message: "NgÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng khÃƒÂ´ng tÃ¡Â»â€œn tÃ¡ÂºÂ¡i" },
+      body: { message: "Người dùng không tồn tại" },
     };
   }
 
@@ -48,7 +49,7 @@ export const changePasswordForUser = async ({
   if (!isCorrect) {
     return {
       status: 401,
-      body: { message: "MÃ¡ÂºÂ­t khÃ¡ÂºÂ©u hiÃ¡Â»â€¡n tÃ¡ÂºÂ¡i khÃƒÂ´ng Ã„â€˜ÃƒÂºng" },
+      body: { message: "Mật khẩu hiện tại không đúng" },
     };
   }
 
@@ -57,7 +58,7 @@ export const changePasswordForUser = async ({
     return {
       status: 400,
       body: {
-        message: "MÃ¡ÂºÂ­t khÃ¡ÂºÂ©u mÃ¡Â»â€ºi khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c trÃƒÂ¹ng mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u cÃ…Â©",
+        message: "Mật khẩu mới không được trùng mật khẩu cũ",
       },
     };
   }
@@ -75,16 +76,16 @@ export const changePasswordForUser = async ({
   return {
     status: 200,
     body: {
-      message:
-        "Ã„ÂÃ¡Â»â€¢i mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u thÃƒÂ nh cÃƒÂ´ng! Vui lÃƒÂ²ng Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p lÃ¡ÂºÂ¡i.",
+      message: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
     },
   };
 };
 
+// Yêu cầu xóa tài khoản cho người dùng đã xác thực
 export const requestAuthenticatedAccountDeletion = async ({ userId }) => {
   const user = await User.findById(userId);
   if (!user) {
-    return { status: 404, body: { message: "KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng." } };
+    return { status: 404, body: { message: "Không tìm thấy người dùng." } };
   }
 
   const deletion = await sendAccountDeletionCodeForUser(user, {
@@ -104,7 +105,12 @@ export const requestAuthenticatedAccountDeletion = async ({ userId }) => {
   return { status: 200, body: deletion.payload };
 };
 
-export const confirmAuthenticatedAccountDeletion = async ({ user, body, res }) => {
+// Xác nhận xóa tài khoản cho người dùng đã xác thực
+export const confirmAuthenticatedAccountDeletion = async ({
+  user,
+  body,
+  res,
+}) => {
   const result = await deleteMyAccountCommand({ user, body });
   if (result.error) {
     return {

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// Schema cho người tham gia trong cuộc trò chuyện, bao gồm ID người dùng và thời gian tham gia
 const participantSchema = new mongoose.Schema(
   {
     userId: {
@@ -17,6 +18,7 @@ const participantSchema = new mongoose.Schema(
   }
 );
 
+// Schema cho thông tin nhóm trong cuộc trò chuyện nhóm
 const groupSchema = new mongoose.Schema(
   {
     name: {
@@ -41,6 +43,7 @@ const groupSchema = new mongoose.Schema(
   }
 );
 
+// Schema để theo dõi trạng thái đã xóa của người dùng trong cuộc trò chuyện
 const clearedStateSchema = new mongoose.Schema(
   {
     userId: {
@@ -58,6 +61,7 @@ const clearedStateSchema = new mongoose.Schema(
   }
 );
 
+// Schema cho tin nhắn cuối cùng trong cuộc trò chuyện, bao gồm nội dung, người gửi và thời gian tạo
 const lastMessageSchema = new mongoose.Schema(
   {
     _id: { type: String },
@@ -96,6 +100,10 @@ const lastMessageSchema = new mongoose.Schema(
   }
 );
 
+// Schema chính cho Conversation, bao gồm loại cuộc trò chuyện, 
+// người tham gia, thông tin nhóm (nếu là cuộc trò chuyện nhóm), 
+// trạng thái tin nhắn cuối cùng, số lượng 
+// tin nhắn chưa đọc và các trường liên quan đến hỗ trợ khách hàng.
 const conversationSchema = new mongoose.Schema(
   {
     type: {
@@ -165,6 +173,7 @@ const conversationSchema = new mongoose.Schema(
   }
 );
 
+// Index để tối ưu hóa truy vấn cho các cuộc trò chuyện trực tiếp và nhóm, dựa trên ID người tham gia và thời gian tin nhắn cuối cùng
 conversationSchema.index({
   "participants.userId": 1,
   lastMessageAt: -1,
@@ -177,16 +186,19 @@ conversationSchema.index({
   lastMessageAt: -1,
 });
 
+// Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên người tạo và loại cuộc trò chuyện
 conversationSchema.index({
   supportCreatedByUserId: 1,
   type: 1,
 });
 
+// Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên người được giao và trạng thái hỗ trợ
 conversationSchema.index({
   assignedAdminId: 1,
   supportStatus: 1,
 });
 
+// Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên trạng thái đã xóa của người dùng
 const Conversation = mongoose.model("Conversation", conversationSchema);
 
 export default Conversation;

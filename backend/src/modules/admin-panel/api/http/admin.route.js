@@ -44,6 +44,8 @@ import {
 } from "./admin-role.controller.js";
 import { createRouteModule, defineRoute } from "../../../../shared/api/http/route-adapter.js";
 
+
+// Khai báo tất cả các route của admin panel ở đây, bao gồm cả middleware bảo vệ và phân quyền
 export default createRouteModule({
   routerMiddlewares: [protectedRoute, requireAdmin],
   routes: [

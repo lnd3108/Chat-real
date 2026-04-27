@@ -7,17 +7,22 @@ import {
   sendVerificationCodeEmail,
 } from "../infrastructure/auth-mail.service.js";
 
+// TTL: Time To Live (thời gian tồn tại) của mã xác minh email và mã xác minh xóa tài khoản
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_TOKEN_TTL = "10m";
 const EMAIL_RESEND_COOLDOWN_MS = 60 * 1000;
 const ACCOUNT_DELETION_CODE_TTL_MS = 5 * 60 * 1000;
 const ACCOUNT_DELETION_RESEND_COOLDOWN_MS = 60 * 1000;
 
-const generateEmailCode = () => String(Math.floor(100000 + Math.random() * 900000));
+// Hàm tạo mã xác minh email ngẫu nhiên
+const generateEmailCode = () =>
+  String(Math.floor(100000 + Math.random() * 900000));
 
+// Hàm băm mã xác minh email để lưu vào cơ sở dữ liệu
 const hashEmailCode = (code) =>
   crypto.createHash("sha256").update(code).digest("hex");
 
+// Hàm xác minh token email và lấy payload
 export const createPendingVerificationToken = (user, purpose) =>
   jwt.sign(
     {
@@ -30,6 +35,7 @@ export const createPendingVerificationToken = (user, purpose) =>
     { expiresIn: EMAIL_TOKEN_TTL },
   );
 
+// Hàm xử lý gửi mã xác minh email cho người dùng
 export const buildPendingVerificationResponse = (user, purpose, message) => ({
   requiresEmailVerification: true,
   verificationToken: createPendingVerificationToken(user, purpose),
@@ -41,12 +47,15 @@ export const buildPendingVerificationResponse = (user, purpose, message) => ({
   message,
 });
 
+// Hàm kiểm tra xem người dùng có thể gửi lại mã xác minh email hay không dựa trên thời gian cooldown
 const canResendVerification = (user) => {
+  // Nếu chưa từng gửi mã xác minh, cho phép gửi
   const lastSentAt = user.emailVerificationLastSentAt?.getTime?.();
   if (!lastSentAt) {
     return { ok: true, resendAvailableAt: Date.now() };
   }
 
+  // Tính toán thời điểm có thể gửi lại mã xác minh dựa trên thời gian cooldown
   const resendAvailableAt = lastSentAt + EMAIL_RESEND_COOLDOWN_MS;
   if (Date.now() < resendAvailableAt) {
     return { ok: false, resendAvailableAt };
@@ -55,6 +64,7 @@ const canResendVerification = (user) => {
   return { ok: true, resendAvailableAt };
 };
 
+// Hàm lưu mã xác minh email đã được băm vào cơ sở dữ liệu cùng với thời gian hết hạn và thời gian gửi lần cuối
 const persistVerificationCode = async (user) => {
   const code = generateEmailCode();
   user.emailVerificationCodeHash = hashEmailCode(code);
@@ -64,12 +74,15 @@ const persistVerificationCode = async (user) => {
   return code;
 };
 
+// Hàm kiểm tra xem người dùng có thể gửi lại mã xác minh xóa tài khoản hay không dựa trên thời gian cooldown
 const canResendAccountDeletionCode = (user) => {
+  // Nếu chưa từng gửi mã xác minh xóa tài khoản, cho phép gửi
   const lastSentAt = user.accountDeletionLastSentAt?.getTime?.();
   if (!lastSentAt) {
     return { ok: true, resendAvailableAt: Date.now() };
   }
 
+  // Tính toán thời điểm có thể gửi lại mã xác minh xóa tài khoản dựa trên thời gian cooldown
   const resendAvailableAt = lastSentAt + ACCOUNT_DELETION_RESEND_COOLDOWN_MS;
   if (Date.now() < resendAvailableAt) {
     return { ok: false, resendAvailableAt };
@@ -78,6 +91,7 @@ const canResendAccountDeletionCode = (user) => {
   return { ok: true, resendAvailableAt };
 };
 
+// Hàm lưu mã xác minh xóa tài khoản đã được băm vào cơ sở dữ liệu cùng với thời gian hết hạn và thời gian gửi lần cuối
 const persistAccountDeletionCode = async (user) => {
   const code = generateEmailCode();
   user.accountDeletionCodeHash = hashEmailCode(code);
@@ -89,6 +103,7 @@ const persistAccountDeletionCode = async (user) => {
   return code;
 };
 
+// Hàm xóa trạng thái yêu cầu xóa tài khoản của người dùng
 const clearAccountDeletionState = async (user) => {
   user.accountDeletionCodeHash = undefined;
   user.accountDeletionExpiresAt = undefined;
@@ -96,13 +111,15 @@ const clearAccountDeletionState = async (user) => {
   await user.save();
 };
 
+// Hàm kiểm tra xem người dùng có đang có yêu cầu xóa tài khoản nào đang chờ xử lý hay không
 const hasActiveAccountDeletionRequest = (user) =>
   Boolean(
     user.accountDeletionCodeHash &&
-      user.accountDeletionExpiresAt &&
-      user.accountDeletionExpiresAt > new Date(),
+    user.accountDeletionExpiresAt &&
+    user.accountDeletionExpiresAt > new Date(),
   );
 
+// Hàm xác minh token email và lấy payload
 export const buildAccountDeletionResponse = (user, message) => ({
   message,
   email: user.email,
@@ -114,11 +131,13 @@ export const buildAccountDeletionResponse = (user, message) => ({
     ACCOUNT_DELETION_RESEND_COOLDOWN_MS,
 });
 
+// Hàm trao đổi mã code lấy từ Google để lấy access token và ID token
 const getVerificationMessage = (purpose) =>
   purpose === "signup"
-    ? "ÄÃ£ gá»­i mÃ£ xÃ¡c minh tá»›i email cá»§a báº¡n. Vui lÃ²ng xÃ¡c minh trÆ°á»›c khi Ä‘Äƒng nháº­p."
-    : "ÄÃ£ gá»­i mÃ£ xÃ¡c minh tá»›i Gmail cá»§a báº¡n.";
+    ? "Đã gửi mã xác minh tới email của bạn. Vui lòng xác minh trước khi đăng nhập."
+    : "Đã gửi mã xác minh tới Gmail của bạn.";
 
+// Hàm trao đổi mã code lấy từ Google để lấy access token và ID token
 export const sendEmailVerificationForUser = async (
   user,
   purpose,
@@ -128,7 +147,7 @@ export const sendEmailVerificationForUser = async (
     return {
       ok: false,
       status: 500,
-      message: "Há»‡ thá»‘ng chÆ°a cáº¥u hÃ¬nh SMTP Ä‘á»ƒ gá»­i mÃ£ xÃ¡c minh email.",
+      message: "Hệ thống chưa cấu hình SMTP để gửi mã xác minh email.",
     };
   }
 
@@ -138,7 +157,7 @@ export const sendEmailVerificationForUser = async (
       return {
         ok: false,
         status: 429,
-        message: "Báº¡n chá»‰ cÃ³ thá»ƒ gá»­i láº¡i mÃ£ sau 60 giÃ¢y.",
+        message: "Bạn chỉ có thể gửi lại mã sau 60 giây.",
         resendAvailableAt: cooldown.resendAvailableAt,
       };
     }
@@ -161,18 +180,20 @@ export const sendEmailVerificationForUser = async (
   };
 };
 
+// Hàm tiện ích để lấy payload từ ID token của Google
 export const sendAccountDeletionCodeForUser = async (
   user,
   options = { ignoreCooldown: false },
 ) => {
+  // Kiểm tra xem hệ thống đã cấu hình SMTP để gửi email xác minh xóa tài khoản chưa
   if (!isMailConfigured()) {
     return {
       ok: false,
       status: 500,
-      message: "Há»‡ thá»‘ng chÆ°a cáº¥u hÃ¬nh SMTP Ä‘á»ƒ gá»­i mÃ£ xÃ¡c minh xÃ³a tÃ i khoáº£n.",
+      message: "Hệ thống chưa cấu hình SMTP để gửi mã xác minh xóa tài khoản.",
     };
   }
-
+  // Kiểm tra xem người dùng có thể gửi lại mã xác minh xóa tài khoản hay không dựa trên thời gian cooldown
   if (
     user.accountDeletionExpiresAt &&
     user.accountDeletionExpiresAt <= new Date() &&
@@ -188,24 +209,26 @@ export const sendAccountDeletionCodeForUser = async (
         ok: true,
         payload: buildAccountDeletionResponse(
           user,
-          "Báº¡n Ä‘ang cÃ³ má»™t yÃªu cáº§u xÃ³a tÃ i khoáº£n chÆ°a hoÃ n táº¥t. Vui lÃ²ng nháº­p mÃ£ xÃ¡c minh hoáº·c chá» trÆ°á»›c khi gá»­i láº¡i mÃ£.",
+          "Bạn đang có một yêu cầu xóa tài khoản chưa hoàn tất. Vui lòng nhập mã xác minh hoặc chờ trước khi gửi lại mã.",
         ),
       };
     }
   }
 
+  // Nếu có thể gửi lại mã xác minh xóa tài khoản, tạo mã mới, lưu vào cơ sở dữ liệu và gửi email cho người dùng
   if (!options.ignoreCooldown) {
     const cooldown = canResendAccountDeletionCode(user);
     if (!cooldown.ok) {
       return {
         ok: false,
         status: 429,
-        message: "Báº¡n chá»‰ cÃ³ thá»ƒ gá»­i láº¡i mÃ£ sau 60 giÃ¢y.",
+        message: "Bạn chỉ có thể gửi lại mã sau 60 giây.",
         resendAvailableAt: cooldown.resendAvailableAt,
       };
     }
   }
 
+  // Tạo mã xác minh xóa tài khoản mới, lưu vào cơ sở dữ liệu và gửi email cho người dùng
   const code = await persistAccountDeletionCode(user);
   await sendAccountDeletionCodeEmail({
     email: user.email,
@@ -213,28 +236,40 @@ export const sendAccountDeletionCodeForUser = async (
     displayName: user.displayName,
   });
 
+  // Trả về phản hồi thành công cùng với thông tin về mã xác minh xóa tài khoản đã được gửi
   return {
     ok: true,
     payload: buildAccountDeletionResponse(
       user,
-      "ÄÃ£ gá»­i mÃ£ xÃ¡c minh xÃ³a tÃ i khoáº£n tá»›i email cá»§a báº¡n. MÃ£ cÃ³ hiá»‡u lá»±c trong 5 phÃºt.",
+      "Đã gửi mã xác minh xóa tài khoản tới email của bạn. Mã có hiệu lực trong 5 phút.",
     ),
   };
 };
 
+// Hàm tiện ích để lấy payload từ ID token của Google
 export const verifyPendingToken = (token) => {
   try {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     if (decoded.type !== "email-verification") {
-      return { ok: false, status: 401, message: "Sai loáº¡i verification token." };
+      return {
+        ok: false,
+        status: 401,
+        message: "Sai loại verification token.",
+      };
     }
 
     return { ok: true, decoded };
   } catch {
-    return { ok: false, status: 401, message: "Verification token khÃ´ng há»£p lá»‡." };
+    return {
+      ok: false,
+      status: 401,
+      message: "Verification token không hợp lệ.",
+    };
   }
 };
 
+// Hàm tiện ích để lấy payload từ ID token của Google
 export const hashVerificationCode = hashEmailCode;
 
+// Hàm tiện ích để lấy payload từ ID token của Google
 export const getUserById = (userId) => User.findById(userId);

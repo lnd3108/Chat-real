@@ -17,6 +17,7 @@ import {
 import { protectedRoute } from "../../../identity/api/http/auth.middleware.js";
 import { createRouteModule, defineRoute } from "../../../../shared/api/http/route-adapter.js";
 
+// Xử lý các route
 export default createRouteModule({
   routes: [
     defineRoute("post", "/signup", signUp),

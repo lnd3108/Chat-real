@@ -23,6 +23,8 @@ import {
   syncBlockingDocumentsFromEmbeddedState,
 } from "../../../services/adminQueryHelpers.js";
 
+/// Các hàm tiện ích cho Admin Panel
+// Giới hạn số ngày để tránh truy vấn quá lớn
 const clampDashboardDays = (value, fallback = 7) => {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -31,6 +33,7 @@ const clampDashboardDays = (value, fallback = 7) => {
   return 30;
 };
 
+// Lấy ngày bắt đầu của khoảng thời gian dựa trên số ngày mong muốn
 const getDateRangeStart = (days) => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -38,6 +41,7 @@ const getDateRangeStart = (days) => {
   return start;
 };
 
+// Xây dựng các bucket ngày cho biểu đồ, đảm bảo có đủ bucket cho mỗi ngày trong khoảng thời gian
 const buildDateBuckets = (days) => {
   const start = getDateRangeStart(days);
   return Array.from({ length: days }, (_, index) => {
@@ -54,11 +58,14 @@ const buildDateBuckets = (days) => {
   });
 };
 
+// Ánh xạ thông tin cuộc trò chuyện cho admin, bao gồm cả số lượng tin nhắn và thông tin block nếu là direct chat
 const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
   _id: conversation._id,
   type: conversation.type,
   groupName:
-    conversation.type === "group" ? (conversation.group?.name ?? "NhÃ³m") : null,
+    conversation.type === "group"
+      ? (conversation.group?.name ?? "NhÃ³m")
+      : null,
   membersCount: Array.isArray(conversation.participants)
     ? conversation.participants.length
     : 0,
@@ -68,6 +75,7 @@ const mapAdminConversationSummary = (conversation, messagesCount = 0) => ({
   createdAt: conversation.createdAt,
 });
 
+// Xác định thứ tự sắp xếp cho cuộc trò chuyện dựa trên tham số sort
 const getAdminConversationSort = (sort = "updatedAt-desc") => {
   switch (sort) {
     case "createdAt-asc":
@@ -82,6 +90,7 @@ const getAdminConversationSort = (sort = "updatedAt-desc") => {
   }
 };
 
+// Xây dựng bộ lọc cho truy vấn cuộc trò chuyện trong admin panel, hỗ trợ lọc theo loại và tìm kiếm theo tên người dùng hoặc tên nhóm
 const buildAdminConversationFilter = async ({ type = "", q = "" }) => {
   const filter = {
     type: { $in: ["direct", "group"] },
@@ -123,6 +132,9 @@ const buildAdminConversationFilter = async ({ type = "", q = "" }) => {
   return filter;
 };
 
+// Lấy số lượng tin nhắn cho mỗi cuộc trò chuyện trong
+// danh sách cuộc trò chuyện của admin panel,
+// sử dụng aggregation để đếm số lượng tin nhắn theo conversationId
 const getMessagesCountMap = async (conversationIds = []) => {
   if (!conversationIds.length) {
     return new Map();
@@ -145,6 +157,8 @@ const getMessagesCountMap = async (conversationIds = []) => {
   return new Map(counts.map((item) => [item._id.toString(), item.count]));
 };
 
+// Kiểm tra trạng thái block trực tiếp giữa hai người
+// dùng trong cuộc trò chuyện direct, trả về thông tin ai block ai và ghi chú cho admin
 const getDirectBlockStatusForAdmin = async (participantIds = []) => {
   if (participantIds.length !== 2) {
     return null;
@@ -178,14 +192,19 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
   };
 };
 
-const parsePage = (value, fallback = 1) => Number.parseInt(value, 10) || fallback;
-const parseLimit = (value, fallback = 20) => Number.parseInt(value, 10) || fallback;
+// Các hàm tiện ích khác như parsePage và parseLimit để đảm bảo giá trị hợp lệ cho phân trang
+const parsePage = (value, fallback = 1) =>
+  Number.parseInt(value, 10) || fallback;
+const parseLimit = (value, fallback = 20) =>
+  Number.parseInt(value, 10) || fallback;
 
+//Các hàm lấy dữ liệu chính của biểu đồ
 export const getDashboardUserChartData = async ({ days: daysValue }) => {
   const days = clampDashboardDays(daysValue, 7);
   const startDate = getDateRangeStart(days);
   const buckets = buildDateBuckets(days);
 
+  // Đếm số lượng người dùng mới theo ngày
   const rows = await User.aggregate([
     { $match: { createdAt: { $gte: startDate } } },
     {
@@ -202,6 +221,7 @@ export const getDashboardUserChartData = async ({ days: daysValue }) => {
     { $sort: { _id: 1 } },
   ]);
 
+  // Tạo một Map để dễ dàng tra cứu số lượng người dùng mới theo ngày
   const rowMap = new Map(rows.map((row) => [row._id, row.total]));
 
   return {
@@ -214,11 +234,13 @@ export const getDashboardUserChartData = async ({ days: daysValue }) => {
   };
 };
 
+// lấy dữ liệu cho biểu đồ tin nhắn, đếm số lượng tin nhắn mới theo ngày
 export const getDashboardMessageChartData = async ({ days: daysValue }) => {
   const days = clampDashboardDays(daysValue, 7);
   const startDate = getDateRangeStart(days);
   const buckets = buildDateBuckets(days);
 
+  // Đếm số lượng tin nhắn mới theo ngày, phân loại theo loại cuộc trò chuyện (direct, group, support)
   const rows = await Message.aggregate([
     { $match: { createdAt: { $gte: startDate } } },
     {
@@ -252,6 +274,7 @@ export const getDashboardMessageChartData = async ({ days: daysValue }) => {
     { $sort: { "_id.date": 1 } },
   ]);
 
+  // map mới tra cứu số lượng tin nhắn mới theo ngày
   const rowMap = new Map(
     rows.map((row) => [`${row._id.date}:${row._id.type}`, row.total]),
   );
@@ -275,6 +298,7 @@ export const getDashboardMessageChartData = async ({ days: daysValue }) => {
   };
 };
 
+// dữ liệu biểu đồ báo cáo
 export const getDashboardReportChartData = async () => {
   const rows = await Report.aggregate([
     {
@@ -285,18 +309,37 @@ export const getDashboardReportChartData = async () => {
     },
   ]);
 
+  // tạo map để tra cứu số lượng báo cáo theo trạng thái
   const rowMap = new Map(rows.map((row) => [row._id, row.total]));
 
+  // trả về dữ liệu cho biểu đồ báo cáo, với các trạng thái phổ biến và số lượng tương ứng
   return {
     items: [
-      { status: "pending", label: "Chá» xá»­ lÃ½", total: rowMap.get("pending") ?? 0 },
-      { status: "reviewing", label: "Äang xem xÃ©t", total: rowMap.get("reviewing") ?? 0 },
-      { status: "resolved", label: "ÄÃ£ xá»­ lÃ½", total: rowMap.get("resolved") ?? 0 },
-      { status: "rejected", label: "Tá»« chá»‘i", total: rowMap.get("rejected") ?? 0 },
+      {
+        status: "pending",
+        label: "Chờ xử lý",
+        total: rowMap.get("pending") ?? 0,
+      },
+      {
+        status: "reviewing",
+        label: "Đang xem xét",
+        total: rowMap.get("reviewing") ?? 0,
+      },
+      {
+        status: "resolved",
+        label: "Đã xử lý",
+        total: rowMap.get("resolved") ?? 0,
+      },
+      {
+        status: "rejected",
+        label: "Từ chối",
+        total: rowMap.get("rejected") ?? 0,
+      },
     ],
   };
 };
 
+// dữ liệu biểu đồ hỗ trợ, đếm số lượng cuộc trò chuyện hỗ trợ theo trạng thái
 export const getDashboardSupportChartData = async () => {
   const rows = await Conversation.aggregate([
     { $match: { type: "support" } },
@@ -312,14 +355,23 @@ export const getDashboardSupportChartData = async () => {
 
   return {
     items: [
-      { status: "open", label: "Má»Ÿ", total: rowMap.get("open") ?? 0 },
-      { status: "in_progress", label: "Äang xá»­ lÃ½", total: rowMap.get("in_progress") ?? 0 },
-      { status: "resolved", label: "ÄÃ£ giáº£i quyáº¿t", total: rowMap.get("resolved") ?? 0 },
-      { status: "closed", label: "ÄÃ³ng", total: rowMap.get("closed") ?? 0 },
+      { status: "open", label: "Mở", total: rowMap.get("open") ?? 0 },
+      {
+        status: "in_progress",
+        label: "Đang xử lý",
+        total: rowMap.get("in_progress") ?? 0,
+      },
+      {
+        status: "resolved",
+        label: "Đã giải quyết",
+        total: rowMap.get("resolved") ?? 0,
+      },
+      { status: "closed", label: "Đóng", total: rowMap.get("closed") ?? 0 },
     ],
   };
 };
 
+// Các hàm truy vấn dữ liệu cho các trang quản lý trong admin panel, hỗ trợ phân trang, lọc và sắp xếp
 export const getFriendRequestsAdminQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -329,6 +381,7 @@ export const getFriendRequestsAdminQuery = async ({ query }) => {
   const sort = query.sort || "createdAt-desc";
   const filter = await buildAdminFriendRequestFilter({ q, status });
 
+  // danh sách yê cầu kết bạn, thông tin người gửi, người nhận
   const requests = await FriendRequest.find(filter)
     .populate("from", "displayName userName email avatarUrl")
     .populate("to", "displayName userName email avatarUrl")
@@ -349,6 +402,7 @@ export const getFriendRequestsAdminQuery = async ({ query }) => {
   };
 };
 
+// danh sách bạn bè, thông tin người A, người B, hỗ trợ phân trang, lọc theo tìm kiếm và sắp xếp
 export const getFriendshipsAdminQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -377,6 +431,7 @@ export const getFriendshipsAdminQuery = async ({ query }) => {
   };
 };
 
+// danh sách cuộc trò chuyện 
 export const getConversationsAdminQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -411,11 +466,13 @@ export const getConversationsAdminQuery = async ({ query }) => {
   };
 };
 
+// danh sách tin nhắn, thông tin người gửi, cuộc trò chuyện, hỗ trợ phân trang, lọc theo tìm kiếm và sắp xếp
 export const getAdminMessagesQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
   const skip = (page - 1) * limit;
 
+  // danh sách tin nhắn, ....
   const messages = await Message.find()
     .populate("senderId", "displayName userName email avatarUrl")
     .populate("conversationId", "conversationName conversationType")
@@ -436,6 +493,7 @@ export const getAdminMessagesQuery = async ({ query }) => {
   };
 };
 
+// danh sách người bị chặn và thông tin 
 export const getAdminBlockedUsersQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -461,13 +519,14 @@ export const getAdminBlockedUsersQuery = async ({ query }) => {
   };
 };
 
+// chi tiết cuộc trò chuyện 
 export const getConversationDetailAdminQuery = async ({ conversationId }) => {
   const conversation = await Conversation.findById(conversationId)
     .populate("participants.userId", "displayName userName email avatarUrl")
     .populate("group.createdBy", "displayName userName email avatarUrl");
 
   if (!conversation) {
-    const error = new Error("Cuá»™c trÃ² chuyá»‡n khÃ´ng tá»“n táº¡i.");
+    const error = new Error("Cuộc trò chuyện không tồn tại.");
     error.status = 404;
     throw error;
   }
@@ -496,7 +555,9 @@ export const getConversationDetailAdminQuery = async ({ conversationId }) => {
       _id: conversation._id,
       type: conversation.type,
       groupName:
-        conversation.type === "group" ? (conversation.group?.name ?? "NhÃ³m") : null,
+        conversation.type === "group"
+          ? (conversation.group?.name ?? "Nhóm")
+          : null,
       creator:
         conversation.type === "group" && conversation.group?.createdBy
           ? {
@@ -516,12 +577,13 @@ export const getConversationDetailAdminQuery = async ({ conversationId }) => {
       directBlockStatus,
       note:
         conversation.type === "group"
-          ? "Group chat váº«n hoáº¡t Ä‘á»™ng bÃ¬nh thÆ°á»ng ká»ƒ cáº£ khi má»™t sá»‘ thÃ nh viÃªn block nhau á»Ÿ direct."
-          : "Block status á»Ÿ Ä‘Ã¢y chá»‰ pháº£n Ã¡nh direct 1-1 giá»¯a hai thÃ nh viÃªn.",
+          ? "Group chat vẫn hoạt động bình thường kể cả khi một số thành viên block nhau ở direct."
+          : "Block status ở đây chỉ phản ánh direct 1-1 giữa hai thành viên.",
     },
   };
 };
 
+// danh sách quan hệ block
 export const getBlocksAdminQuery = async ({ query }) => {
   await syncBlockingDocumentsFromEmbeddedState();
 
@@ -551,10 +613,11 @@ export const getBlocksAdminQuery = async ({ query }) => {
       pages: Math.ceil(total / limit),
     },
     auditNote:
-      "Block relation chá»‰ Ã¡p dá»¥ng cho direct 1-1. Group chat khÃ´ng bá»‹ áº£nh hÆ°á»Ÿng.",
+      "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
   };
 };
 
+// chi tiết quan hệ block
 export const getBlockDetailAdminQuery = async ({ blockId }) => {
   await syncBlockingDocumentsFromEmbeddedState();
 
@@ -563,7 +626,7 @@ export const getBlockDetailAdminQuery = async ({ blockId }) => {
     .populate("blockedUserId", "displayName userName email avatarUrl");
 
   if (!block) {
-    const error = new Error("Quan he chan khong ton tai.");
+    const error = new Error("Quan hệ chặn không tồn tại.");
     error.status = 404;
     throw error;
   }
@@ -571,23 +634,24 @@ export const getBlockDetailAdminQuery = async ({ blockId }) => {
   return {
     block: mapAdminBlockRelation(block),
     auditNote:
-      "Block relation chá»‰ Ã¡p dá»¥ng cho direct 1-1. Group chat khÃ´ng bá»‹ áº£nh hÆ°á»Ÿng.",
+      "Block relation chỉ áp dụng cho direct 1-1. Group chat không bị ảnh hưởng.",
   };
 };
 
+// bỏ chặn một quan hệ block 
 export const unblockBlockRelationAsAdminCommand = async ({ blockId }) => {
   const currentBlock = await Blocking.findById(blockId).select(
     "userId blockedUserId isActive",
   );
 
   if (!currentBlock) {
-    const error = new Error("Quan he chan khong ton tai.");
+    const error = new Error("Quan hệ chặn không tồn tại.");
     error.status = 404;
     throw error;
   }
 
   if (currentBlock.isActive === false) {
-    const error = new Error("Quan he chan nay da o trang thai inactive.");
+    const error = new Error("Quan hệ chặn này đã ở trạng thái inactive.");
     error.status = 400;
     throw error;
   }
@@ -624,19 +688,24 @@ export const unblockBlockRelationAsAdminCommand = async ({ blockId }) => {
   };
 };
 
+// cập nhật vai trò người dùng, chỉ cho phép "user" hoặc "admin"
 export const updateUserRoleLegacyCommand = async ({ userId, role }) => {
   if (!["user", "admin"].includes(role)) {
-    const error = new Error("Role khÃ´ng há»£p lá»‡");
+    const error = new Error("Role không hợp lệ");
     error.status = 400;
     throw error;
   }
 
-  const user = await User.findByIdAndUpdate(userId, { role }, { new: true }).select(
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { role },
+    { new: true },
+  ).select(
     "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
   );
 
   if (!user) {
-    const error = new Error("NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i");
+    const error = new Error("Người dùng không tồn tại");
     error.status = 404;
     throw error;
   }

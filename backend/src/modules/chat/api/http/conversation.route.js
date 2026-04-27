@@ -23,6 +23,8 @@ import {
   removeGroupMemberSchema,
 } from "../../../../libs/validation.js";
 
+// TODO: add pagination for messages and conversations
+// hàm tạo route 
 export default createRouteModule({
   routerMiddlewares: [protectedRoute],
   routes: [

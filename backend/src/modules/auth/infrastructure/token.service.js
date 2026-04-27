@@ -39,7 +39,7 @@ export const createSession = async (userId, res) => {
 };
 
 export const buildAuthResponse = (user, accessToken) => ({
-  message: `NgÆ°á»i dÃ¹ng ${user.displayName} Ä‘Ã£ Ä‘Äƒng nháº­p`,
+  message: `Người dùng ${user.displayName} đã đăng nhập`,
   accessToken,
   user: sanitizeAuthResponse(user),
 });

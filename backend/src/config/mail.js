@@ -1,3 +1,4 @@
+// Cấu hình mail server
 export const getMailConfig = () => ({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT || 587),

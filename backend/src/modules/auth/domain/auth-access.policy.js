@@ -1,6 +1,7 @@
 export const isUserBanned = (user) => user?.status === "banned";
 
+// thông báo khi tài khoản bị khóa
 export const buildBannedResponse = () => ({
   code: "ACCOUNT_BANNED",
-  message: "TÃƒÂ i khoÃ¡ÂºÂ£n cÃ¡Â»Â§a bÃ¡ÂºÂ¡n Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ khÃƒÂ³a.",
+  message: "Tài khoản của bạn đã bị khóa.",
 });

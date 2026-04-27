@@ -34,6 +34,7 @@ import {
   requestAuthenticatedAccountDeletion,
 } from "../../application/account-management.command-service.js";
 
+// Các controller cho các endpoint liên quan đến xác thực và quản lý tài khoản
 export const signUp = makeCommandHandler({
   execute: (req) => signUpUser(parseBody(signUpSchema, req.body)),
   present: presentCommandResult,
@@ -44,6 +45,7 @@ export const signUp = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint đăng nhập, sử dụng schema để validate dữ liệu đầu vào
 export const signIn = makeCommandHandler({
   execute: (req, res) =>
     signInUser({
@@ -58,6 +60,7 @@ export const signIn = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint bắt đầu quá trình đăng nhập bằng Google OAuth
 export const startGoogleAuth = makeCommandHandler({
   execute: async () => {
     if (
@@ -66,9 +69,7 @@ export const startGoogleAuth = makeCommandHandler({
       !process.env.GOOGLE_CALLBACK_URL
     ) {
       throw Object.assign(
-        new Error(
-          "Google OAuth chưa được cấu hình đầy đủ.",
-        ),
+        new Error("Google OAuth chưa được cấu hình đầy đủ."),
         { status: 500 },
       );
     }
@@ -82,6 +83,7 @@ export const startGoogleAuth = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint callback sau khi người dùng đăng nhập thành công qua Google OAuth
 export const googleCallback = makeCommandHandler({
   execute: (req, res) =>
     signInWithGoogle({
@@ -95,6 +97,7 @@ export const googleCallback = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint xác minh email bằng mã OTP
 export const verifyEmailCode = makeCommandHandler({
   execute: (req, res) =>
     verifyEmailWithCode({
@@ -109,6 +112,7 @@ export const verifyEmailCode = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint gửi lại mã xác minh email
 export const resendVerificationCode = makeCommandHandler({
   execute: (req) =>
     resendEmailVerification({
@@ -121,6 +125,7 @@ export const resendVerificationCode = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint bắt đầu quá trình quên mật khẩu
 export const forgotPassword = makeCommandHandler({
   execute: async (req) => ({
     payload: await requestPasswordReset({
@@ -135,6 +140,7 @@ export const forgotPassword = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint xác minh mã OTP đặt lại mật khẩu
 export const verifyForgotPasswordOtp = makeCommandHandler({
   execute: async (req) => ({
     payload: await verifyPasswordResetOtp({
@@ -149,6 +155,7 @@ export const verifyForgotPasswordOtp = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint đặt lại mật khẩu sau khi đã xác minh mã OTP thành công
 export const resetForgottenPassword = makeCommandHandler({
   execute: async (req, res) => {
     const payload = await resetPasswordWithVerifiedOtp({
@@ -170,6 +177,7 @@ export const resetForgottenPassword = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint đăng xuất, xóa cookie và token liên quan đến phiên đăng nhập
 export const signOut = makeCommandHandler({
   execute: (req, res) =>
     signOutUser({
@@ -184,6 +192,7 @@ export const signOut = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint làm mới token, sử dụng refresh token từ cookie để cấp lại access token mới
 export const refreshToken = makeCommandHandler({
   execute: (req, res) =>
     refreshAccessToken({
@@ -197,6 +206,7 @@ export const refreshToken = makeCommandHandler({
   }),
 });
 
+// Controller cho endpoint đổi mật khẩu, yêu cầu người dùng đã xác thực và cung cấp mật khẩu hiện tại cùng mật khẩu mới
 export const changePassword = makeCommandHandler({
   execute: (req, res) =>
     changePasswordForUser({
@@ -213,6 +223,7 @@ export const changePassword = makeCommandHandler({
   }),
 });
 
+// yêu cầu xóa tài khoản, chỉ cho phép ng dùng đã xác thực gửi yêu cầu
 export const requestAccountDeletion = makeCommandHandler({
   execute: (req) =>
     requestAuthenticatedAccountDeletion({
@@ -221,11 +232,11 @@ export const requestAccountDeletion = makeCommandHandler({
   present: presentCommandResult,
   onError: makeServerErrorHandler({
     logMessage: "Lỗi requestAccountDeletion",
-    message:
-      "Không thể bắt đầu yêu cầu xóa tài khoản.",
+    message: "Không thể bắt đầu yêu cầu xóa tài khoản.",
   }),
 });
 
+// xác nhận xóa tài khoản
 export const confirmAccountDeletion = makeCommandHandler({
   execute: (req, res) =>
     confirmAuthenticatedAccountDeletion({

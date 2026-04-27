@@ -17,6 +17,7 @@ import {
 } from "../../../services/otpService.js";
 import { isMailConfigured } from "../infrastructure/auth-mail.service.js";
 
+// Các thông báo chung
 const GENERIC_FORGOT_PASSWORD_MESSAGE =
   "Nếu email hợp lệ trong hệ thống, mã xác nhận đã được gửi.";
 const GENERIC_VERIFY_OTP_MESSAGE =
@@ -25,17 +26,20 @@ const INVALID_RESET_TOKEN_MESSAGE =
   "Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng thực hiện lại từ đầu.";
 const PASSWORD_RESET_MAX_SENDS_PER_IP_PER_HOUR = 20;
 
+// Hàm tiện ích để tạo lỗi với cấu trúc thống nhất
 const forgotPasswordSchemaError = (message, extra = {}) => ({
   status: 400,
   message,
   ...extra,
 });
 
+// Hàm tiện ích để chuẩn hóa email
 const getNormalizedEmail = (email) =>
   String(email || "")
     .trim()
     .toLowerCase();
 
+// Hàm tiện ích để ẩn một phần email trong log
 const maskEmailForLog = (email) => {
   const normalizedEmail = getNormalizedEmail(email);
   const [localPart, domain] = normalizedEmail.split("@");
@@ -51,16 +55,20 @@ const maskEmailForLog = (email) => {
   return `${localPart.slice(0, 2)}***@${domain}`;
 };
 
+// Hàm tiện ích để kiểm tra định dạng email
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+// Hàm tiện ích để kiểm tra độ mạnh của mật khẩu
 const validateStrongPassword = (password) =>
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
 
+// Hàm tiện ích để lấy IP người dùng từ request
 const getRequestIp = (req) =>
   req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ||
   req.ip ||
   null;
 
+// Hàm tiện ích để tạo JWT cho phiên đặt lại mật khẩu
 const buildResetToken = ({ otpId, userId, email }) =>
   jwt.sign(
     {
@@ -73,6 +81,7 @@ const buildResetToken = ({ otpId, userId, email }) =>
     { expiresIn: Math.floor(PASSWORD_RESET_TOKEN_TTL_MS / 1000) },
   );
 
+// Hàm tiện ích để xác minh JWT của phiên đặt lại mật khẩu
 const verifyResetTokenJwt = (token) => {
   try {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
@@ -86,6 +95,7 @@ const verifyResetTokenJwt = (token) => {
   }
 };
 
+// Hàm tiện ích để vô hiệu hóa các yêu cầu OTP còn hiệu lực trước đó
 const invalidateActiveOtpRequests = async ({ userId, email }) => {
   await PasswordResetOtp.updateMany(
     {
@@ -102,12 +112,14 @@ const invalidateActiveOtpRequests = async ({ userId, email }) => {
   );
 };
 
+// Hàm tiện ích để lấy yêu cầu OTP đặt lại mật khẩu chưa được sử dụng gần nhất
 const getLatestPasswordResetRequest = async (email) =>
   PasswordResetOtp.findOne({
     email,
     isUsed: false,
   }).sort({ createdAt: -1 });
 
+// Hàm tiện ích để xử lý các yêu cầu OTP đã hết hạn hoặc đã được sử dụng
 const consumeInvalidOrExpiredRequest = async (record) => {
   if (!record || record.isUsed || record.invalidatedAt) {
     return;
@@ -119,6 +131,7 @@ const consumeInvalidOrExpiredRequest = async (record) => {
   }
 };
 
+// Hàm chính để xử lý yêu cầu đặt lại mật khẩu
 export const requestPasswordReset = async ({ email, req }) => {
   const normalizedEmail = getNormalizedEmail(email);
   const requestIp = getRequestIp(req);
@@ -241,6 +254,7 @@ export const requestPasswordReset = async ({ email, req }) => {
   };
 };
 
+// Hàm chính để xử lý xác nhận mã OTP đặt lại mật khẩu
 export const verifyPasswordResetOtp = async ({ email, otp }) => {
   const normalizedEmail = getNormalizedEmail(email);
   const trimmedOtp = String(otp || "").trim();
@@ -324,6 +338,7 @@ export const verifyPasswordResetOtp = async ({ email, otp }) => {
   };
 };
 
+// Hàm chính để xử lý đặt lại mật khẩu với mã OTP đã được xác nhận
 export const resetPasswordWithVerifiedOtp = async ({
   email,
   resetToken,

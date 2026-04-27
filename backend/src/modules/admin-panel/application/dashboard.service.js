@@ -7,16 +7,23 @@ import Friend from "../../../models/Friend.js";
 import { buildAdminStaffQuery } from "../../../services/rbacService.js";
 import { getAdminDashboardRealtimeStats } from "../../../services/dashboardRealtimeService.js";
 
+// Lấy tổng quan các thống kê chính cho dashboard admin panel
 export const getDashboardStatsSummary = async () => {
-  const [totalUsers, totalAdmins, totalConversations, totalMessages, totalFriendRequests, totalBlocks] =
-    await Promise.all([
-      User.countDocuments(),
-      User.countDocuments(buildAdminStaffQuery()),
-      Conversation.countDocuments(),
-      Message.countDocuments(),
-      FriendRequest.countDocuments(),
-      Blocking.countDocuments(),
-    ]);
+  const [
+    totalUsers,
+    totalAdmins,
+    totalConversations,
+    totalMessages,
+    totalFriendRequests,
+    totalBlocks,
+  ] = await Promise.all([
+    User.countDocuments(),
+    User.countDocuments(buildAdminStaffQuery()),
+    Conversation.countDocuments(),
+    Message.countDocuments(),
+    FriendRequest.countDocuments(),
+    Blocking.countDocuments(),
+  ]);
 
   return {
     totalUsers,
@@ -28,6 +35,7 @@ export const getDashboardStatsSummary = async () => {
   };
 };
 
+//Tổng quan chi tiết cho trang tổng quan admin
 export const getDashboardOverviewSummary = async () => {
   const last7Days = new Date();
   last7Days.setDate(last7Days.getDate() - 7);
@@ -59,19 +67,34 @@ export const getDashboardOverviewSummary = async () => {
     Conversation.countDocuments({ type: "group" }),
     Conversation.countDocuments({ type: "support" }),
     Message.countDocuments(),
-    Conversation.countDocuments({ type: "group", createdAt: { $gte: last7Days } }),
+    Conversation.countDocuments({
+      type: "group",
+      createdAt: { $gte: last7Days },
+    }),
     Friend.countDocuments(),
     FriendRequest.countDocuments({
-      $or: [{ status: "pending" }, { status: { $exists: false } }, { status: null }],
+      $or: [
+        { status: "pending" },
+        { status: { $exists: false } },
+        { status: null },
+      ],
     }),
     Blocking.countDocuments({ isActive: { $ne: false } }),
-    (await import("../../../models/Report.js")).default.countDocuments({ status: "pending" }),
-    (await import("../../../models/Report.js")).default.countDocuments({ status: "reviewing" }),
+    (await import("../../../models/Report.js")).default.countDocuments({
+      status: "pending",
+    }),
+    (await import("../../../models/Report.js")).default.countDocuments({
+      status: "reviewing",
+    }),
     Conversation.countDocuments({ type: "support", supportStatus: "open" }),
-    Conversation.countDocuments({ type: "support", supportStatus: "in_progress" }),
+    Conversation.countDocuments({
+      type: "support",
+      supportStatus: "in_progress",
+    }),
     getAdminDashboardRealtimeStats(),
   ]);
 
+  // trả về tất cả thống kê đã tính toán cho dashboard tổng quan admin panel
   return {
     totalUsers,
     activeUsers,
@@ -92,7 +115,8 @@ export const getDashboardOverviewSummary = async () => {
     totalInProgressSupportConversations,
     totalOnlineUsers: dashboardRealtime.totalOnlineUsers,
     newUsersToday: dashboardRealtime.newUsersToday,
-    totalUnreadSupportConversations: dashboardRealtime.totalUnreadSupportConversations,
+    totalUnreadSupportConversations:
+      dashboardRealtime.totalUnreadSupportConversations,
     latestUsers: dashboardRealtime.latestUsers,
     maintenance: dashboardRealtime.maintenance,
   };

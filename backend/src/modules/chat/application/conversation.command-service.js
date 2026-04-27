@@ -20,6 +20,7 @@ import {
   updateConversationAfterCreateMessage,
 } from "../infrastructure/realtime/message-realtime.js";
 
+// Hàm lấy thông tin conversation đã được populate và format lại cho client
 const populateConversationForClient = async (conversation) => {
   await conversation.populate([
     {
@@ -33,6 +34,7 @@ const populateConversationForClient = async (conversation) => {
   return conversation;
 };
 
+// hàm format lại conversation 
 export const formatConversationForClient = (conversation) => {
   const participants = (conversation.participants || []).map((p) => ({
     _id: p.userId?._id,
@@ -50,6 +52,7 @@ export const formatConversationForClient = (conversation) => {
   };
 };
 
+// hàm đính kèm thông tin block nếu là conversation direct
 export const attachBlockInfoToConversation = (conversation, viewerUser) => {
   if (!conversation || conversation.type !== "direct" || !viewerUser?._id) {
     return conversation;
@@ -88,6 +91,7 @@ export const attachBlockInfoToConversation = (conversation, viewerUser) => {
   };
 };
 
+// hàm tạo message hệ thống và cập nhật conversation sau khi tạo message
 const createSystemMessage = async (conversation, actorId, content) => {
   const message = await Message.create({
     conversationId: conversation._id,
@@ -102,6 +106,7 @@ const createSystemMessage = async (conversation, actorId, content) => {
   return message;
 };
 
+// hàm tạo lỗi chung cho module chat
 export const createConversationCommand = async ({ user, body }) => {
   const { type, name, memberIds } = body;
   const userId = user._id;
@@ -116,7 +121,7 @@ export const createConversationCommand = async ({ user, body }) => {
     return {
       error: {
         status: 400,
-        message: "Ten nhom va danh sach thanh vien la bat buoc",
+        message: "Tên nhóm và danh sách thành viên là bắt buộc",
       },
     };
   }
@@ -128,7 +133,7 @@ export const createConversationCommand = async ({ user, body }) => {
     const participantUser = await User.findById(participantId).select("blockedUsers");
 
     if (!participantUser) {
-      return { error: { status: 404, message: "Nguoi dung khong ton tai" } };
+      return { error: { status: 404, message: "Người dùng không tồn tại" } };
     }
 
     const directPermission = ensureDirectMessagingAllowed({
@@ -188,7 +193,7 @@ export const createConversationCommand = async ({ user, body }) => {
   }
 
   if (!conversation) {
-    return { error: { status: 400, message: "Conversation type khong hop le" } };
+    return { error: { status: 400, message: "Conversation type không hợp lệ" } };
   }
 
   await populateConversationForClient(conversation);
@@ -211,21 +216,22 @@ export const createConversationCommand = async ({ user, body }) => {
   };
 };
 
+// Hàm 
 export const markConversationSeenCommand = async ({ conversationId, userId }) => {
   const normalizedUserId = userId.toString();
   const conversation = await Conversation.findById(conversationId).lean();
 
   if (!conversation) {
-    return { error: { status: 404, message: "Conversation khong ton tai " } };
+    return { error: { status: 404, message: "Conversation không tồn tại " } };
   }
 
   const last = conversation.lastMessage;
   if (!last) {
-    return { status: 200, payload: { message: "Khong co tin nhan de mark as seen" } };
+    return { status: 200, payload: { message: "Không có tin nhắn để mark as seen" } };
   }
 
   if (!last.senderId || last.senderId.toString() === normalizedUserId) {
-    return { status: 200, payload: { message: "Sender khong can mark as seen" } };
+    return { status: 200, payload: { message: "Sender không cần mark as seen" } };
   }
 
   const updated = await Conversation.findByIdAndUpdate(
@@ -287,7 +293,7 @@ export const clearDirectConversationForUserCommand = async ({
   return {
     status: 200,
     payload: {
-      message: "Da xoa lich su chat o phia ban",
+      message: "Đã xóa lịch sử chat ở phía bạn",
       deleted: false,
       cleared: true,
     },
@@ -300,16 +306,16 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
   const conversation = await Conversation.findById(conversationId);
 
   if (!conversation) {
-    return { error: { status: 404, message: "Conversation khong ton tai" } };
+    return { error: { status: 404, message: "Conversation không tồn tại" } };
   }
 
   if (conversation.type !== "group" && conversation.type !== "direct") {
-    return { error: { status: 400, message: "Chi ap dung cho nhom (group)" } };
+    return { error: { status: 400, message: "Chỉ áp dụng cho nhóm  (group)" } };
   }
 
   const isMember = conversation.participants?.some((p) => p.userId.toString() === userId);
   if (!isMember) {
-    return { error: { status: 403, message: "Ban khong thuoc cuoc tro chuyen nay" } };
+    return { error: { status: 403, message: "Bạn không thuộc cuộc trò chuyện này" } };
   }
 
   if (conversation.type === "direct") {
@@ -336,7 +342,7 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
     return {
       status: 200,
       payload: {
-        message: "Da xoa nhom thanh cong",
+        message: "Đã xóa nhóm thành công",
         deleted: true,
       },
     };
@@ -358,7 +364,7 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
     const systemMessage = await createSystemMessage(
       updated,
       userObjectId,
-      `${user.displayName || "Mot thanh vien"} da roi nhom`,
+      `${user.displayName || "Một thành viên"} đã rời nhóm`,
     );
     emitNewMessage(getIo(), updated, systemMessage);
   }
@@ -366,7 +372,7 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
   emitToUser(userId, "conversation:left", {
     conversationId,
     userId,
-    groupName: conversation.group?.name ?? "Nhom",
+    groupName: conversation.group?.name ?? "Nhóm",
     removedByOther: false,
   });
 
@@ -379,7 +385,7 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
   return {
     status: 200,
     payload: {
-      message: "Ban da roi nhom va cuoc tro chuyen da duoc xoa o phia ban",
+      message: "Bạn đã rời nhóm và cuộc trò chuyện đã được xóa ở phía bạn",
       deleted: false,
       left: true,
     },
@@ -390,7 +396,7 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
   const userId = user._id.toString();
 
   if (!Array.isArray(memberIds) || memberIds.length === 0) {
-    return { error: { status: 400, message: "memberIds phai la array khong rong" } };
+    return { error: { status: 400, message: "memberIds phải là array không rỗng" } };
   }
 
   const conversation = await Conversation.findById(conversationId);
@@ -398,21 +404,21 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
     return {
       error: {
         status: 404,
-        message: "Cuoc tro chuyen khong ton tai hoac khong phai nhom",
+        message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
       },
     };
   }
 
   const isOwner = conversation.group?.createdBy?.toString() === userId.toString();
   if (!isOwner) {
-    return { error: { status: 403, message: "Chi chu nhom moi co the them thanh vien" } };
+    return { error: { status: 403, message: "Chỉ chủ nhóm mới có thể thêm thành viên" } };
   }
 
   const existing = new Set(conversation.participants.map((p) => p.userId.toString()));
   const newMemberIds = memberIds.filter((id) => !existing.has(id.toString()));
 
   if (newMemberIds.length === 0) {
-    return { error: { status: 400, message: "Tat ca thanh vien da co trong nhom" } };
+    return { error: { status: 400, message: "Tất cả thành viên đã có trong nhóm" } };
   }
 
   const newParticipants = newMemberIds.map((id) => ({
@@ -431,7 +437,7 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
     const systemMessage = await createSystemMessage(
       updated,
       user._id,
-      `${addedUser.displayName || "Mot thanh vien"} vua tham gia cuoc hoi thoai`,
+      `${addedUser.displayName || "Một thành viên"} vừa tham gia cuộc trò chuyện`,
     );
     emitNewMessage(getIo(), updated, systemMessage);
   }
@@ -442,7 +448,7 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
   ]);
 
   if (!populatedConversation) {
-    return { error: { status: 404, message: "Cuoc tro chuyen khong ton tai" } };
+    return { error: { status: 404, message: "Cuộc trò chuyện không tồn tại" } };
   }
 
   emitToRoom(conversationId, "conversation:members-added", {
@@ -462,7 +468,7 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
   return {
     status: 200,
     payload: {
-      message: "Them thanh vien thanh cong",
+      message: "Thêm thành viên thành công",
       conversation: populatedConversation,
     },
   };
@@ -472,7 +478,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
   const userId = user._id.toString();
 
   if (!memberId) {
-    return { error: { status: 400, message: "memberId la bat buoc" } };
+    return { error: { status: 400, message: "memberId là bắt buộc" } };
   }
 
   const conversation = await Conversation.findById(conversationId);
@@ -480,7 +486,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
     return {
       error: {
         status: 404,
-        message: "Cuoc tro chuyen khong ton tai hoac khong phai nhom",
+        message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
       },
     };
   }
@@ -493,7 +499,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
       error: {
         status: 403,
         message:
-          "Chi chu nhom moi co the xoa thanh vien khac, ban chi co the roi nhom",
+          "Chỉ chủ nhóm mới có thể xóa thành viên khác, bạn chỉ có thể rời nhóm",
       },
     };
   }
@@ -502,7 +508,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
     (p) => p.userId.toString() === memberId.toString(),
   );
   if (!isMember) {
-    return { error: { status: 404, message: "Thanh vien khong ton tai trong nhom" } };
+    return { error: { status: 404, message: "Thành viên không tồn tại trong nhóm" } };
   }
 
   const updated = await Conversation.findByIdAndUpdate(
@@ -519,13 +525,13 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
 
   if (updated) {
     const targetUser = await User.findById(memberId).select("displayName");
-    const actorName = user.displayName || (isSelf ? "Mot thanh vien" : "Chu nhom");
+    const actorName = user.displayName || (isSelf ? "Một thành viên" : "Chủ nhóm");
     const targetName =
-      targetUser?.displayName || (isSelf ? user.displayName : "Mot thanh vien");
+      targetUser?.displayName || (isSelf ? user.displayName : "Một thành viên");
 
     const systemContent = isSelf
-      ? `${actorName} da roi nhom`
-      : `${targetName} da bi xoa khoi nhom`;
+      ? `${actorName} đã rời nhóm`
+      : `${targetName} đã bị xóa khỏi nhóm`;
 
     const systemMessage = await createSystemMessage(updated, user._id, systemContent);
     emitNewMessage(getIo(), updated, systemMessage);
@@ -534,7 +540,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
   emitToUser(memberId, "conversation:left", {
     conversationId,
     userId: memberId,
-    groupName: conversation.group?.name ?? "Nhom",
+    groupName: conversation.group?.name ?? "Nhóm",
     removedByOther: !isSelf,
   });
 
@@ -547,7 +553,7 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
   return {
     status: 200,
     payload: {
-      message: isSelf ? "Ban da roi nhom" : "Da xoa thanh vien khoi nhom",
+      message: isSelf ? "Bạn đã rời nhóm" : "Đã xóa thành viên khỏi nhóm",
       succeeded: true,
     },
   };
@@ -557,7 +563,7 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
   const userId = user._id.toString();
 
   if (!file) {
-    return { error: { status: 400, message: "Khong co file duoc tai len" } };
+    return { error: { status: 400, message: "Không có file được tải lên" } };
   }
 
   const conversation = await Conversation.findById(conversationId);
@@ -565,7 +571,7 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
     return {
       error: {
         status: 404,
-        message: "Cuoc tro chuyen khong ton tai hoac khong phai nhom",
+        message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
       },
     };
   }
@@ -574,7 +580,7 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
     (participant) => participant.userId.toString() === userId,
   );
   if (!isMember) {
-    return { error: { status: 403, message: "Ban khong thuoc cuoc tro chuyen nay" } };
+    return { error: { status: 403, message: "Bạn không thuộc cuộc trò chuyện này" } };
   }
 
   const uploadResult = await uploadImageFromBuffer(file.buffer, {
@@ -585,7 +591,7 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
   const previousAvatarId = conversation.group?.avatarId;
   if (previousAvatarId) {
     await deleteImageFromCloudinary(previousAvatarId).catch((error) => {
-      console.error("Khong the xoa avatar nhom cu tren Cloudinary:", error);
+      console.error("Không thể xóa avatar nhóm cũ trên Cloudinary:", error);
     });
   }
 
@@ -603,7 +609,7 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
   return {
     status: 200,
     payload: {
-      message: "Cap nhat anh nhom thanh cong",
+      message: "Cập nhật ảnh nhóm thành công",
       conversation: formattedConversation,
     },
   };
@@ -613,11 +619,11 @@ export const updateGroupNameCommand = async ({ user, conversationId, name }) => 
   const userId = user._id.toString();
 
   if (!name || typeof name !== "string" || name.trim().length === 0) {
-    return { error: { status: 400, message: "Ten nhom khong duoc de trong" } };
+    return { error: { status: 400, message: "Tên nhóm không được để trống" } };
   }
 
   if (name.trim().length > 50) {
-    return { error: { status: 400, message: "Ten nhom khong duoc qua 50 ky tu" } };
+    return { error: { status: 400, message: "Tên nhóm không được quá 50 ký tự" } };
   }
 
   const conversation = await Conversation.findById(conversationId);
@@ -625,14 +631,14 @@ export const updateGroupNameCommand = async ({ user, conversationId, name }) => 
     return {
       error: {
         status: 404,
-        message: "Cuoc tro chuyen khong ton tai hoac khong phai nhom",
+        message: "Cuộc trò chuyện không tồn tại hoặc không phải nhóm",
       },
     };
   }
 
   const isOwner = conversation.group?.createdBy?.toString() === userId;
   if (!isOwner) {
-    return { error: { status: 403, message: "Chi chu nhom moi co the doi ten nhom" } };
+    return { error: { status: 403, message: "Chỉ chủ nhóm mới có thể đổi tên nhóm" } };
   }
 
   conversation.group.name = name.trim();
@@ -650,7 +656,7 @@ export const updateGroupNameCommand = async ({ user, conversationId, name }) => 
   return {
     status: 200,
     payload: {
-      message: "Cap nhat ten nhom thanh cong",
+      message: "Cập nhật tên nhóm thành công",
       conversation: formattedConversation,
     },
   };

@@ -1,8 +1,14 @@
 import { ADMIN_SOCKET_EVENTS } from "../../../constants/socketEvents.js";
-import { buildAuthResponse, createSession } from "../infrastructure/token.service.js";
+import {
+  buildAuthResponse,
+  createSession,
+} from "../infrastructure/token.service.js";
 import { emitAuthLifecycle } from "../infrastructure/auth-realtime.service.js";
 import { ensureMaintenanceAccess } from "../infrastructure/maintenance-access.service.js";
-import { buildBannedResponse, isUserBanned } from "../domain/auth-access.policy.js";
+import {
+  buildBannedResponse,
+  isUserBanned,
+} from "../domain/auth-access.policy.js";
 import {
   getUserById,
   hashVerificationCode,
@@ -10,11 +16,12 @@ import {
   verifyPendingToken,
 } from "./verification.service.js";
 
+// Xử lý xác minh email bằng mã
 export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
   if (!verificationToken || !code) {
     return {
       status: 400,
-      body: { message: "ThiÃ¡ÂºÂ¿u verificationToken hoÃ¡ÂºÂ·c mÃƒÂ£ xÃƒÂ¡c minh." },
+      body: { message: "Thiếu verificationToken hoặc mã xác minh." },
     };
   }
 
@@ -28,7 +35,7 @@ export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
 
   const user = await getUserById(tokenStatus.decoded.userId);
   if (!user) {
-    return { status: 404, body: { message: "KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng." } };
+    return { status: 404, body: { message: "Không tìm thấy người dùng." } };
   }
 
   if (isUserBanned(user)) {
@@ -40,12 +47,12 @@ export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
     !user.emailVerificationExpiresAt ||
     user.emailVerificationExpiresAt < new Date()
   ) {
-    return { status: 400, body: { message: "MÃƒÂ£ xÃƒÂ¡c minh Ã„â€˜ÃƒÂ£ hÃ¡ÂºÂ¿t hÃ¡ÂºÂ¡n." } };
+    return { status: 400, body: { message: "Mã xác minh đã hết hạn." } };
   }
 
   const providedCodeHash = hashVerificationCode(String(code).trim());
   if (providedCodeHash !== user.emailVerificationCodeHash) {
-    return { status: 400, body: { message: "MÃƒÂ£ xÃƒÂ¡c minh khÃƒÂ´ng Ã„â€˜ÃƒÂºng." } };
+    return { status: 400, body: { message: "Mã xác minh không đúng." } };
   }
 
   user.emailVerified = true;
@@ -58,8 +65,7 @@ export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
     return {
       status: 200,
       body: {
-        message:
-          "XÃƒÂ¡c minh email thÃƒÂ nh cÃƒÂ´ng. BÃƒÂ¢y giÃ¡Â»Â bÃ¡ÂºÂ¡n cÃƒÂ³ thÃ¡Â»Æ’ Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p.",
+        message: "Xác minh email thành công. Bây giờ bạn có thể đăng nhập.",
       },
     };
   }
@@ -78,9 +84,10 @@ export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
   };
 };
 
+// Xử lý gửi lại mã xác minh qua email
 export const resendEmailVerification = async ({ verificationToken }) => {
   if (!verificationToken) {
-    return { status: 400, body: { message: "ThiÃ¡ÂºÂ¿u verificationToken." } };
+    return { status: 400, body: { message: "Thiếu verificationToken." } };
   }
 
   const tokenStatus = verifyPendingToken(verificationToken);
@@ -93,11 +100,11 @@ export const resendEmailVerification = async ({ verificationToken }) => {
 
   const user = await getUserById(tokenStatus.decoded.userId);
   if (!user) {
-    return { status: 404, body: { message: "KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng." } };
+    return { status: 404, body: { message: "Không tìm thấy người dùng." } };
   }
 
   if (user.emailVerified) {
-    return { status: 400, body: { message: "Email nÃƒÂ y Ã„â€˜ÃƒÂ£ Ã„â€˜Ã†Â°Ã¡Â»Â£c xÃƒÂ¡c minh." } };
+    return { status: 400, body: { message: "Email này đã được xác minh." } };
   }
 
   const verification = await sendEmailVerificationForUser(
@@ -122,7 +129,7 @@ export const resendEmailVerification = async ({ verificationToken }) => {
     status: 200,
     body: {
       ...verification.payload,
-      message: "Ã„ÂÃƒÂ£ gÃ¡Â»Â­i lÃ¡ÂºÂ¡i mÃƒÂ£ xÃƒÂ¡c minh tÃ¡Â»â€ºi email cÃ¡Â»Â§a bÃ¡ÂºÂ¡n.",
+      message: "Đã gửi lại mã xác minh tới email của bạn.",
     },
   };
 };

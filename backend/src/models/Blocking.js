@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 
+// Blocking types
 const BLOCKING_TYPE_DIRECT_ONLY = "direct-only";
 
+// Bản thiết kế cho mô hình Blocking, lưu trữ thông tin 
+// về việc người dùng chặn người khác, lý do, trạng thái và thời gian chặn.
 const blockingSchema = new mongoose.Schema(
   {
     userId: {

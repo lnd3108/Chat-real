@@ -1,11 +1,15 @@
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 
+// Cấu hình Cloudinary với thông tin từ biến môi trường
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 1024 * 1024 * 5 }, // 5MB limit
 });
 
+// Middleware để xử lý việc tải ảnh lên, 
+// sử dụng multer để xử lý file upload từ request và 
+// sau đó lưu trữ tạm thời trong bộ nhớ trước khi upload lên Cloudinary.
 export const handleSingleImageUpload = (fieldName) => (req, res, next) => {
   upload.single(fieldName)(req, res, (error) => {
     if (!error) {
@@ -28,6 +32,8 @@ export const handleSingleImageUpload = (fieldName) => (req, res, next) => {
   });
 };
 
+// Hàm để upload ảnh từ buffer lên Cloudinary, 
+// trả về kết quả hoặc lỗi thông qua Promise.
 export const uploadImageFromBuffer = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -49,6 +55,8 @@ export const uploadImageFromBuffer = (buffer, options) => {
   });
 };
 
+// Hàm để trích xuất public_id từ URL của Cloudinary, 
+// giúp việc xóa ảnh trở nên dễ dàng hơn bằng cách sử dụng public_id thay vì URL đầy đủ.
 const extractPublicIdFromCloudinaryUrl = (url) => {
   if (!url) return null;
 
@@ -71,11 +79,15 @@ const extractPublicIdFromCloudinaryUrl = (url) => {
   }
 };
 
+// Hàm để xóa ảnh khỏi Cloudinary bằng public_id, 
+// trả về kết quả hoặc lỗi thông qua Promise.
 export const deleteImageFromCloudinary = async (publicId) => {
   if (!publicId) return null;
   return cloudinary.uploader.destroy(publicId, { resource_type: "image" });
 };
 
+// Hàm để xóa ảnh khỏi Cloudinary bằng URL, 
+// sử dụng hàm trích xuất public_id để xác định ảnh cần xóa.
 export const deleteImageFromCloudinaryUrl = async (url) => {
   const publicId = extractPublicIdFromCloudinaryUrl(url);
   if (!publicId) return null;

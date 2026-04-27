@@ -38,7 +38,10 @@ import {
   unblockBlockRelationAsAdminCommand,
   updateUserRoleLegacyCommand,
 } from "../../application/admin-read.service.js";
-import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeCommandHandler,
+  makeQueryHandler,
+} from "../../../../shared/api/http/controller-factory.js";
 import {
   makeJsonErrorHandler,
   makePayloadErrorHandler,
@@ -53,6 +56,7 @@ import {
   presentSuccessMessage,
 } from "../../../../shared/api/http/presenters.js";
 
+// Hàm xử lý để lấy thống kê tổng quan cho dashboard, bao gồm các số liệu chính như tổng người dùng, tổng tin nhắn, v.v.
 export const getDashboardStats = makeQueryHandler({
   execute: async () => ({
     success: true,
@@ -60,11 +64,12 @@ export const getDashboardStats = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng kÃƒÆ’Ã‚Âª dashboard:",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y thÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœng kÃƒÆ’Ã‚Âª dashboard",
+    logMessage: "Lỗi khi lấy thống kê dashboard:",
+    fallbackMessage: "Không thể lấy thống kê dashboard",
   }),
 });
 
+// Hàm xử lý để lấy danh sách người dùng với các bộ lọc và phân trang
 export const getDashboardOverview = makeQueryHandler({
   execute: async () => ({
     success: true,
@@ -72,11 +77,12 @@ export const getDashboardOverview = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay dashboard overview:",
-    fallbackMessage: "Khong the lay du lieu dashboard overview",
+    logMessage: "Lỗi khi lấy dashboard overview:",
+    fallbackMessage: "Không thể lấy dữ liệu dashboard overview",
   }),
 });
 
+// Hàm xử lý để lấy biểu đồ thống kê người dùng theo thời gian
 export const getDashboardUserChart = makeQueryHandler({
   execute: async (req) => ({
     success: true,
@@ -84,11 +90,12 @@ export const getDashboardUserChart = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay chart user dashboard:",
-    fallbackMessage: "Khong the lay du lieu chart nguoi dung",
+    logMessage: "Lỗi khi lấy biểu đồ người dùng dashboard:",
+    fallbackMessage: "Không thể lấy dữ liệu biểu đồ người dùng",
   }),
 });
 
+// Hàm xử lý để lấy biểu đồ thống kê tin nhắn theo thời gian
 export const getDashboardMessageChart = makeQueryHandler({
   execute: async (req) => ({
     success: true,
@@ -96,11 +103,12 @@ export const getDashboardMessageChart = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay chart message dashboard:",
-    fallbackMessage: "Khong the lay du lieu chart tin nhan",
+    logMessage: "Lỗi khi lấy biểu đồ tin nhắn dashboard:",
+    fallbackMessage: "Không thể lấy dữ liệu biểu đồ tin nhắn",
   }),
 });
 
+// Hàm xử lý để lấy biểu đồ thống kê báo cáo theo thời gian
 export const getDashboardReportChart = makeQueryHandler({
   execute: async () => ({
     success: true,
@@ -108,11 +116,12 @@ export const getDashboardReportChart = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay chart report dashboard:",
-    fallbackMessage: "Khong the lay du lieu chart bao cao",
+    logMessage: "Lỗi khi lấy biểu đồ báo cáo dashboard:",
+    fallbackMessage: "Không thể lấy dữ liệu biểu đồ báo cáo",
   }),
 });
 
+// Hàm xử lý để lấy biểu đồ thống kê hỗ trợ theo thời gian
 export const getDashboardSupportChart = makeQueryHandler({
   execute: async () => ({
     success: true,
@@ -120,20 +129,22 @@ export const getDashboardSupportChart = makeQueryHandler({
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay chart support dashboard:",
-    fallbackMessage: "Khong the lay du lieu chart ho tro",
+    logMessage: "Lỗi khi lấy biểu đồ hỗ trợ dashboard:",
+    fallbackMessage: "Không thể lấy dữ liệu biểu đồ hỗ trợ",
   }),
 });
 
+// Hàm xử lý để lấy danh sách role admin và role có thể gán được cho người dùng hiện tại
 export const getUsers = makeQueryHandler({
   execute: (req) => getUsersQuery({ actor: req.user, query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng:",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng",
+    logMessage: "Lỗi khi lấy danh sách người dùng:",
+    fallbackMessage: "Không thể lấy danh sách người dùng",
   }),
 });
 
+// Hàm xử lý để lấy thông tin chi tiết của một người dùng cụ thể
 export const getUserDetail = makeQueryHandler({
   execute: (req) =>
     getUserDetailQuery({
@@ -142,12 +153,12 @@ export const getUserDetail = makeQueryHandler({
     }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage:
-      "LÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Âi khi lÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¥y thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´ng tin ngÃƒÆ’Ã¢â‚¬Â Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¹ng:",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y thÃƒÆ’Ã‚Â´ng tin ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng",
+    logMessage: "Lỗi khi lấy thông tin người dùng:",
+    fallbackMessage: "Không thể lấy thông tin người dùng",
   }),
 });
 
+// Hàm xử lý để cập nhật trạng thái của một người dùng cụ thể (ví dụ: active, suspended, deleted)
 export const updateUserStatus = makeCommandHandler({
   execute: (req) =>
     updateUserStatusCommand({
@@ -158,13 +169,12 @@ export const updateUserStatus = makeCommandHandler({
   present: (result) =>
     presentSuccessMessage(result.message, { user: result.user }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage:
-      "LÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Âi khi cÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â­p nhÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â­t trÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡i ngÃƒÆ’Ã¢â‚¬Â Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¹ng:",
-    fallbackMessage:
-      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t trÃƒÂ¡Ã‚ÂºÃ‚Â¡ng thÃƒÆ’Ã‚Â¡i ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi dÃƒÆ’Ã‚Â¹ng.",
+    logMessage: "Lỗi khi cập nhật trạng thái người dùng:",
+    fallbackMessage: "Không thể cập nhật trạng thái người dùng.",
   }),
 });
 
+// Hàm xử lý để xóa một người dùng cụ thể bởi admin
 export const deleteUserAsAdmin = makeCommandHandler({
   execute: (req) =>
     deleteUserAsAdminCommand({
@@ -177,68 +187,75 @@ export const deleteUserAsAdmin = makeCommandHandler({
     }),
   present: (result) => presentSuccessMessage(result.message, result.summary),
   onError: makeSuccessFlagErrorHandler({
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ xÃƒÆ’Ã‚Â³a tÃƒÆ’Ã‚Â i khoÃƒÂ¡Ã‚ÂºÃ‚Â£n.",
+    fallbackMessage: "Không thể xóa tài khoản.",
   }),
 });
 
+// Hàm xử lý để cập nhật role của một người dùng cụ thể
 export const updateUserRole = makeCommandHandler({
   execute: (req) =>
     updateUserRoleLegacyCommand({
       userId: req.params.userId,
       role: req.body?.role,
     }),
-  present: (data) => presentSuccessMessage("CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t role thÃƒÂ nh cÃƒÂ´ng", data),
+  present: (data) => presentSuccessMessage("Cập nhật role thành công", data),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t role:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t role",
+    logMessage: "Lỗi khi cập nhật role:",
+    fallbackMessage: "Không thể cập nhật role",
   }),
 });
 
+// Hàm xử lý để lấy danh sách lời mời kết bạn
 export const getFriendRequestsAdmin = makeQueryHandler({
   execute: (req) => getFriendRequestsAdminQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch lÃ¡Â»Âi mÃ¡Â»Âi kÃ¡ÂºÂ¿t bÃ¡ÂºÂ¡n:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch lÃ¡Â»Âi mÃ¡Â»Âi kÃ¡ÂºÂ¿t bÃ¡ÂºÂ¡n",
+    logMessage: "Lỗi khi lấy danh sách lời mời kết bạn:",
+    fallbackMessage: "Không thể lấy danh sách lời mời kết bạn",
   }),
 });
 
+// Hàm xử lý để lấy danh sách friendship đã accepted
 export const getFriendships = makeQueryHandler({
   execute: (req) => getFriendshipsAdminQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay danh sach friendship da accepted:",
-    fallbackMessage: "Khong the lay danh sach friendship da accepted",
+    logMessage: "Lỗi khi lấy danh sách friendship đã accepted:",
+    fallbackMessage: "Không thể lấy danh sách friendship đã accepted",
   }),
 });
 
+// Hàm xử lý để lấy danh sách cuộc trò chuyện với các bộ lọc và phân trang
 export const getConversations = makeQueryHandler({
   execute: (req) => getConversationsAdminQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch cuÃ¡Â»â„¢c trÃƒÂ² chuyÃ¡Â»â€¡n:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch cuÃ¡Â»â„¢c trÃƒÂ² chuyÃ¡Â»â€¡n",
+    logMessage: "Lỗi khi lấy danh sách cuộc trò chuyện:",
+    fallbackMessage: "Không thể lấy danh sách cuộc trò chuyện",
   }),
 });
 
+// Hàm xử lý để lấy chi tiết một cuộc trò chuyện cụ thể, bao gồm thông tin người tham gia và lịch sử tin nhắn
 export const getMessages = makeQueryHandler({
   execute: (req) => getAdminMessagesQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch tin nhÃ¡ÂºÂ¯n:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch tin nhÃ¡ÂºÂ¯n",
+    logMessage: "Lỗi khi lấy danh sách tin nhắn:",
+    fallbackMessage: "Không thể lấy danh sách tin nhắn",
   }),
 });
 
+// Hàm xử lý để lấy danh sách người dùng bị block bởi admin
 export const getBlockedUsers = makeQueryHandler({
   execute: (req) => getAdminBlockedUsersQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch khÃ¡Â»â€˜i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch khÃ¡Â»â€˜i ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng",
+    logMessage: "Lỗi khi lấy danh sách khối người dùng:",
+    fallbackMessage: "Không thể lấy danh sách khối người dùng",
   }),
 });
 
+// Hàm xử lý để lấy chi tiết một cuộc trò chuyện cụ thể, bao gồm thông tin người tham gia và lịch sử tin nhắn
 export const getConversationDetail = makeQueryHandler({
   execute: (req) =>
     getConversationDetailAdminQuery({
@@ -246,64 +263,70 @@ export const getConversationDetail = makeQueryHandler({
     }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t cuÃ¡Â»â„¢c trÃƒÂ² chuyÃ¡Â»â€¡n:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t cuÃ¡Â»â„¢c trÃƒÂ² chuyÃ¡Â»â€¡n",
+    logMessage: "Lỗi khi lấy chi tiết cuộc trò chuyện:",
+    fallbackMessage: "Không thể lấy chi tiết cuộc trò chuyện",
   }),
 });
 
+// Hàm xử lý để lấy chi tiết một quan hệ block cụ thể
 export const getBlocks = makeQueryHandler({
   execute: (req) => getBlocksAdminQuery({ query: req.query }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay danh sach quan he chan:",
-    fallbackMessage: "Khong the lay danh sach quan he chan",
+    logMessage: "Lỗi khi lấy danh sách quan hệ chặn:",
+    fallbackMessage: "Không thể lấy danh sách quan hệ chặn",
   }),
 });
 
+// Hàm xử lý để lấy chi tiết một quan hệ block cụ thể
 export const getBlockDetail = makeQueryHandler({
   execute: (req) => getBlockDetailAdminQuery({ blockId: req.params.id }),
   present: presentSuccessData,
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi lay chi tiet quan he chan:",
-    fallbackMessage: "Khong the lay chi tiet quan he chan.",
+    logMessage: "Lỗi khi lấy chi tiết quan hệ chặn:",
+    fallbackMessage: "Không thể lấy chi tiết quan hệ chặn.",
   }),
 });
 
+// Hàm xử lý để admin gỡ block một quan hệ block cụ thể
 export const unblockBlockRelationAsAdmin = makeCommandHandler({
   execute: (req) =>
     unblockBlockRelationAsAdminCommand({
       blockId: req.params.id,
     }),
   present: (result) =>
-    presentSuccessMessage("Admin da go block relation thanh cong.", {
+    presentSuccessMessage("Admin đã gỡ block relation thành công.", {
       block: result.block,
     }),
   onError: makeSuccessFlagErrorHandler({
-    logMessage: "Loi khi admin go block relation:",
-    fallbackMessage: "Khong the go block relation.",
+    logMessage: "Lỗi khi admin gỡ block relation:",
+    fallbackMessage: "Không thể gỡ block relation.",
   }),
 });
 
+// Hàm xử lý để lấy danh sách báo cáo với các bộ lọc và phân trang
 export const getReports = makeQueryHandler({
   execute: (req) => getReportsQuery(req.query),
   present: (data) =>
-    presentMessageData("LÃ¡ÂºÂ¥y danh sÃƒÂ¡ch bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng", data),
+    presentMessageData("Lấy danh sách báo cáo thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch bÃƒÂ¡o cÃƒÂ¡o:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch bÃƒÂ¡o cÃƒÂ¡o",
+    logMessage: "Lỗi khi lấy danh sách báo cáo:",
+    fallbackMessage: "Không thể lấy danh sách báo cáo",
   }),
 });
 
+// Hàm xử lý để lấy chi tiết một báo cáo cụ thể
 export const getReportDetail = makeQueryHandler({
   execute: (req) => getReportDetailQuery({ reportId: req.params.id }),
   present: (data) =>
-    presentMessageData("LÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng", data),
+    presentMessageData("Lấy chi tiết báo cáo thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t bÃƒÂ¡o cÃƒÂ¡o:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t bÃƒÂ¡o cÃƒÂ¡o",
+    logMessage: "Lỗi khi lấy chi tiết báo cáo:",
+    fallbackMessage: "Không thể lấy chi tiết báo cáo",
   }),
 });
 
+// Hàm xử lý để cập nhật trạng thái của một báo cáo cụ thể (ví dụ: pending, resolved, rejected)
 export const updateReportStatus = makeCommandHandler({
   execute: async (req) => ({
     report: await updateReportStatusCommand({
@@ -314,13 +337,14 @@ export const updateReportStatus = makeCommandHandler({
     }),
   }),
   present: (data) =>
-    presentMessageData("CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng", data),
+    presentMessageData("Cập nhật trạng thái báo cáo thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i bÃƒÂ¡o cÃƒÂ¡o:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i bÃƒÂ¡o cÃƒÂ¡o",
+    logMessage: "Lỗi khi cập nhật trạng thái báo cáo:",
+    fallbackMessage: "Không thể cập nhật trạng thái báo cáo",
   }),
 });
 
+// Hàm xử lý để admin gỡ block một quan hệ block cụ thể
 export const resolveReportWithAction = makeCommandHandler({
   execute: (req) =>
     resolveReportWithActionCommand({
@@ -330,13 +354,14 @@ export const resolveReportWithAction = makeCommandHandler({
       adminId: req.user._id,
     }),
   present: (data) =>
-    presentMessageData("XÃ¡Â»Â­ lÃƒÂ½ bÃƒÂ¡o cÃƒÂ¡o bÃ¡ÂºÂ±ng hÃƒÂ nh Ã„â€˜Ã¡Â»â„¢ng thÃƒÂ nh cÃƒÂ´ng", data),
+    presentMessageData("Xử lý báo cáo bằng hành động thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi xÃ¡Â»Â­ lÃƒÂ½ bÃƒÂ¡o cÃƒÂ¡o bÃ¡ÂºÂ±ng hÃƒÂ nh Ã„â€˜Ã¡Â»â„¢ng:",
-    fallbackMessage: "KhÃƒÂ´ng thÃ¡Â»Æ’ xÃ¡Â»Â­ lÃƒÂ½ bÃƒÂ¡o cÃƒÂ¡o bÃ¡ÂºÂ±ng hÃƒÂ nh Ã„â€˜Ã¡Â»â„¢ng",
+    logMessage: "Lỗi khi xử lý báo cáo bằng hành động:",
+    fallbackMessage: "Không thể xử lý báo cáo bằng hành động",
   }),
 });
 
+// Hàm xử lý để lấy thông tin sức khỏe hệ thống, bao gồm các chỉ số như CPU, RAM, disk usage, v.v.
 export const getSystemHealth = makeQueryHandler({
   execute: () => getSystemHealthSummary(),
   present: (body) => presentJson({ body }),
@@ -349,15 +374,17 @@ export const getSystemHealth = makeQueryHandler({
   }),
 });
 
+// Hàm xử lý để lấy thông tin bảo trì hiện tại, bao gồm trạng thái bảo trì, thông báo bảo trì, v.v.
 export const getMaintenanceInfo = makeQueryHandler({
   execute: () => getMaintenanceInfoQuery(),
   present: (body) => presentJson({ body }),
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y thÃƒÂ´ng tin bÃ¡ÂºÂ£o trÃƒÂ¬:",
-    message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
+    logMessage: "Lỗi khi lấy thông tin bảo trì:",
+    message: "Lỗi hệ thống",
   }),
 });
 
+// Hàm xử lý để yêu cầu xác minh mật khẩu trước khi bật/tắt chế độ bảo trì
 export const requestMaintenancePasswordVerification = makeCommandHandler({
   execute: (req) =>
     requestMaintenancePasswordVerificationCommand({
@@ -365,11 +392,12 @@ export const requestMaintenancePasswordVerification = makeCommandHandler({
     }),
   present: (body) => presentJson({ body }),
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi yÃƒÂªu cÃ¡ÂºÂ§u xÃƒÂ¡c minh mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u:",
-    message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
+    logMessage: "Lỗi khi yêu cầu xác minh mật khẩu:",
+    message: "Lỗi hệ thống",
   }),
 });
 
+// Hàm xử lý để xác minh mật khẩu bảo trì trước khi cho phép admin bật/tắt chế độ bảo trì
 export const verifyMaintenancePassword = makeCommandHandler({
   execute: (req) =>
     verifyMaintenancePasswordCommand({
@@ -378,11 +406,12 @@ export const verifyMaintenancePassword = makeCommandHandler({
     }),
   present: (body) => presentJson({ body }),
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi xÃƒÂ¡c minh mÃ¡ÂºÂ­t khÃ¡ÂºÂ©u bÃ¡ÂºÂ£o trÃƒÂ¬:",
-    message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
+    logMessage: "Lỗi khi xác minh mật khẩu bảo trì:",
+    message: "Lỗi hệ thống",
   }),
 });
 
+// Hàm xử lý để admin xác nhận bật/tắt chế độ bảo trì sau khi đã xác minh mật khẩu thành công
 export const confirmMaintenanceToggle = makeCommandHandler({
   execute: (req) =>
     confirmMaintenanceToggleCommand({
@@ -392,10 +421,11 @@ export const confirmMaintenanceToggle = makeCommandHandler({
     }),
   present: (body) => presentJson({ body }),
   onError: makePayloadErrorHandler({
-    fallbackMessage: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
+    fallbackMessage: "Lỗi hệ thống",
   }),
 });
 
+// Hàm xử lý để cập nhật thông báo bảo trì
 export const updateMaintenanceMessage = makeCommandHandler({
   execute: (req) =>
     updateMaintenanceMessageCommand({
@@ -403,7 +433,7 @@ export const updateMaintenanceMessage = makeCommandHandler({
     }),
   present: (body) => presentJson({ body }),
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t thÃƒÂ´ng bÃƒÂ¡o bÃ¡ÂºÂ£o trÃƒÂ¬:",
-    message: "LÃ¡Â»â€”i hÃ¡Â»â€¡ thÃ¡Â»â€˜ng",
+    logMessage: "Lỗi khi cập nhật thông báo bảo trì:",
+    message: "Lỗi hệ thống",
   }),
 });

@@ -10,10 +10,12 @@ import { makeCommandHandler } from "../../../../shared/api/http/controller-facto
 import { makeServerErrorHandler } from "../../../../shared/api/http/error-handlers.js";
 import { presentCommandResult } from "../../../../shared/api/http/presenters.js";
 
+// khai báo lỗi chung
 const chatServerError = makeServerErrorHandler({
-  message: "Lá»—i há»‡ thá»‘ng",
+  message: "Lỗi hệ thống chat",
 });
 
+// các controller
 export const sendDirectMessage = makeCommandHandler({
   execute: (req) =>
     sendDirectMessageCommand({
@@ -25,6 +27,7 @@ export const sendDirectMessage = makeCommandHandler({
   onError: chatServerError,
 });
 
+// gửi tin nhắn trong nhóm (có thể kèm file)
 export const sendGroupMessage = makeCommandHandler({
   execute: (req) =>
     sendGroupMessageCommand({
@@ -37,6 +40,7 @@ export const sendGroupMessage = makeCommandHandler({
   onError: chatServerError,
 });
 
+// chỉnh sửa tin nhắn
 export const editMessage = makeCommandHandler({
   execute: (req) =>
     editMessageCommand({
@@ -48,6 +52,7 @@ export const editMessage = makeCommandHandler({
   onError: chatServerError,
 });
 
+// xóa tin nhắn cho chính mình
 export const deleteMessageForMe = makeCommandHandler({
   execute: (req) =>
     deleteMessageForMeCommand({
@@ -58,6 +63,7 @@ export const deleteMessageForMe = makeCommandHandler({
   onError: chatServerError,
 });
 
+// xóa tin nhắn cho tất cả mọi người (chỉ có thể thực hiện bởi người gửi)
 export const deleteMessageForEveryone = makeCommandHandler({
   execute: (req) =>
     deleteMessageForEveryoneCommand({
@@ -68,6 +74,7 @@ export const deleteMessageForEveryone = makeCommandHandler({
   onError: chatServerError,
 });
 
+// thêm hoặc bỏ reaction cho tin nhắn
 export const toggleReaction = makeCommandHandler({
   execute: (req) =>
     toggleMessageReactionCommand({
@@ -79,4 +86,5 @@ export const toggleReaction = makeCommandHandler({
   onError: chatServerError,
 });
 
+// gửi tin nhắn có kèm hình ảnh
 export const sendMessageWithImage = sendGroupMessage;

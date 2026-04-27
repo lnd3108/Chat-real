@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// Định nghĩa schema cho trạng thái bảo trì hệ thống
 const maintenanceSchema = new mongoose.Schema(
   {
     isEnabled: {
@@ -52,5 +53,5 @@ const maintenanceSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
+// Tạo model từ schema
 export default mongoose.model("Maintenance", maintenanceSchema);

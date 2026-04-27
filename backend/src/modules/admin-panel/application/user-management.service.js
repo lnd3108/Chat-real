@@ -4,10 +4,7 @@ import Message from "../../../models/Message.js";
 import Friend from "../../../models/Friend.js";
 import Blocking from "../../../models/Blocking.js";
 import Session from "../../../models/Session.js";
-import {
-  disconnectUserSockets,
-  emitToUser,
-} from "../../../socket/index.js";
+import { disconnectUserSockets, emitToUser } from "../../../socket/index.js";
 import { permanentlyDeleteUserAccount } from "../../../services/accountDeletionService.js";
 import { sendAccountDeletedEmail } from "../../../utils/mail.js";
 import {
@@ -26,6 +23,7 @@ import {
   serializeUserAccess,
 } from "../../../services/rbacService.js";
 
+// Hàm giúp xây dựng phản hồi người dùng sau khi cập nhật trạng thái
 const buildUserStatusResponse = (user) => ({
   _id: user._id,
   avatar: user.avatarUrl ?? null,
@@ -37,6 +35,7 @@ const buildUserStatusResponse = (user) => ({
   role: user.role,
 });
 
+// Lấy danh sách người dùng với phân trang, tìm kiếm và lọc trạng thái
 export const getUsersQuery = async ({ actor, query }) => {
   const page = parseInt(query.page, 10) || 1;
   const limit = parseInt(query.limit, 10) || 20;
@@ -55,7 +54,10 @@ export const getUsersQuery = async ({ actor, query }) => {
     ];
   }
 
-  if (status && ["active", "inactive", "suspended", "banned"].includes(status)) {
+  if (
+    status &&
+    ["active", "inactive", "suspended", "banned"].includes(status)
+  ) {
     filter.status = status;
   }
 
@@ -65,7 +67,9 @@ export const getUsersQuery = async ({ actor, query }) => {
   else sortObj = { createdAt: -1 };
 
   const users = await User.find(filter)
-    .select("-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash")
+    .select(
+      "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
+    )
     .limit(limit)
     .skip(skip)
     .sort(sortObj);
@@ -74,7 +78,9 @@ export const getUsersQuery = async ({ actor, query }) => {
 
   return {
     users: users.map((user) =>
-      serializeUserAccess(typeof user.toObject === "function" ? user.toObject() : user),
+      serializeUserAccess(
+        typeof user.toObject === "function" ? user.toObject() : user,
+      ),
     ),
     pagination: {
       page,
@@ -85,19 +91,20 @@ export const getUsersQuery = async ({ actor, query }) => {
   };
 };
 
+// Lấy chi tiết người dùng và các thống kê liên quan
 export const getUserDetailQuery = async ({ actor, userId }) => {
   const user = await User.findById(userId).select(
     "-hashedPassword -emailVerificationCodeHash -accountDeletionCodeHash",
   );
 
   if (!user) {
-    const error = new Error("NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i");
+    const error = new Error("Người dùng không tồn tại");
     error.status = 404;
     throw error;
   }
 
   if (!canManageUser(actor, user)) {
-    const error = new Error("Báº¡n khÃ´ng cÃ³ quyá»n thao tÃ¡c trÃªn tÃ i khoáº£n nÃ y.");
+    const error = new Error("Bạn không có quyền thao tác trên tài khoản này.");
     error.status = 403;
     throw error;
   }
@@ -120,7 +127,10 @@ export const getUserDetailQuery = async ({ actor, userId }) => {
       type: "group",
     }),
     Blocking.countDocuments({ userId, isActive: { $ne: false } }),
-    Blocking.countDocuments({ blockedUserId: userId, isActive: { $ne: false } }),
+    Blocking.countDocuments({
+      blockedUserId: userId,
+      isActive: { $ne: false },
+    }),
     Message.countDocuments({ senderId: userId }),
   ]);
 
@@ -156,13 +166,13 @@ export const getUserDetailQuery = async ({ actor, userId }) => {
     },
   };
 };
-
+// Cập nhật trạng thái người dùng (kích hoạt / khóa)
 export const updateUserStatusCommand = async ({ actor, userId, status }) => {
   const actorId = actor?._id?.toString();
 
   if (!["active", "banned"].includes(status)) {
     const error = new Error(
-      "Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡. Chá»‰ há»— trá»£ `active` hoáº·c `banned`.",
+      "Trạng thái không hợp lệ. Chỉ hỗ trợ `active` hoặc `banned`.",
     );
     error.status = 400;
     throw error;
@@ -170,19 +180,19 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
 
   const user = await User.findById(userId);
   if (!user) {
-    const error = new Error("NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i.");
+    const error = new Error("Người dùng không tồn tại.");
     error.status = 404;
     throw error;
   }
 
   if (actorId && actorId === user._id.toString()) {
-    const error = new Error("Báº¡n khÃ´ng thá»ƒ tá»± khÃ³a tÃ i khoáº£n cá»§a chÃ­nh mÃ¬nh.");
+    const error = new Error("Bạn không thể tự khóa tài khoản của chính mình.");
     error.status = 400;
     throw error;
   }
 
   if (!canManageUser(actor, user)) {
-    const error = new Error("Báº¡n khÃ´ng cÃ³ quyá»n thao tÃ¡c trÃªn tÃ i khoáº£n nÃ y.");
+    const error = new Error("Bạn không có quyền thao tác trên tài khoản này.");
     error.status = 403;
     throw error;
   }
@@ -193,10 +203,10 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
   if (status === "banned") {
     await Session.deleteMany({ userId: user._id });
     emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_LOCKED, {
-      message: "Tai khoan cua ban da bi khoa boi quan tri vien.",
+      message: "Tài khoản của bạn đã bị khóa bởi quản trị viên.",
     });
     emitToUser(user._id, "account:banned", {
-      message: "TÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ bá»‹ khÃ³a bá»Ÿi quáº£n trá»‹ viÃªn.",
+      message: "Tài khoản của bạn đã bị khóa bởi quản trị viên.",
     });
     disconnectUserSockets(user._id);
     emitToAdmins(ADMIN_SOCKET_EVENTS.USER_LOCKED, {
@@ -206,15 +216,15 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
     });
     emitAdminNotification({
       type: "user",
-      title: "Tai khoan da bi khoa",
-      message: `${actor.displayName} vua khoa @${user.userName}`,
+      title: "Tài khoản đã bị khóa",
+      message: `${actor.displayName} vừa khóa @${user.userName}`,
       link: `/admin/users/${user._id}`,
       entityId: user._id.toString(),
       actor: buildAdminActor(actor),
     });
   } else {
     emitToUser(user._id, USER_SOCKET_EVENTS.ACCOUNT_UNLOCKED, {
-      message: "Tai khoan cua ban da duoc mo khoa.",
+      message: "Tài khoản của bạn đã được mở khóa.",
     });
     emitToAdmins(ADMIN_SOCKET_EVENTS.USER_UNLOCKED, {
       user: buildAdminActor(user),
@@ -223,8 +233,8 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
     });
     emitAdminNotification({
       type: "user",
-      title: "Tai khoan da duoc mo khoa",
-      message: `${actor.displayName} vua mo khoa @${user.userName}`,
+      title: "Tài khoản đã được mở khóa",
+      message: `${actor.displayName} vừa mở khóa @${user.userName}`,
       link: `/admin/users/${user._id}`,
       entityId: user._id.toString(),
       actor: buildAdminActor(actor),
@@ -243,18 +253,23 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
   return {
     message:
       status === "banned"
-        ? "ÄÃ£ khÃ³a tÃ i khoáº£n ngÆ°á»i dÃ¹ng."
-        : "ÄÃ£ má»Ÿ khÃ³a tÃ i khoáº£n ngÆ°á»i dÃ¹ng.",
+        ? "Đã khóa tài khoản người dùng."
+        : "Đã mở khóa tài khoản người dùng.",
     user: buildUserStatusResponse(user),
   };
 };
 
-export const deleteUserAsAdminCommand = async ({ actor, targetUserId, reason }) => {
+// Xóa tài khoản người dùng vĩnh viễn từ khu vực admin
+export const deleteUserAsAdminCommand = async ({
+  actor,
+  targetUserId,
+  reason,
+}) => {
   const actorId = actor?._id?.toString();
 
   if (actorId && actorId === targetUserId) {
     const error = new Error(
-      "Báº¡n khÃ´ng thá»ƒ tá»± xÃ³a tÃ i khoáº£n cá»§a chÃ­nh mÃ¬nh tá»« khu vá»±c admin.",
+      "Bạn không thể tự xóa tài khoản của chính mình từ khu vực admin.",
     );
     error.status = 400;
     throw error;
@@ -262,13 +277,13 @@ export const deleteUserAsAdminCommand = async ({ actor, targetUserId, reason }) 
 
   const targetUser = await User.findById(targetUserId).select("role");
   if (!targetUser) {
-    const error = new Error("NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i.");
+    const error = new Error("Người dùng không tồn tại.");
     error.status = 404;
     throw error;
   }
 
   if (!canManageUser(actor, targetUser)) {
-    const error = new Error("Báº¡n khÃ´ng cÃ³ quyá»n thao tÃ¡c trÃªn tÃ i khoáº£n nÃ y.");
+    const error = new Error("Bạn không có quyền thao tác trên tài khoản này.");
     error.status = 403;
     throw error;
   }
@@ -288,11 +303,11 @@ export const deleteUserAsAdminCommand = async ({ actor, targetUserId, reason }) 
       reason,
     });
   } catch (error) {
-    console.error("Lá»—i gá»­i email sau khi admin xÃ³a tÃ i khoáº£n", error);
+    console.error("Lỗi gửi email sau khi admin xóa tài khoản", error);
   }
 
   return {
-    message: "TÃ i khoáº£n Ä‘Ã£ Ä‘Æ°á»£c xÃ³a.",
+    message: "Tài khoản đã được xóa.",
     summary,
   };
 };

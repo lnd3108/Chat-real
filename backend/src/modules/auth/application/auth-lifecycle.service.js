@@ -1,3 +1,4 @@
+// file khai báo các service liên quan đến vòng đời của người dùng trong hệ thống
 export {
   buildBannedResponse,
   isUserBanned,

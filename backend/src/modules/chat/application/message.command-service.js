@@ -18,8 +18,9 @@ import { emitToUser } from "../../../shared/infrastructure/realtime/socket-gatew
 import { getIo } from "../../../shared/infrastructure/realtime/socket-registry.js";
 import { isConversationActiveForUser } from "../../../shared/infrastructure/realtime/user-presence.js";
 
-const RECALL_PLACEHOLDER = "Ban da xoa mot tin nhan";
+const RECALL_PLACEHOLDER = "Bạn đã xóa một tin nhắn";
 
+// Hàm chuẩn hóa client
 export const normalizeMessageForClient = (message, viewerId) => {
   if (!message) return null;
 
@@ -59,20 +60,25 @@ const buildReplySnapshot = async (conversationId, replyToMessageId) => {
   return {
     messageId: replyMessage._id,
     senderId: replyMessage.senderId ?? null,
-    senderDeleted: Boolean(replyMessage.senderDeleted || !replyMessage.senderId),
+    senderDeleted: Boolean(
+      replyMessage.senderDeleted || !replyMessage.senderId,
+    ),
     senderDisplayName:
       replyMessage.senderDeleted || !replyMessage.senderId
-        ? replyMessage.senderDisplayName ?? buildDeletedSenderSnapshot().senderDisplayName
+        ? (replyMessage.senderDisplayName ??
+          buildDeletedSenderSnapshot().senderDisplayName)
         : (replyMessage.senderDisplayName ?? null),
     senderAvatar:
       replyMessage.senderDeleted || !replyMessage.senderId
-        ? replyMessage.senderAvatar ?? null
+        ? (replyMessage.senderAvatar ?? null)
         : (replyMessage.senderAvatar ?? null),
     isDeletedForEveryone: !!replyMessage.isDeletedForEveryone,
     content: replyMessage.isDeletedForEveryone
       ? RECALL_PLACEHOLDER
       : (replyMessage.content ?? null),
-    imgUrl: replyMessage.isDeletedForEveryone ? null : (replyMessage.imgUrl ?? null),
+    imgUrl: replyMessage.isDeletedForEveryone
+      ? null
+      : (replyMessage.imgUrl ?? null),
     type: replyMessage.type ?? "user",
   };
 };
@@ -160,7 +166,7 @@ export const createAndEmitMessage = async ({
 const ensureConversationMember = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) {
-    return { error: { status: 404, message: "Cuoc tro chuyen khong ton tai" } };
+    return { error: { status: 404, message: "Cuộc trò chuyện không tồn tại" } };
   }
 
   const isMember = conversation.participants.some(
@@ -168,7 +174,9 @@ const ensureConversationMember = async (conversationId, userId) => {
   );
 
   if (!isMember) {
-    return { error: { status: 403, message: "Ban khong thuoc cuoc tro chuyen nay" } };
+    return {
+      error: { status: 403, message: "Bạn không thuôc cuộc trò chuyện này" },
+    };
   }
 
   return { conversation };
@@ -177,7 +185,7 @@ const ensureConversationMember = async (conversationId, userId) => {
 const loadMessageContext = async (messageId, userId) => {
   const message = await Message.findById(messageId);
   if (!message) {
-    return { error: { status: 404, message: "Tin nhan khong ton tai" } };
+    return { error: { status: 404, message: "Tin nhắn không tồn tại" } };
   }
 
   const { conversation, error } = await ensureConversationMember(
@@ -228,13 +236,13 @@ export const sendDirectMessageCommand = async ({ user, body, file }) => {
   const senderId = user._id;
 
   if (!content?.trim() && !file) {
-    return { error: { status: 400, message: "Thieu noi dung" } };
+    return { error: { status: 400, message: "Thiếu nội dung" } };
   }
 
   let conversation = null;
   const recipientUser = await User.findById(recipientId).select("blockedUsers");
   if (!recipientUser) {
-    return { error: { status: 404, message: "Nguoi dung khong ton tai" } };
+    return { error: { status: 404, message: "Người dùng không tồn tại" } };
   }
 
   const directPermission = ensureDirectMessagingAllowed({
@@ -257,14 +265,16 @@ export const sendDirectMessageCommand = async ({ user, body, file }) => {
   if (conversationId) {
     conversation = await Conversation.findById(conversationId);
     if (!conversation) {
-      return { error: { status: 404, message: "Cuoc tro chuyen khong ton tai" } };
+      return {
+        error: { status: 404, message: "Cuộc trò chuyện không tồn tại " },
+      };
     }
 
     if (conversation.type !== "direct") {
       return {
         error: {
           status: 400,
-          message: "Chi ho tro gui direct vao cuoc tro chuyen 1-1",
+          message: "Chỉ hỗ trợ gửi direct vào cuộc trò chuyện 1-1",
         },
       };
     }
@@ -281,7 +291,7 @@ export const sendDirectMessageCommand = async ({ user, body, file }) => {
       return {
         error: {
           status: 403,
-          message: "Ban khong the gui tin nhan vao cuoc tro chuyen direct nay",
+          message: "Bạn không thể gửi tin nhắn vào cuộc trò chuyện direct này",
         },
       };
     }
@@ -319,12 +329,17 @@ export const sendDirectMessageCommand = async ({ user, body, file }) => {
   };
 };
 
-export const sendGroupMessageCommand = async ({ user, conversation, body, file }) => {
+export const sendGroupMessageCommand = async ({
+  user,
+  conversation,
+  body,
+  file,
+}) => {
   const { conversationId, content, replyToMessageId } = body;
   const senderId = user._id;
 
   if (!content?.trim() && !file) {
-    return { error: { status: 400, message: "Thieu noi dung" } };
+    return { error: { status: 400, message: "Thiếu nội dung" } };
   }
 
   const { message } = await createAndEmitMessage({
@@ -347,7 +362,8 @@ export const sendGroupMessageCommand = async ({ user, conversation, body, file }
 };
 
 export const syncConversationAndEmitUpdate = async (conversation, message) => {
-  const latestMessage = message ?? (await findLatestVisibleMessage(conversation._id));
+  const latestMessage =
+    message ?? (await findLatestVisibleMessage(conversation._id));
 
   syncConversationLastMessage(conversation, latestMessage);
   await conversation.save();
@@ -368,7 +384,7 @@ export const clearMessageAssets = async (message) => {
     : deleteImageFromCloudinaryUrl(currentImgUrl);
 
   await deleteImagePromise.catch((deleteError) => {
-    console.error("Khong the xoa anh tin nhan tren Cloudinary:", deleteError);
+    console.error("Không thể xóa ảnh tin nhắn trên Cloudinary:", deleteError);
   });
 };
 
@@ -376,24 +392,31 @@ export const editMessageCommand = async ({ user, messageId, content }) => {
   const userId = user._id;
 
   if (!content?.trim()) {
-    return { error: { status: 400, message: "Noi dung khong duoc de trong" } };
+    return { error: { status: 400, message: "Nội dung không được để trống" } };
   }
 
-  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  const { message, conversation, error } = await loadMessageContext(
+    messageId,
+    userId,
+  );
   if (error) {
     return { error };
   }
 
   if (message.type === "system") {
-    return { error: { status: 400, message: "Khong the sua tin nhan he thong" } };
+    return {
+      error: { status: 400, message: "Không thể sửa tin nhắn hệ thống" },
+    };
   }
 
   if (!message.senderId || message.senderId.toString() !== userId.toString()) {
-    return { error: { status: 403, message: "Ban khong the sua tin nhan nay" } };
+    return {
+      error: { status: 403, message: "Bạn không thể sửa tin nhắn này" },
+    };
   }
 
   if (message.isDeletedForEveryone) {
-    return { error: { status: 400, message: "Tin nhan da bi thu hoi" } };
+    return { error: { status: 400, message: "Tin nhắn đã bị thu hồi" } };
   }
 
   message.content = content.trim();
@@ -443,17 +466,24 @@ export const deleteMessageForMeCommand = async ({ user, messageId }) => {
 export const deleteMessageForEveryoneCommand = async ({ user, messageId }) => {
   const userId = user._id;
 
-  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  const { message, conversation, error } = await loadMessageContext(
+    messageId,
+    userId,
+  );
   if (error) {
     return { error };
   }
 
   if (message.type === "system") {
-    return { error: { status: 400, message: "Khong the thu hoi tin nhan he thong" } };
+    return {
+      error: { status: 400, message: "Không thể thu hồi tin nhắn hệ thống" },
+    };
   }
 
   if (!message.senderId || message.senderId.toString() !== userId.toString()) {
-    return { error: { status: 403, message: "Ban khong the thu hoi tin nhan nay" } };
+    return {
+      error: { status: 403, message: "Bạn không thể thu hồi tin nhắn này" },
+    };
   }
 
   await clearMessageAssets(message);
@@ -481,14 +511,21 @@ export const deleteMessageForEveryoneCommand = async ({ user, messageId }) => {
   };
 };
 
-export const toggleMessageReactionCommand = async ({ user, messageId, emoji }) => {
+export const toggleMessageReactionCommand = async ({
+  user,
+  messageId,
+  emoji,
+}) => {
   const userId = user._id;
 
   if (!emoji?.trim()) {
-    return { error: { status: 400, message: "Emoji la bat buoc" } };
+    return { error: { status: 400, message: "Emoji là bắt buộc" } };
   }
 
-  const { message, conversation, error } = await loadMessageContext(messageId, userId);
+  const { message, conversation, error } = await loadMessageContext(
+    messageId,
+    userId,
+  );
   if (error) {
     return { error };
   }
@@ -497,7 +534,7 @@ export const toggleMessageReactionCommand = async ({ user, messageId, emoji }) =
     return {
       error: {
         status: 400,
-        message: "Khong the tha bieu cam vao tin nhan da thu hoi",
+        message: "Không thể thả biểu cảm vào tin nhắn đã thu hồi",
       },
     };
   }
@@ -514,7 +551,9 @@ export const toggleMessageReactionCommand = async ({ user, messageId, emoji }) =
       ? reaction.userIds.filter((item) => item.toString() !== userId.toString())
       : [...reaction.userIds, userId];
 
-    message.reactions = message.reactions.filter((item) => item.userIds.length > 0);
+    message.reactions = message.reactions.filter(
+      (item) => item.userIds.length > 0,
+    );
   }
 
   await message.save();

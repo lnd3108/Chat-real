@@ -1,12 +1,14 @@
 import Conversation from "../models/Conversation.js";
 import Friend from "../models/Friend.js";
 
+// Hàm để sắp xếp hai ID theo thứ tự nhất định
 const pair = (a, b) => {
   const aStr = a.toString();
   const bStr = b.toString();
   return aStr < bStr ? [aStr, bStr] : [bStr, aStr];
 };
 
+// Middleware để kiểm tra xem người dùng đã là bạn bè với recipientId hoặc tất cả memberIds chưa
 export const checkFriendship = async (req, res, next) => {
   try {
     const me = req.user._id.toString();
@@ -37,7 +39,6 @@ export const checkFriendship = async (req, res, next) => {
       .map((id) => id.toString())
       .filter((id) => id !== me);
 
-    // todo: chat nhóm
     const friendChecks = filteredMemberIds.map(async (memberId) => {
       const [userA, userB] = pair(me, memberId);
       const friend = await Friend.findOne({ userA, userB });
@@ -60,6 +61,7 @@ export const checkFriendship = async (req, res, next) => {
   }
 };
 
+// Middleware kiểm tra cuộc trò chuyện nhóm
 export const checkGroupMemberShip = async (req, res, next) => {
   try {
     const { conversationId } = req.body;

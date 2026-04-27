@@ -4,6 +4,7 @@ import {
   buildDirectBlockInfo,
 } from "../domain/direct-blocking.policy.js";
 
+// Hàm gọi xóa 
 export const getClearedAtForUser = (conversation, userId) => {
   const currentUserId = userId?.toString();
   if (!currentUserId) return null;

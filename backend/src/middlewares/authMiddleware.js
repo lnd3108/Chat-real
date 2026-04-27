@@ -1,3 +1,4 @@
+// Đây là file middleware để bảo vệ các route cần xác thực và phân quyền
 export {
   protectedRoute,
   requireAdmin,

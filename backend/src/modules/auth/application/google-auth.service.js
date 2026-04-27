@@ -3,8 +3,10 @@ import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import User from "../../../models/User.js";
 
+// Cấu hình OAuth2Client với client ID của bạn từ Google Cloud Console
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Hàm tạo userName duy nhất dựa trên email
 export const createUniqueUserName = async (email) => {
   const [baseValue] = email.split("@");
   const normalizedBase = baseValue
@@ -25,6 +27,7 @@ export const createUniqueUserName = async (email) => {
   return candidate;
 };
 
+// Hàm tạo URL đăng nhập Google
 export const getGoogleAuthUrl = () => {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
@@ -38,6 +41,7 @@ export const getGoogleAuthUrl = () => {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
 
+// Hàm trao đổi mã code lấy access token và ID token từ Google
 export const exchangeGoogleCodeForTokens = async (code) => {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -59,6 +63,7 @@ export const exchangeGoogleCodeForTokens = async (code) => {
   return response.json();
 };
 
+// Hàm xác minh ID token và lấy thông tin người dùng từ Google
 export const verifyGoogleIdToken = async (idToken) => {
   const ticket = await googleClient.verifyIdToken({
     idToken,
@@ -68,22 +73,24 @@ export const verifyGoogleIdToken = async (idToken) => {
   return ticket.getPayload();
 };
 
+// Hàm kiểm tra tính hợp lệ của email Google và các điều kiện liên quan
 export const ensureGoogleEmailIsAllowed = (payload) => {
   if (!payload?.email) {
-    return "TÃ i khoáº£n Google khÃ´ng tráº£ vá» email.";
+    return "Tài khoản Google không trả về email.";
   }
 
   if (!payload.email_verified) {
-    return "Google chÆ°a xÃ¡c minh email nÃ y.";
+    return "Google chưa xác minh email này.";
   }
 
   if (!payload.email.toLowerCase().endsWith("@gmail.com")) {
-    return "Chá»‰ Ä‘Æ°á»£c Ä‘Äƒng nháº­p báº±ng tÃ i khoáº£n Gmail.";
+    return "Chỉ được đăng nhập bằng tài khoản Gmail.";
   }
 
   return null;
 };
 
+// Hàm tìm kiếm hoặc tạo người dùng dựa trên thông tin từ Google
 export const findOrCreateGoogleUser = async (payload) => {
   const googleId = payload.sub;
   const email = payload.email.toLowerCase();
@@ -92,7 +99,7 @@ export const findOrCreateGoogleUser = async (payload) => {
 
   if (user) {
     if (user.googleId && user.googleId !== googleId) {
-      throw new Error("TÃ i khoáº£n nÃ y Ä‘Ã£ liÃªn káº¿t vá»›i Google khÃ¡c.");
+      throw new Error("Tài khoản này đã liên kết với Google khác.");
     }
 
     user.googleId = googleId;

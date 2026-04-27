@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Auth Validation
+// validate input đầu vào
 export const signUpSchema = z.object({
   userName: z
     .string()
@@ -17,11 +17,13 @@ export const signUpSchema = z.object({
   lastName: z.string().min(1, "Họ không được trống"),
 });
 
+// validate input đầu vào
 export const signInSchema = z.object({
   userName: z.string().min(1, "Yêu cầu username"),
   password: z.string().min(1, "Yêu cầu password"),
 });
 
+// validate input đầu vào
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().email("Email không hợp lệ"),
 });

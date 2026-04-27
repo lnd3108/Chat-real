@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// Mô hình dữ liệu cho báo cáo vi phạm, cho phép người dùng báo cáo các hành vi không phù hợp hoặc vi phạm trong hệ thống.
 const reportSchema = new mongoose.Schema(
   {
     reporterId: {
@@ -62,7 +63,7 @@ const reportSchema = new mongoose.Schema(
       default: null,
       maxlength: 2000,
     },
-    // Snapshots to prevent issues if original data is deleted
+    // Snapshot thông tin người báo cáo và đối tượng bị báo cáo tại thời điểm tạo báo cáo, để đảm bảo tính toàn vẹn của dữ liệu khi các thông tin này có thể thay đổi sau đó.
     reporterSnapshot: {
       _id: mongoose.Schema.Types.ObjectId,
       displayName: String,
@@ -94,11 +95,12 @@ const reportSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Compound index for efficient querying
+// Thiết lập các index để tối ưu hóa hiệu suất truy vấn báo cáo theo trạng thái, người báo cáo, và loại đối tượng bị báo cáo.
 reportSchema.index({ status: 1, createdAt: -1 });
 reportSchema.index({ reporterId: 1, createdAt: -1 });
 reportSchema.index({ targetType: 1, status: 1 });
 
+// Mô hình dữ liệu cho báo cáo vi phạm, cho phép người dùng báo cáo các hành vi không phù hợp hoặc vi phạm trong hệ thống.
 const Report = mongoose.model("Report", reportSchema);
 
 export default Report;

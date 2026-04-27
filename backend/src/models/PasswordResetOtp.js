@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+// Bản ghi OTP cho việc đặt lại mật khẩu, 
+// có thể được sử dụng để xác thực người dùng trước khi 
+// cho phép họ đặt lại mật khẩu của mình. Bản ghi này 
+// sẽ chứa thông tin về OTP đã được tạo, thời gian hết hạn, số lần thử, và trạng thái sử dụng của OTP đó.
 const passwordResetOtpSchema = new mongoose.Schema(
   {
     userId: {
@@ -75,9 +79,11 @@ const passwordResetOtpSchema = new mongoose.Schema(
   },
 );
 
+// Thiết lập TTL index để tự động xóa các bản ghi OTP sau 24 giờ
 passwordResetOtpSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: 24 * 60 * 60 },
 );
 
+// Thiết lập compound index để tối ưu hóa truy vấn tìm kiếm OTP theo email và trạng thái sử dụng
 export default mongoose.model("PasswordResetOtp", passwordResetOtpSchema);

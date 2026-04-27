@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+// Bản schema phụ để lưu thông tin của tin nhắn gốc khi trả lời, 
+// giúp tránh việc phải truy vấn thêm khi hiển thị tin nhắn trả lời
 const replyToSchema = new mongoose.Schema(
   {
     messageId: {
@@ -43,6 +45,7 @@ const replyToSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Bản schema phụ để lưu thông tin phản ứng của người dùng với tin nhắn
 const reactionSchema = new mongoose.Schema(
   {
     emoji: {
@@ -60,6 +63,7 @@ const reactionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Schema chính cho tin nhắn, bao gồm các trường cơ bản và các trường phụ để lưu thông tin trả lời và phản ứng
 const messageSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -130,8 +134,10 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
+// Tạo index để tối ưu hóa truy vấn theo conversationId và sắp xếp theo createdAt giảm dần
 messageSchema.index({ conversationId: 1, createdAt: -1 });
 
+// Tạo model từ schema và xuất ra để sử dụng trong các phần khác của ứng dụng
 const Message = mongoose.model("Message", messageSchema);
 
 export default Message;

@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Mô hình dữ liệu cho việc ghi lại lịch sử các hành động quan trọng liên quan đến người dùng,
+// bao gồm thông tin về người thực hiện hành động, người bị ảnh hưởng, loại hành động, 
+// dữ liệu trước và sau khi thay đổi, lý do và metadata bổ sung.
 const auditLogSchema = new mongoose.Schema(
   {
     actorId: {

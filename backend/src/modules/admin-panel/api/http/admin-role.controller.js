@@ -6,7 +6,10 @@ import {
   updateUserRoleByAdmin,
 } from "../../../../services/adminRoleService.js";
 import { canManageUser } from "../../../../services/rbacService.js";
-import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeCommandHandler,
+  makeQueryHandler,
+} from "../../../../shared/api/http/controller-factory.js";
 import {
   makeServerErrorHandler,
   makeStatusAwareErrorHandler,
@@ -16,19 +19,23 @@ import {
   presentSuccessMessage,
 } from "../../../../shared/api/http/presenters.js";
 
+// Hàm xử lý để lấy danh sách role admin và role có thể gán được cho người dùng hiện tại
 export const getAdminRoles = makeQueryHandler({
   execute: (req) => getRoleDefinitionsForActor(req.user),
   present: (roles) =>
     presentSuccessData({
       roles,
-      assignableRoles: roles.filter((role) => role.assignable).map((role) => role.key),
+      assignableRoles: roles
+        .filter((role) => role.assignable)
+        .map((role) => role.key),
     }),
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch role admin:",
-    message: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y danh sÃƒÂ¡ch role.",
+    logMessage: "Lỗi khi lấy danh sách role admin:",
+    message: "Không thể lấy danh sách role.",
   }),
 });
 
+// Hàm xử lý để lấy thông tin quyền của một người dùng cụ thể
 export const getAdminUserPermissions = makeQueryHandler({
   execute: async (req) => {
     const { id } = req.params;
@@ -37,12 +44,14 @@ export const getAdminUserPermissions = makeQueryHandler({
     );
 
     if (!user) {
-      throw Object.assign(new Error("KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng."), { status: 404 });
+      throw Object.assign(new Error("Không tìm thấy người dùng."), {
+        status: 404,
+      });
     }
 
     if (!canManageUser(req.user, user)) {
       throw Object.assign(
-        new Error("BÃ¡ÂºÂ¡n khÃƒÂ´ng cÃƒÂ³ quyÃ¡Â»Ân thao tÃƒÂ¡c trÃƒÂªn tÃƒÂ i khoÃ¡ÂºÂ£n nÃƒÂ y."),
+        new Error("Bạn không có quyền thao tác trên tài khoản này."),
         { status: 403 },
       );
     }
@@ -53,11 +62,12 @@ export const getAdminUserPermissions = makeQueryHandler({
   },
   present: presentSuccessData,
   onError: makeStatusAwareErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y quyÃ¡Â»Ân ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:",
-    message: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y quyÃ¡Â»Ân ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng.",
+    logMessage: "Lỗi khi lấy quyền người dùng:",
+    message: "Không thể lấy quyền người dùng.",
   }),
 });
 
+// Hàm xử lý để cập nhật role của một người dùng cụ thể
 export const patchAdminUserRoles = makeCommandHandler({
   execute: (req) => {
     const { userId, id } = req.params;
@@ -72,18 +82,19 @@ export const patchAdminUserRoles = makeCommandHandler({
     });
   },
   present: (data) =>
-    presentSuccessMessage("CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t quyÃ¡Â»Ân tÃƒÂ i khoÃ¡ÂºÂ£n thÃƒÂ nh cÃƒÂ´ng.", data),
+    presentSuccessMessage("Cập nhật quyền tài khoản thành công.", data),
   onError: makeStatusAwareErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t role ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng:",
-    message: "KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t quyÃ¡Â»Ân tÃƒÂ i khoÃ¡ÂºÂ£n.",
+    logMessage: "Lỗi khi cập nhật role người dùng:",
+    message: "Không thể cập nhật quyền tài khoản.",
   }),
 });
 
+// Hàm xử lý để lấy lịch sử phân quyền của một người dùng cụ thể
 export const getAdminAuditLogs = makeQueryHandler({
   execute: (req) => listAuditLogs(req.query ?? {}),
   present: presentSuccessData,
   onError: makeServerErrorHandler({
-    logMessage: "LÃ¡Â»â€”i khi lÃ¡ÂºÂ¥y audit log phÃƒÂ¢n quyÃ¡Â»Ân:",
-    message: "KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ¡ÂºÂ¥y lÃ¡Â»â€¹ch sÃ¡Â»Â­ phÃƒÂ¢n quyÃ¡Â»Ân.",
+    logMessage: "Lỗi khi lấy audit log phân quyền:",
+    message: "Không thể lấy lịch sử phân quyền.",
   }),
 });

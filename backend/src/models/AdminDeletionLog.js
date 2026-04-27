@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+// Mô hình dữ liệu cho việc ghi lại lịch sử xóa tài khoản người dùng bởi admin,
+// bao gồm thông tin về người dùng bị xóa, admin thực hiện xóa, thời gian xóa, lý do xóa và tóm tắt các dữ liệu đã được dọn dẹp.
 const adminDeletionLogSchema = new mongoose.Schema(
   {
     targetUserId: {

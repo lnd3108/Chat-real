@@ -14,9 +14,10 @@ import {
   verifyGoogleIdToken,
 } from "./google-auth.service.js";
 
+// Hàm tạo URL đăng nhập Google
 export const signInWithGoogle = async ({ code, res }) => {
   if (!code) {
-    return { status: 400, body: { message: "ThiÃ¡ÂºÂ¿u code tÃ¡Â»Â« Google." } };
+    return { status: 400, body: { message: "Thiếu code từ Google." } };
   }
 
   const tokenResult = await exchangeGoogleCodeForTokens(code);
