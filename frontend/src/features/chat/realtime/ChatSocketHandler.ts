@@ -60,23 +60,75 @@ interface ChatSocketHandlerOptions {
   setOnlineUsers: (userIds: string[]) => void;
 }
 
-export const registerChatSocketHandler = (
-  socket: Socket,
-  options: ChatSocketHandlerOptions,
-) => {
-  const onConnect = () => {
-    socket.emit("preferences:showOnlineStatus", options.getShowOnlineStatus());
-    socket.emit(
+export class ChatSocketHandler {
+  private socket: Socket | null = null;
+  private readonly options: ChatSocketHandlerOptions;
+
+  constructor(options: ChatSocketHandlerOptions) {
+    this.options = options;
+  }
+
+  register(socket: Socket) {
+    this.unregister(socket);
+    this.socket = socket;
+    socket.on("connect", this.handleConnect);
+    socket.on("online-users", this.handleOnlineUsers);
+    socket.on("new-message", this.handleNewMessage);
+    socket.on("message:updated", this.handleMessageUpdated);
+    socket.on("message:removed-for-me", this.handleMessageRemovedForMe);
+    socket.on("read-message", this.handleReadMessage);
+    socket.on("new-group", this.handleNewGroup);
+    socket.on("conversation:deleted", this.handleRemoveConversation);
+    socket.on("group-deleted", this.handleRemoveConversation);
+    socket.on("conversation:direct-cleared", this.handleDirectCleared);
+    socket.on("conversation:left", this.handleConversationLeft);
+    socket.on("conversation:member-left", this.handleMemberLeft);
+    socket.on("conversation:member-removed", this.handleMemberRemoved);
+    socket.on("conversation:members-added", this.handleMembersAdded);
+    socket.on("conversation:updated", this.handleConversationUpdated);
+    socket.on("message:bulk-updated", this.handleMessageBulkUpdated);
+    socket.on("direct:block-status", this.handleDirectBlockStatus);
+    socket.on("added-to-group", this.handleAddedToGroup);
+  }
+
+  unregister(socket: Socket) {
+    socket.off("connect", this.handleConnect);
+    socket.off("online-users", this.handleOnlineUsers);
+    socket.off("new-message", this.handleNewMessage);
+    socket.off("message:updated", this.handleMessageUpdated);
+    socket.off("message:removed-for-me", this.handleMessageRemovedForMe);
+    socket.off("read-message", this.handleReadMessage);
+    socket.off("new-group", this.handleNewGroup);
+    socket.off("conversation:deleted", this.handleRemoveConversation);
+    socket.off("group-deleted", this.handleRemoveConversation);
+    socket.off("conversation:direct-cleared", this.handleDirectCleared);
+    socket.off("conversation:left", this.handleConversationLeft);
+    socket.off("conversation:member-left", this.handleMemberLeft);
+    socket.off("conversation:member-removed", this.handleMemberRemoved);
+    socket.off("conversation:members-added", this.handleMembersAdded);
+    socket.off("conversation:updated", this.handleConversationUpdated);
+    socket.off("message:bulk-updated", this.handleMessageBulkUpdated);
+    socket.off("direct:block-status", this.handleDirectBlockStatus);
+    socket.off("added-to-group", this.handleAddedToGroup);
+    if (this.socket === socket) this.socket = null;
+  }
+
+  private handleConnect = () => {
+    this.socket?.emit("preferences:showOnlineStatus", this.options.getShowOnlineStatus());
+    this.socket?.emit(
       "conversation:active",
       isDocumentVisible() ? useChatStore.getState().activeConversationId : null,
     );
   };
 
-  const onOnlineUsers = (userIds: string[]) => {
-    options.setOnlineUsers(userIds);
+  private handleOnlineUsers = (userIds: string[]) => {
+    this.options.setOnlineUsers(userIds);
   };
 
-  const onNewMessage = ({ message, conversation, unreadCounts }: any) => {
+  private handleNewMessage = ({ message, conversation, unreadCounts }: any) => {
+    const socket = this.socket;
+    if (!socket) return;
+
     const {
       addConvo,
       addMessage,
@@ -166,9 +218,7 @@ export const registerChatSocketHandler = (
       void markasSeen(message.conversationId);
     }
 
-    if (isOwnMessage) {
-      return;
-    }
+    if (isOwnMessage) return;
 
     if (
       shouldStoreNotification("new_message", {
@@ -188,9 +238,7 @@ export const registerChatSocketHandler = (
       });
     }
 
-    if (isCurrentConversationVisible) {
-      return;
-    }
+    if (isCurrentConversationVisible) return;
 
     const openConversation = async () => {
       setActiveConversation(message.conversationId);
@@ -215,7 +263,7 @@ export const registerChatSocketHandler = (
     });
   };
 
-  const onMessageUpdated = ({ message, conversation }: any) => {
+  private handleMessageUpdated = ({ message, conversation }: any) => {
     useChatStore.getState().updateMessage(message);
     if (conversation) {
       useChatStore.getState().updateConversation({
@@ -229,11 +277,11 @@ export const registerChatSocketHandler = (
     }
   };
 
-  const onMessageRemovedForMe = ({ conversationId, messageId }: any) => {
+  private handleMessageRemovedForMe = ({ conversationId, messageId }: any) => {
     useChatStore.getState().removeMessageForMe(conversationId, messageId);
   };
 
-  const onReadMessage = ({ conversation }: any) => {
+  private handleReadMessage = ({ conversation }: any) => {
     useChatStore.getState().updateConversation({
       _id: conversation._id,
       unreadCounts: conversation.unreadCounts,
@@ -244,12 +292,12 @@ export const registerChatSocketHandler = (
     });
   };
 
-  const onNewGroup = (conversation: any) => {
+  private handleNewGroup = (conversation: any) => {
     useChatStore.getState().addConvo(conversation, { activate: false });
-    socket.emit("join-conversation", conversation._id);
+    this.socket?.emit("join-conversation", conversation._id);
   };
 
-  const removeConversation = (payload: any) => {
+  private handleRemoveConversation = (payload: any) => {
     const conversationId =
       typeof payload === "string" ? payload : payload?.conversationId;
     if (!conversationId) return;
@@ -260,18 +308,21 @@ export const registerChatSocketHandler = (
         id: `conversation-deleted-${conversationId}-${Date.now()}`,
         type: "conversation_deleted",
         title: "Cuộc trò chuyện đã bị xóa",
-        message:
-          "Một cuộc trò chuyện đã bị xóa khỏi danh sách của bạn",
+        message: "Một cuộc trò chuyện đã bị xóa khỏi danh sách của bạn",
         entityId: conversationId,
       });
     }
   };
 
-  const onDirectCleared = ({ conversationId }: any) => {
+  private handleDirectCleared = ({ conversationId }: any) => {
     useChatStore.getState().removeConversationLocal(conversationId);
   };
 
-  const onConversationLeft = ({ conversationId, groupName, removedByOther }: any) => {
+  private handleConversationLeft = ({
+    conversationId,
+    groupName,
+    removedByOther,
+  }: any) => {
     useChatStore.getState().removeConversationLocal(conversationId);
     if (shouldStoreNotification("conversation_removed")) {
       useNotificationStore.getState().addNotification({
@@ -293,7 +344,7 @@ export const registerChatSocketHandler = (
     );
   };
 
-  const onMemberLeft = ({ conversationId, userId }: any) => {
+  private handleMemberLeft = ({ conversationId, userId }: any) => {
     const { conversations, setConversationParticipants } = useChatStore.getState();
     const conversation = conversations.find((c) => c._id === conversationId);
     if (!conversation) return;
@@ -306,7 +357,7 @@ export const registerChatSocketHandler = (
     toast.message("Một thành viên đã rời nhóm");
   };
 
-  const onMemberRemoved = ({ conversationId, memberId }: any) => {
+  private handleMemberRemoved = ({ conversationId, memberId }: any) => {
     const { conversations, setConversationParticipants } = useChatStore.getState();
     const conversation = conversations.find((c) => c._id === conversationId);
     if (!conversation) return;
@@ -319,12 +370,12 @@ export const registerChatSocketHandler = (
     toast.message("Một thành viên đã bị xóa khỏi nhóm");
   };
 
-  const onMembersAdded = ({ conversationId, participants }: any) => {
+  private handleMembersAdded = ({ conversationId, participants }: any) => {
     useChatStore.getState().setConversationParticipants(conversationId, participants);
     toast.message("Nhóm vừa có thêm thành viên mới");
   };
 
-  const onConversationUpdated = ({ conversation }: any) => {
+  private handleConversationUpdated = ({ conversation }: any) => {
     useChatStore.getState().updateConversation({
       _id: conversation._id,
       group: conversation.group,
@@ -337,7 +388,7 @@ export const registerChatSocketHandler = (
     });
   };
 
-  const onMessageBulkUpdated = ({ conversationId }: any) => {
+  private handleMessageBulkUpdated = ({ conversationId }: any) => {
     useChatStore.setState((state) => ({
       messages: {
         ...state.messages,
@@ -351,15 +402,13 @@ export const registerChatSocketHandler = (
     void useChatStore.getState().fetchMessages(conversationId);
   };
 
-  const onDirectBlockStatus = ({
+  private handleDirectBlockStatus = ({
     conversationId,
     blockerId,
     blockedUserId,
     isBlocked,
   }: any) => {
-    if (!conversationId || !blockerId || !blockedUserId) {
-      return;
-    }
+    if (!conversationId || !blockerId || !blockedUserId) return;
 
     const meId = useAuthStore.getState().user?._id;
     const currentConversation = useChatStore
@@ -377,7 +426,7 @@ export const registerChatSocketHandler = (
     });
   };
 
-  const onAddedToGroup = ({ groupName }: any) => {
+  private handleAddedToGroup = ({ groupName }: any) => {
     if (shouldStoreNotification("added_to_group")) {
       useNotificationStore.getState().addNotification({
         id: `added-to-group-${groupName}-${Date.now()}`,
@@ -388,44 +437,4 @@ export const registerChatSocketHandler = (
     }
     toast.success(`Bạn vừa được thêm vào ${groupName}`);
   };
-
-  socket.on("connect", onConnect);
-  socket.on("online-users", onOnlineUsers);
-  socket.on("new-message", onNewMessage);
-  socket.on("message:updated", onMessageUpdated);
-  socket.on("message:removed-for-me", onMessageRemovedForMe);
-  socket.on("read-message", onReadMessage);
-  socket.on("new-group", onNewGroup);
-  socket.on("conversation:deleted", removeConversation);
-  socket.on("group-deleted", removeConversation);
-  socket.on("conversation:direct-cleared", onDirectCleared);
-  socket.on("conversation:left", onConversationLeft);
-  socket.on("conversation:member-left", onMemberLeft);
-  socket.on("conversation:member-removed", onMemberRemoved);
-  socket.on("conversation:members-added", onMembersAdded);
-  socket.on("conversation:updated", onConversationUpdated);
-  socket.on("message:bulk-updated", onMessageBulkUpdated);
-  socket.on("direct:block-status", onDirectBlockStatus);
-  socket.on("added-to-group", onAddedToGroup);
-
-  return () => {
-    socket.off("connect", onConnect);
-    socket.off("online-users", onOnlineUsers);
-    socket.off("new-message", onNewMessage);
-    socket.off("message:updated", onMessageUpdated);
-    socket.off("message:removed-for-me", onMessageRemovedForMe);
-    socket.off("read-message", onReadMessage);
-    socket.off("new-group", onNewGroup);
-    socket.off("conversation:deleted", removeConversation);
-    socket.off("group-deleted", removeConversation);
-    socket.off("conversation:direct-cleared", onDirectCleared);
-    socket.off("conversation:left", onConversationLeft);
-    socket.off("conversation:member-left", onMemberLeft);
-    socket.off("conversation:member-removed", onMemberRemoved);
-    socket.off("conversation:members-added", onMembersAdded);
-    socket.off("conversation:updated", onConversationUpdated);
-    socket.off("message:bulk-updated", onMessageBulkUpdated);
-    socket.off("direct:block-status", onDirectBlockStatus);
-    socket.off("added-to-group", onAddedToGroup);
-  };
-};
+}

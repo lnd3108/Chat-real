@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import axios from "axios";
 import {
   AlertTriangle,
   ArrowRight,
@@ -17,7 +16,8 @@ import {
 
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { axiosInstance } from "@/shared/api/axios";
+import { adminService } from "@/features/admin/application/AdminService";
+import { getAdminErrorMessage } from "@/features/admin/application/adminErrorMapper";
 import { getErrorMeta, logger } from "@/shared/lib/logger";
 import { cn } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
@@ -79,11 +79,6 @@ interface ApiState<T> {
 }
 
 const formatNumber = (value: number) => value.toLocaleString("vi-VN");
-
-const getAxiosMessage = (error: unknown, fallback: string) =>
-  axios.isAxiosError(error) && typeof error.response?.data?.message === "string"
-    ? error.response.data.message
-    : fallback;
 
 const chartLegend = {
   direct: {
@@ -523,12 +518,12 @@ const AdminDashboard = () => {
       setOverviewLoading(true);
       setOverviewError(null);
 
-      const response = await axiosInstance.get("/admin/dashboard/overview");
-      setOverview(response.data.data);
+      const data = await adminService.getDashboardOverview();
+      setOverview(data);
     } catch (err: unknown) {
       logger.error("Không thể tải overview admin", getErrorMeta(err));
       setOverview(null);
-      setOverviewError(getAxiosMessage(err, "Không thể tải dữ liệu tổng quan dashboard."));
+      setOverviewError(getAdminErrorMessage(err, "Không thể tải dữ liệu tổng quan dashboard."));
     } finally {
       setOverviewLoading(false);
     }
@@ -537,11 +532,11 @@ const AdminDashboard = () => {
   const fetchUserChart = async (days: 7 | 30) => {
     try {
       setUserChart((current) => ({ ...current, loading: true, error: null }));
-      const response = await axiosInstance.get("/admin/dashboard/charts/users", {
-        params: { days },
-      });
+      const data = (await adminService.getDashboardUserChart(days)) as {
+        points?: UserChartPoint[];
+      };
       setUserChart({
-        data: response.data.data.points ?? [],
+        data: data.points ?? [],
         loading: false,
         error: null,
       });
@@ -549,7 +544,7 @@ const AdminDashboard = () => {
       setUserChart({
         data: null,
         loading: false,
-        error: getAxiosMessage(err, "Không thể tải biểu đồ người dùng mới."),
+        error: getAdminErrorMessage(err, "Không thể tải biểu đồ người dùng mới."),
       });
     }
   };
@@ -557,11 +552,11 @@ const AdminDashboard = () => {
   const fetchMessageChart = async (days: 7 | 30) => {
     try {
       setMessageChart((current) => ({ ...current, loading: true, error: null }));
-      const response = await axiosInstance.get("/admin/dashboard/charts/messages", {
-        params: { days },
-      });
+      const data = (await adminService.getDashboardMessageChart(days)) as {
+        points?: MessageChartPoint[];
+      };
       setMessageChart({
-        data: response.data.data.points ?? [],
+        data: data.points ?? [],
         loading: false,
         error: null,
       });
@@ -569,7 +564,7 @@ const AdminDashboard = () => {
       setMessageChart({
         data: null,
         loading: false,
-        error: getAxiosMessage(err, "Không thể tải biểu đồ tin nhắn."),
+        error: getAdminErrorMessage(err, "Không thể tải biểu đồ tin nhắn."),
       });
     }
   };
@@ -577,9 +572,11 @@ const AdminDashboard = () => {
   const fetchReportChart = async () => {
     try {
       setReportChart((current) => ({ ...current, loading: true, error: null }));
-      const response = await axiosInstance.get("/admin/dashboard/charts/reports");
+      const data = (await adminService.getDashboardReportChart()) as {
+        items?: StatusChartItem[];
+      };
       setReportChart({
-        data: response.data.data.items ?? [],
+        data: data.items ?? [],
         loading: false,
         error: null,
       });
@@ -587,7 +584,7 @@ const AdminDashboard = () => {
       setReportChart({
         data: null,
         loading: false,
-        error: getAxiosMessage(err, "Không thể tải biểu đồ báo cáo."),
+        error: getAdminErrorMessage(err, "Không thể tải biểu đồ báo cáo."),
       });
     }
   };
@@ -595,9 +592,11 @@ const AdminDashboard = () => {
   const fetchSupportChart = async () => {
     try {
       setSupportChart((current) => ({ ...current, loading: true, error: null }));
-      const response = await axiosInstance.get("/admin/dashboard/charts/support");
+      const data = (await adminService.getDashboardSupportChart()) as {
+        items?: StatusChartItem[];
+      };
       setSupportChart({
-        data: response.data.data.items ?? [],
+        data: data.items ?? [],
         loading: false,
         error: null,
       });
@@ -605,7 +604,7 @@ const AdminDashboard = () => {
       setSupportChart({
         data: null,
         loading: false,
-        error: getAxiosMessage(err, "Không thể tải biểu đồ hỗ trợ."),
+        error: getAdminErrorMessage(err, "Không thể tải biểu đồ hỗ trợ."),
       });
     }
   };

@@ -1,7 +1,7 @@
-import { axiosInstance } from "@/shared/api/axios";
+import { adminService } from "@/features/admin/application/AdminService";
+import { getAdminErrorMessage } from "@/features/admin/application/adminErrorMapper";
 import { getErrorMeta, logger } from "@/shared/lib/logger";
 import { create } from "zustand";
-import axios from "axios";
 
 export interface AdminDashboardOverview {
   totalUsers: number;
@@ -53,11 +53,6 @@ interface AdminDashboardState {
   applyRealtimeStats: (payload: Partial<AdminDashboardOverview>) => void;
 }
 
-const getAxiosMessage = (error: unknown, fallback: string) =>
-  axios.isAxiosError(error) && typeof error.response?.data?.message === "string"
-    ? error.response.data.message
-    : fallback;
-
 export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   overview: null,
   loading: false,
@@ -65,9 +60,9 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   fetchOverview: async () => {
     try {
       set({ loading: true, error: null });
-      const response = await axiosInstance.get("/admin/dashboard/overview");
+      const overview = await adminService.getDashboardOverview();
       set({
-        overview: response.data.data,
+        overview,
         loading: false,
         error: null,
       });
@@ -75,7 +70,7 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
       logger.error("Không thể tải tổng quan dashboard admin", getErrorMeta(error));
       set({
         loading: false,
-        error: getAxiosMessage(
+        error: getAdminErrorMessage(
           error,
           "Không thể tải dữ liệu tổng quan dashboard.",
         ),

@@ -1,10 +1,12 @@
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
 import { hasAdminPanelAccess } from "@/shared/lib/rbac";
 import {
-  canAccessAdminPath,
-  getAdminNavItemForPath,
   getFirstAllowedAdminPath,
 } from "@/features/admin/config/adminNav";
+import {
+  canAccessAdminRoute,
+  getAdminRouteForPath,
+} from "@/features/admin/config/adminRoutes";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -116,11 +118,13 @@ const AdminProtectedRoute = () => {
 
   const firstAllowedPath = getFirstAllowedAdminPath(user);
   const isAdminIndex = location.pathname.replace(/\/+$/, "") === "/admin";
-  const hasKnownAdminRoute = Boolean(getAdminNavItemForPath(location.pathname));
+  const hasKnownAdminRoute = Boolean(getAdminRouteForPath(location.pathname));
 
   if (
     firstAllowedPath !== "/admin" &&
-    (isAdminIndex || !hasKnownAdminRoute || !canAccessAdminPath(user, location.pathname))
+    (isAdminIndex ||
+      !hasKnownAdminRoute ||
+      !canAccessAdminRoute(user, location.pathname))
   ) {
     return <Navigate to={firstAllowedPath} replace />;
   }

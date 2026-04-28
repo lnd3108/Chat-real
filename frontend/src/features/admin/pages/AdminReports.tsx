@@ -7,7 +7,7 @@ import UserAvatar from "@/features/chat/components/UserAvatar";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
-import { getErrorMessage } from "@/shared/lib/httpError";
+import { getAdminErrorMessage } from "@/features/admin/application/adminErrorMapper";
 import { getErrorMeta, logger } from "@/shared/lib/logger";
 import { useAdminSocketStore } from "@/features/admin/stores/useAdminSocketStore";
 import type {
@@ -75,7 +75,7 @@ const AdminReports = () => {
       });
     } catch (err) {
       logger.error("Khong the tai danh sach bao cao admin", getErrorMeta(err));
-      setError(getErrorMessage(err, "Không thể tải danh sách báo cáo."));
+      setError(getAdminErrorMessage(err, "Không thể tải danh sách báo cáo."));
     }
   }, [fetchReportsFromStore, page, searchQuery, sortBy, statusFilter, typeFilter]);
 

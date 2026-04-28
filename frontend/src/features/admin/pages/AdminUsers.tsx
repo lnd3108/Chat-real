@@ -19,9 +19,12 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Input } from "@/shared/ui/input";
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
-import { getErrorMessage } from "@/shared/lib/httpError";
+import { getAdminErrorMessage } from "@/features/admin/application/adminErrorMapper";
 import { getErrorMeta, logger } from "@/shared/lib/logger";
-import { APP_PERMISSIONS, canManageUser, hasPermission } from "@/shared/lib/rbac";
+import {
+  canManageUser,
+  getAdminUserCapabilities,
+} from "@/features/admin/config/adminPermissions";
 import { useAdminSocketStore } from "@/features/admin/stores/useAdminSocketStore";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import type { AdminUserRecord, AdminUserStatus, PaginationData } from "@/shared/types/admin";
@@ -50,11 +53,8 @@ const AdminUsers = () => {
   const removeUser = useAdminSocketStore((state) => state.removeUser);
   const currentUser = useAuthStore((state) => state.user);
 
-  const canAssignRole = hasPermission(currentUser, APP_PERMISSIONS.ROLE_ASSIGN);
-  const canDeleteUser = hasPermission(currentUser, APP_PERMISSIONS.USER_DELETE);
-  const canToggleUserStatus =
-    hasPermission(currentUser, APP_PERMISSIONS.USER_LOCK) ||
-    hasPermission(currentUser, APP_PERMISSIONS.USER_UNLOCK);
+  const { canAssignRole, canDeleteUser, canToggleUserStatus } =
+    getAdminUserCapabilities(currentUser);
 
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -74,7 +74,7 @@ const AdminUsers = () => {
       setError(null);
     } catch (err) {
       logger.error("Khong the tai danh sach nguoi dung admin", getErrorMeta(err));
-      setError(getErrorMessage(err, "Không thể tải danh sách người dùng."));
+      setError(getAdminErrorMessage(err, "Không thể tải danh sách người dùng."));
     }
   }, [fetchUsersFromStore, page, searchQuery, sortBy, statusFilter]);
 

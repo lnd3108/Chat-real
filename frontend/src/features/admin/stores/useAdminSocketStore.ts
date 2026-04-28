@@ -1,4 +1,7 @@
-import { axiosInstance } from "@/shared/api/axios";
+import {
+  adminService,
+  defaultAdminPagination,
+} from "@/features/admin/application/AdminService";
 import { getErrorMeta, logger } from "@/shared/lib/logger";
 import { APP_ROLES } from "@/shared/lib/rbac";
 import type {
@@ -72,13 +75,6 @@ interface AdminSocketState {
   ) => void;
 }
 
-const defaultPagination: PaginationData = {
-  page: 1,
-  limit: 20,
-  total: 0,
-  pages: 1,
-};
-
 const getItemTimestamp = (item: { updatedAt?: string; createdAt?: string }) =>
   new Date(item.updatedAt ?? item.createdAt ?? 0).getTime();
 
@@ -98,11 +94,11 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
   boundSocketId: null,
   users: [],
   usersLoading: false,
-  usersPagination: defaultPagination,
+  usersPagination: defaultAdminPagination,
   userQuery: { page: 1, limit: 20, q: "", status: "", sort: "createdAt" },
   reports: [],
   reportsLoading: false,
-  reportsPagination: defaultPagination,
+  reportsPagination: defaultAdminPagination,
   reportQuery: {
     page: 1,
     limit: 20,
@@ -113,7 +109,7 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
   },
   supportConversations: [],
   supportLoading: false,
-  supportPagination: defaultPagination,
+  supportPagination: defaultAdminPagination,
   supportQuery: {
     page: 1,
     limit: 20,
@@ -130,12 +126,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     const nextQuery = { ...get().userQuery, ...query };
     try {
       set({ usersLoading: true, userQuery: nextQuery });
-      const response = await axiosInstance.get("/admin/users", {
-        params: nextQuery,
-      });
+      const result = await adminService.listUsers(nextQuery);
       set({
-        users: response.data.data.users ?? [],
-        usersPagination: response.data.data.pagination ?? defaultPagination,
+        users: result.items,
+        usersPagination: result.pagination,
         usersLoading: false,
       });
     } catch (error) {
@@ -149,12 +143,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     const nextQuery = { ...get().reportQuery, ...query };
     try {
       set({ reportsLoading: true, reportQuery: nextQuery });
-      const response = await axiosInstance.get("/admin/reports", {
-        params: nextQuery,
-      });
+      const result = await adminService.listReports(nextQuery);
       set({
-        reports: response.data.data.reports ?? [],
-        reportsPagination: response.data.data.pagination ?? defaultPagination,
+        reports: result.items,
+        reportsPagination: result.pagination,
         reportsLoading: false,
       });
     } catch (error) {
@@ -168,12 +160,10 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
     const nextQuery = { ...get().supportQuery, ...query };
     try {
       set({ supportLoading: true, supportQuery: nextQuery });
-      const response = await axiosInstance.get("/admin/support/conversations", {
-        params: nextQuery,
-      });
+      const result = await adminService.listSupportConversations(nextQuery);
       set({
-        supportConversations: response.data.data.conversations ?? [],
-        supportPagination: response.data.data.pagination ?? defaultPagination,
+        supportConversations: result.items,
+        supportPagination: result.pagination,
         supportLoading: false,
       });
     } catch (error) {
@@ -184,9 +174,8 @@ export const useAdminSocketStore = create<AdminSocketState>((set, get) => ({
   },
 
   fetchSupportConversationDetail: async (id) => {
-    const response = await axiosInstance.get(`/admin/support/conversations/${id}`);
-    const conversation = response.data.data.conversation ?? null;
-    const messages = response.data.data.messages ?? [];
+    const { conversation, messages } =
+      await adminService.getSupportConversationDetail(id);
 
     if (conversation) {
       get().upsertSupportConversation(conversation);

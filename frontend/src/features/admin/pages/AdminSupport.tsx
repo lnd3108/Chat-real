@@ -8,7 +8,7 @@ import UserAvatar from "@/features/chat/components/UserAvatar";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
-import { getErrorMessage } from "@/shared/lib/httpError";
+import { getAdminErrorMessage } from "@/features/admin/application/adminErrorMapper";
 import { useAdminSocketStore } from "@/features/admin/stores/useAdminSocketStore";
 import type { AdminSupportConversationRecord, PaginationData } from "@/shared/types/admin";
 
@@ -63,7 +63,7 @@ const AdminSupport = () => {
       setError(null);
     } catch (err) {
       logger.error("Khong the tai danh sach ho tro admin", getErrorMeta(err));
-      setError(getErrorMessage(err, "Không thể tải danh sách hỗ trợ."));
+      setError(getAdminErrorMessage(err, "Không thể tải danh sách hỗ trợ."));
     }
   }, [fetchSupportConversationsFromStore, page, searchQuery, sortBy, statusFilter]);
 

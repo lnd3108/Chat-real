@@ -9,19 +9,7 @@ import { Toaster } from "sonner";
 import ProtectedRoute from "@/features/auth/components/ProtectedRoute";
 import AdminProtectedRoute from "@/features/auth/components/AdminProtectedRoute";
 import AdminLayout from "@/features/admin/components/AdminLayout";
-import AdminDashboard from "@/features/admin/pages/AdminDashboard";
-import AdminUsers from "@/features/admin/pages/AdminUsers";
-import AdminUserDetail from "@/features/admin/pages/AdminUserDetail";
-import AdminBlocks from "@/features/admin/pages/AdminBlocks";
-import AdminFriends from "@/features/admin/pages/AdminFriends";
-import AdminFriendRequests from "@/features/admin/pages/AdminFriendRequests";
-import AdminConversations from "@/features/admin/pages/AdminConversations";
-import AdminReports from "@/features/admin/pages/AdminReports";
-import AdminReportDetail from "@/features/admin/pages/AdminReportDetail";
-import AdminSupport from "@/features/admin/pages/AdminSupport";
-import AdminSupportDetail from "@/features/admin/pages/AdminSupportDetail";
-import AdminMaintenance from "@/features/admin/pages/AdminMaintenance";
-import AdminAuditLogs from "@/features/admin/pages/AdminAuditLogs";
+import { ADMIN_ROUTES } from "@/features/admin/config/adminRoutes";
 import MaintenanceModeModal from "@/app/components/MaintenanceModeModal";
 import { useThemeStore } from "@/features/settings/stores/useThemeStore";
 import { useEffect } from "react";
@@ -96,31 +84,13 @@ function App() {
           <Route element={<AdminProtectedRoute />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={null} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
-              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
-              <Route path="/admin/blocks" element={<AdminBlocks />} />
-              <Route path="/admin/friends" element={<AdminFriends />} />
-              <Route
-                path="/admin/friend-requests"
-                element={<AdminFriendRequests />}
-              />
-              <Route
-                path="/admin/conversations"
-                element={<AdminConversations />}
-              />
-              <Route path="/admin/support" element={<AdminSupport />} />
-              <Route
-                path="/admin/support/:id"
-                element={<AdminSupportDetail />}
-              />
-              <Route path="/admin/reports" element={<AdminReports />} />
-              <Route
-                path="/admin/reports/:id"
-                element={<AdminReportDetail />}
-              />
-              <Route path="/admin/maintenance" element={<AdminMaintenance />} />
+              {ADMIN_ROUTES.map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={route.element}
+                />
+              ))}
             </Route>
           </Route>
         </Routes>
