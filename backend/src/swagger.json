@@ -1,0 +1,2424 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ChatRealTime",
+    "version": "1.0.0",
+    "description": ""
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001/api"
+    }
+  ],
+  "paths": {
+    "/auth/signup": {
+      "post": {
+        "summary": "signUP",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "firstName": {
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "userName": "vanh",
+                "password": "123456",
+                "email": "leanh@gmail.com",
+                "firstName": "le",
+                "lastName": "vanh"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signin": {
+      "post": {
+        "summary": "SignIn",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "utc-millisec"
+                  }
+                }
+              },
+              "example": {
+                "userName": "vanh",
+                "password": "1234567"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/oauth2/google": {
+      "get": {
+        "summary": "GoogleOAuth",
+        "responses": {},
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/google/callback": {
+      "post": {
+        "summary": "GoogleCallback",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "code": "google_oauth_code"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "summary": "VerifyEmail",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verificationToken": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "format": "color"
+                  }
+                }
+              },
+              "example": {
+                "verificationToken": "token_xac_minh_email",
+                "code": "123456"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "summary": "Resen-VerifyEmail",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verificationToken": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "verificationToken": "token_xac_minh_email"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Forgot-pass",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              },
+              "example": {
+                "email": "vana@example.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-forgot-password-otp": {
+      "post": {
+        "summary": "Verify-forgot-pass",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "format": "color"
+                  }
+                }
+              },
+              "example": {
+                "email": "vana@example.com",
+                "otp": "123456"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Reset-passWord",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "resetToken": {
+                    "type": "string"
+                  },
+                  "resetTokenValue": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "confirmPassword": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "email": "vana@example.com",
+                "resetToken": "reset_token",
+                "resetTokenValue": "reset_token_value",
+                "newPassword": "NewPassword1",
+                "confirmPassword": "NewPassword1"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signout": {
+      "post": {
+        "summary": "SignOut",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh",
+        "responses": {},
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/change-password": {
+      "patch": {
+        "summary": "changePassW",
+        "responses": {},
+        "tags": ["Auth"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "format": "color"
+                  }
+                }
+              },
+              "example": {
+                "currentPassword": "abc",
+                "newPassword": "123456",
+                "confirmPassword": "123456"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/delete-account/request": {
+      "post": {
+        "summary": "Delete-Account",
+        "responses": {},
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/delete-account/confirm": {
+      "post": {
+        "summary": "Confirm-delete",
+        "responses": {},
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "confirmationText": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "code": "123456",
+                "confirmationText": "DELETE"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "summary": "AuthMe",
+        "responses": {},
+        "tags": ["User"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete-AuthMe",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "confirmationText": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "code": "123456",
+                "confirmationText": "DELETE"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me ": {
+      "patch": {
+        "summary": "Update-AuthMe",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "userName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "format": "utc-millisec"
+                  },
+                  "bio": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "displayName": "Nguyen Van A",
+                "userName": "nguyenvana",
+                "phone": "0901234567",
+                "bio": "Xin chao"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/profile": {
+      "patch": {
+        "summary": "Profile",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "userName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "format": "utc-millisec"
+                  },
+                  "bio": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "displayName": "Nguyen Van A",
+                "userName": "nguyenvana",
+                "phone": "0901234567",
+                "bio": "Xin chao"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/email-change/send-otp": {
+      "post": {
+        "summary": "Change-email",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newEmail": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              },
+              "example": {
+                "newEmail": "new-email@example.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/email-change/verify": {
+      "post": {
+        "summary": "Verify-change-email",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newEmail": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "format": "color"
+                  }
+                }
+              },
+              "example": {
+                "newEmail": "new-email@example.com",
+                "otp": "123456"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/email-change/cancel": {
+      "post": {
+        "summary": "cancel-change",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newEmail": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              },
+              "example": {
+                "newEmail": "new-email@example.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/test": {
+      "get": {
+        "summary": "Test",
+        "responses": {},
+        "tags": ["User"]
+      }
+    },
+    "/users/search": {
+      "get": {
+        "summary": "Search",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "10"
+          }
+        ],
+        "responses": {},
+        "tags": ["User"]
+      }
+    },
+    "/users/suggestions": {
+      "get": {
+        "summary": "Suggestions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "5"
+          }
+        ],
+        "responses": {},
+        "tags": ["User"]
+      }
+    },
+    "/users/blocks/{targetUserId}": {
+      "post": {
+        "summary": "Target-User",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "reason": "Spam"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "targetUserId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ],
+      "delete": {
+        "summary": "New Request",
+        "responses": {},
+        "tags": ["User"]
+      }
+    },
+    "/users/uploadAvatar": {
+      "post": {
+        "summary": "Upload-Avatar",
+        "responses": {},
+        "tags": ["User"]
+      }
+    },
+    "/users/me/preferences": {
+      "patch": {
+        "summary": "Preference",
+        "responses": {},
+        "tags": ["User"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "theme": {
+                    "type": "string"
+                  },
+                  "showOnlineStatus": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "theme": "dark",
+                "showOnlineStatus": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/friends/requests": {
+      "post": {
+        "summary": "SendFriendRequest",
+        "responses": {},
+        "tags": ["Friend"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "to": "6925b76547e9b19a96e1256f",
+                "message": "Hello user 2"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "getFriendRequest",
+        "responses": {},
+        "tags": ["Friend"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/friends/requests/695fc2ec262cb21583616d34/accept": {
+      "post": {
+        "summary": "AcceptFriendRequest",
+        "responses": {},
+        "tags": ["Friend"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/friends/requests/{requestId}/decline": {
+      "post": {
+        "summary": "Decline",
+        "responses": {},
+        "tags": ["Friend"]
+      },
+      "parameters": [
+        {
+          "name": "requestId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/friends/requests/{requestId}": {
+      "delete": {
+        "summary": "Delete-request",
+        "responses": {},
+        "tags": ["Friend"]
+      },
+      "parameters": [
+        {
+          "name": "requestId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/friends/{targetUserId}": {
+      "delete": {
+        "summary": "Delete-TargetId",
+        "responses": {},
+        "tags": ["Friend"]
+      },
+      "parameters": [
+        {
+          "name": "targetUserId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/friends/": {
+      "get": {
+        "summary": "getAllFriends",
+        "responses": {},
+        "tags": ["Friend"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/conversations/": {
+      "post": {
+        "summary": "CreateConversation",
+        "responses": {},
+        "tags": ["Conversation"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "memberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "type": "group",
+                "name": "Nhóm ABC",
+                "memberIds": [
+                  "69212105f3eabf5080391449",
+                  "695fc216262cb21583616d2b"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "GetConversations",
+        "responses": {},
+        "tags": ["Conversation"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations/{conversationId}/messages": {
+      "get": {
+        "summary": "GetMessageId",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "messageId"
+          }
+        ],
+        "responses": {},
+        "tags": ["Conversation"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/details": {
+      "get": {
+        "summary": "Get-Details",
+        "responses": {},
+        "tags": ["Conversation"]
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/avatar": {
+      "post": {
+        "summary": "Avatar-Conversation",
+        "responses": {},
+        "tags": ["Conversation"]
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/name": {
+      "patch": {
+        "summary": "Rename-Conversation",
+        "responses": {},
+        "tags": ["Conversation"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "Ten nhom moi"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/seen": {
+      "patch": {
+        "summary": "Seen-Conversation",
+        "responses": {},
+        "tags": ["Conversation"]
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/members/add": {
+      "patch": {
+        "summary": "Add-members",
+        "responses": {},
+        "tags": ["Conversation"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "memberIds": ["userId1", "userId2"]
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}/members/remove": {
+      "patch": {
+        "summary": "Remove-members",
+        "responses": {},
+        "tags": ["Conversation"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberId": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "memberId": "userId"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/conversations/{conversationId}": {
+      "delete": {
+        "summary": "Delete-Conversation",
+        "responses": {},
+        "tags": ["Conversation"]
+      },
+      "parameters": [
+        {
+          "name": "conversationId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e1ea3fcd5dd27c66a99"
+        }
+      ]
+    },
+    "/messages/direct": {
+      "post": {
+        "summary": "sendDirectMessage",
+        "responses": {},
+        "tags": ["Message"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recipientId": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "recipientId": "695fc216262cb21583616d2b",
+                "content": "First test"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/direct/with-image": {
+      "post": {
+        "summary": "With-ImageDirect",
+        "responses": {},
+        "tags": ["Message"]
+      }
+    },
+    "/messages/group": {
+      "post": {
+        "summary": "sendGroupMessage",
+        "responses": {},
+        "tags": ["Message"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "conversationId": "6961218299d65e85b98a72a4",
+                "content": "hello everyone"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/group/with-image": {
+      "post": {
+        "summary": "With-ImageGroup",
+        "responses": {},
+        "tags": ["Message"]
+      }
+    },
+    "/messages/legacy/group/with-image": {
+      "post": {
+        "summary": "Legacy-group-WithImage",
+        "responses": {},
+        "tags": ["Message"]
+      }
+    },
+    "/messages/{messageId}": {
+      "patch": {
+        "summary": "Change-Massage",
+        "responses": {},
+        "tags": ["Message"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "content": "Noi dung da sua"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "messageId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e23a3fcd5dd27c66aa0"
+        }
+      ]
+    },
+    "/messages/{messageId}/me": {
+      "delete": {
+        "summary": "Delete-MessageIdMe",
+        "responses": {},
+        "tags": ["Message"]
+      },
+      "parameters": [
+        {
+          "name": "messageId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e23a3fcd5dd27c66aa0"
+        }
+      ]
+    },
+    "/messages/{messageId}/everyone": {
+      "delete": {
+        "summary": "Delete-MessageEveryOne",
+        "responses": {},
+        "tags": ["Message"]
+      },
+      "parameters": [
+        {
+          "name": "messageId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e23a3fcd5dd27c66aa0"
+        }
+      ]
+    },
+    "/messages/{messageId}/reactions": {
+      "post": {
+        "summary": "Emoji-message",
+        "responses": {},
+        "tags": ["Message"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "emoji": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "emoji": "👍"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "messageId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "696b9e23a3fcd5dd27c66aa0"
+        }
+      ]
+    },
+    "/conversations/696b9e1ea3fcd5dd27c66a99/messages": {
+      "get": {
+        "summary": "getMessages",
+        "responses": {},
+        "tags": ["Message"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/reports": {
+      "post": {
+        "summary": "Report-User",
+        "responses": {},
+        "tags": ["Report"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetType": {
+                    "type": "string"
+                  },
+                  "targetUserId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "targetType": "user",
+                "targetUserId": "userId",
+                "reason": "Spam",
+                "description": "Nguoi dung gui tin spam"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/me": {
+      "get": {
+        "summary": "Get-Report",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "pending"
+          },
+          {
+            "name": "targetType",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "user"
+          }
+        ],
+        "responses": {},
+        "tags": ["Report"]
+      }
+    },
+    "/support/conversations": {
+      "post": {
+        "summary": "SupportConversation",
+        "responses": {},
+        "tags": ["Support"]
+      }
+    },
+    "/support/conversations/me/current": {
+      "get": {
+        "summary": "Current-Conversation",
+        "responses": {},
+        "tags": ["Support"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/support/conversations/me": {
+      "get": {
+        "summary": "Get-SupportConversation",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "updatedAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Support"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/support/conversations/{id}": {
+      "get": {
+        "summary": "SP-Conversation",
+        "responses": {},
+        "tags": ["Support"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "69e79597edc90a87bdb0c2d2"
+        }
+      ],
+      "delete": {
+        "summary": "Delete-Conversation",
+        "responses": {},
+        "tags": ["Support"]
+      }
+    },
+    "/support/messages": {
+      "post": {
+        "summary": "SP-Message",
+        "responses": {},
+        "tags": ["Support"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "conversationId": "supportConversationId",
+                "content": "Toi can ho tro"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/support/conversations": {
+      "get": {
+        "summary": "Admin-SPConversation",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "open"
+          },
+          {
+            "name": "assignedAdminId",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "userId"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "updatedAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin-SP"]
+      }
+    },
+    "/admin/support/conversations/{id}": {
+      "get": {
+        "summary": "SP-ConversationId",
+        "responses": {},
+        "tags": ["Admin-SP"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "69e79597edc90a87bdb0c2d2"
+        }
+      ]
+    },
+    "/admin/support/messages": {
+      "post": {
+        "summary": "Admin-ConversationSP",
+        "responses": {},
+        "tags": ["Admin-SP"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "conversationId": "supportConversationId",
+                "content": "Admin phan hoi"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/support/conversations/{id}/status": {
+      "patch": {
+        "summary": "Status-Conversation",
+        "responses": {},
+        "tags": ["Admin-SP"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "69e79597edc90a87bdb0c2d2"
+        }
+      ]
+    },
+    "/admin/support/conversations/{id}/assign": {
+      "patch": {
+        "summary": "Assign",
+        "responses": {},
+        "tags": ["Admin-SP"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "69e79597edc90a87bdb0c2d2"
+        }
+      ]
+    },
+    "/admin/dashboard/overview": {
+      "get": {
+        "summary": "OverView",
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/dashboard": {
+      "get": {
+        "summary": "Dab",
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/dashboard/charts/users": {
+      "get": {
+        "summary": "Chart-users",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "7"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/dashboard/charts/messages": {
+      "get": {
+        "summary": "Chart-messages",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "7"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/dashboard/charts/reports": {
+      "get": {
+        "summary": "Chart-Report",
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/dashboard/charts/support": {
+      "get": {
+        "summary": "Chart-Support",
+        "responses": {},
+        "tags": ["Admin", "Dashboard"]
+      }
+    },
+    "/admin/roles": {
+      "get": {
+        "summary": "Amin/role",
+        "responses": {},
+        "tags": ["Admin", "Role/Permission"]
+      }
+    },
+    "/admin/audit-logs": {
+      "get": {
+        "summary": "Audit-log",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Role/Permission"]
+      }
+    },
+    "/admin/users/{id}/permissions": {
+      "get": {
+        "summary": "Permission",
+        "responses": {},
+        "tags": ["Admin", "Role/Permission"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/users/{id}/roles": {
+      "patch": {
+        "summary": "Roles",
+        "responses": {},
+        "tags": ["Admin", "Role/Permission"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "role": "ADMIN",
+                "reason": "Gan quyen quan tri"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/users/{userId}/role": {
+      "patch": {
+        "summary": "UserId-role",
+        "responses": {},
+        "tags": ["Admin", "Role/Permission"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "role": "ADMIN",
+                "reason": "Gan quyen quan tri"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "userId",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "users",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "active"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "createdAt"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Users"]
+      }
+    },
+    "/admin/users/{id}": {
+      "get": {
+        "summary": "Us",
+        "responses": {},
+        "tags": ["Admin", "Users"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ],
+      "delete": {
+        "summary": "Delete-User",
+        "responses": {},
+        "tags": ["Admin", "Users"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "reason": "Vi pham quy dinh"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/status": {
+      "patch": {
+        "summary": "Status",
+        "responses": {},
+        "tags": ["Admin", "Users"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "status": "banned"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/friends": {
+      "get": {
+        "summary": "getFriend",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "createdAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Friend"]
+      }
+    },
+    "/admin/friend-requests": {
+      "get": {
+        "summary": "Request",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "pending"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "createdAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Friend"]
+      }
+    },
+    "/admin/conversations": {
+      "get": {
+        "summary": "Conversation",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "group"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "abc"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "updatedAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Friend"]
+      }
+    },
+    "/admin/conversations/{id}": {
+      "get": {
+        "summary": "Conversation",
+        "responses": {},
+        "tags": ["Admin", "QueryType"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/messages": {
+      "get": {
+        "summary": "Messages",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "QueryType"]
+      }
+    },
+    "/admin/blocks": {
+      "get": {
+        "summary": "GetBlocks",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "nguyen"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "active"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "createdAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Blocks"]
+      }
+    },
+    "/admin/blocks/{id}": {
+      "get": {
+        "summary": "Blocks",
+        "responses": {},
+        "tags": ["Admin", "Blocks"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/blocks/{id}/unblock": {
+      "patch": {
+        "summary": "UnBlock",
+        "responses": {},
+        "tags": ["Admin", "Blocks"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/reports": {
+      "get": {
+        "summary": "GetReport",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "20"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "pending"
+          },
+          {
+            "name": "targetType",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "user"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "abc"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "deprecated": false,
+            "schema": {},
+            "example": "createdAt-desc"
+          }
+        ],
+        "responses": {},
+        "tags": ["Admin", "Report"]
+      }
+    },
+    "/admin/reports/{id}": {
+      "get": {
+        "summary": "reports",
+        "responses": {},
+        "tags": ["Admin", "Report"]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/reports/{id}/status": {
+      "patch": {
+        "summary": "Status",
+        "responses": {},
+        "tags": ["Admin", "Report"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "resolutionNote": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "status": "reviewing",
+                "resolutionNote": "Dang xu ly"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/reports/{id}/resolve-with-action": {
+      "patch": {
+        "summary": "Resolve-With-Action",
+        "responses": {},
+        "tags": ["Admin", "Report"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "resolutionNote": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "action": "ban-user",
+                "resolutionNote": "Da xu ly vi pham"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "deprecated": false,
+          "schema": {},
+          "example": "695fc216262cb21583616d2b"
+        }
+      ]
+    },
+    "/admin/health": {
+      "get": {
+        "summary": "Health",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"]
+      }
+    },
+    "/admin/maintenance/status": {
+      "get": {
+        "summary": "Maintenance-status",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"]
+      }
+    },
+    "/admin/maintenance/request-verification": {
+      "post": {
+        "summary": "Request-verification",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"]
+      }
+    },
+    "/admin/maintenance/verify-password": {
+      "post": {
+        "summary": "Verify-Pass",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "password": "admin_password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/maintenance/confirm-toggle": {
+      "post": {
+        "summary": "Confirm",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "format": "color"
+                  },
+                  "enable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "code": "123456",
+                "enable": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/maintenance/message": {
+      "patch": {
+        "summary": "Message",
+        "responses": {},
+        "tags": ["Admin", "System/maintenance"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "message": "He thong dang bao tri, vui long quay lai sau."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

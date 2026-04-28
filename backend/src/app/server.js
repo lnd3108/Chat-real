@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import express from "express";
 import http from "http";
 import { v2 as cloudinary } from "cloudinary";
+import swaggerUi from "swagger-ui-express";
+import fs from "fs";
 
 import { registerRoutes } from "./http/registerRoutes.js";
 import { initSocket } from "./socket/initSocket.js";
@@ -26,6 +28,12 @@ export const createApp = () => {
   app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
   // middleware kiểm tra bảo trì
   app.use(maintenanceCheckMiddleware);
+
+  // Swagger
+  const swaggerDocument = JSON.parse(
+    fs.readFileSync(new URL("../swagger.json", import.meta.url), "utf8"),
+  );
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // cấu hình Cloudinary với thông tin từ biến môi trường
   cloudinary.config({
