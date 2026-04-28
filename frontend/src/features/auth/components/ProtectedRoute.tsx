@@ -1,5 +1,6 @@
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
 import { hasAdminPanelAccess } from "@/shared/lib/rbac";
+import { getFirstAllowedAdminPath } from "@/features/admin/config/adminNav";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { MessageCircleMore } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -77,7 +78,7 @@ const ProtectedRoute = () => {
   }
 
   if (hasAdminPanelAccess(user)) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to={getFirstAllowedAdminPath(user)} replace />;
   }
 
   return <Outlet />;

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { LoadingSpinner } from "@/shared/ui/loading-spinner";
 import { hasAdminPanelAccess } from "@/shared/lib/rbac";
+import { getFirstAllowedAdminPath } from "@/features/admin/config/adminNav";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 
 export const GoogleAuthCallbackPage = () => {
@@ -22,7 +23,7 @@ export const GoogleAuthCallbackPage = () => {
       const currentUser = useAuthStore.getState().user;
       const nextPath = ok
         ? hasAdminPanelAccess(currentUser)
-          ? "/admin/dashboard"
+          ? getFirstAllowedAdminPath(currentUser)
           : "/"
         : "/verify-email";
 

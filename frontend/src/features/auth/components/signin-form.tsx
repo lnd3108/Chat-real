@@ -11,6 +11,7 @@ import { Label } from "@/shared/ui/label";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { authService } from "@/features/auth/services/authService";
 import { hasAdminPanelAccess } from "@/shared/lib/rbac";
+import { getFirstAllowedAdminPath } from "@/features/admin/config/adminNav";
 
 const signInSchema = z.object({
   userName: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
@@ -55,7 +56,7 @@ export function SignInForm({
       result === "verify_email"
         ? "/verify-email"
         : hasAdminPanelAccess(currentUser)
-          ? "/admin/dashboard"
+          ? getFirstAllowedAdminPath(currentUser)
           : "/";
 
     navigate(nextPath, { replace: true });

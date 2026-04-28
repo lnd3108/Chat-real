@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Route, Routes } from "react-router";
 import { SignInPage } from "@/features/auth/pages/SignInPage";
 import { SignUpPage } from "@/features/auth/pages/SignUpPasge";
 import ChatAppPage from "@/features/chat/pages/ChatAppPage";
@@ -95,10 +95,7 @@ function App() {
           {/* Protected routes - Admin */}
           <Route element={<AdminProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route
-                path="/admin"
-                element={<Navigate to="/admin/dashboard" replace />}
-              />
+              <Route path="/admin" element={null} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
