@@ -16,7 +16,7 @@ import {
 
 const friendshipServerError = makeServerErrorHandler({
   logMessage: "Friendship controller error",
-  message: "Loi he thong",
+  message: "Lỗi hệ thống",
 });
 
 export const sendFriendRequest = makeCommandHandler({

@@ -13,13 +13,13 @@ const isMailConfigured = () => {
 
   return Boolean(
     config.host &&
-      config.port &&
-      config.user &&
-      config.pass &&
-      config.from &&
-      !isPlaceholder(config.user) &&
-      !isPlaceholder(config.pass) &&
-      !isPlaceholder(config.from),
+    config.port &&
+    config.user &&
+    config.pass &&
+    config.from &&
+    !isPlaceholder(config.user) &&
+    !isPlaceholder(config.pass) &&
+    !isPlaceholder(config.from),
   );
 };
 
@@ -60,7 +60,9 @@ const normalizeRecipients = (value) => {
 
 const sendMail = async ({ to, subject, text, html }) => {
   if (!isMailConfigured()) {
-    throw new Error("SMTP not configured. Please set mail environment variables.");
+    throw new Error(
+      "SMTP not configured. Please set mail environment variables.",
+    );
   }
 
   const mailer = getTransporter();
@@ -92,12 +94,12 @@ const sendMail = async ({ to, subject, text, html }) => {
       throw error;
     }
 
-    console.log("Mail sent:", {
-      to: recipients,
-      accepted: Array.isArray(info.accepted) ? info.accepted : [],
-      response: info.response,
-      messageId: info.messageId,
-    });
+    // console.log("Mail sent:", {
+    //   to: recipients,
+    //   accepted: Array.isArray(info.accepted) ? info.accepted : [],
+    //   response: info.response,
+    //   messageId: info.messageId,
+    // });
   } catch (error) {
     console.error("Error sending mail:", {
       to: recipients,
@@ -327,14 +329,20 @@ const getMailConfigStatus = () => {
   if (!config.user || !config.pass || !config.from) {
     return {
       ok: false,
-      message: "Thiếu MAIL_USER/MAIL_PASS/MAIL_FROM hoặc SMTP_USER/SMTP_PASS/SMTP_FROM.",
+      message:
+        "Thiếu MAIL_USER/MAIL_PASS/MAIL_FROM hoặc SMTP_USER/SMTP_PASS/SMTP_FROM.",
     };
   }
 
-  if (isPlaceholder(config.user) || isPlaceholder(config.pass) || isPlaceholder(config.from)) {
+  if (
+    isPlaceholder(config.user) ||
+    isPlaceholder(config.pass) ||
+    isPlaceholder(config.from)
+  ) {
     return {
       ok: false,
-      message: "Cấu hình email vẫn đang dùng giá trị mẫu, chưa thay bằng tài khoản thật.",
+      message:
+        "Cấu hình email vẫn đang dùng giá trị mẫu, chưa thay bằng tài khoản thật.",
     };
   }
 

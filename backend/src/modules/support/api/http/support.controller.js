@@ -5,22 +5,22 @@ import {
   getUserSupportConversationsQuery,
   sendSupportMessageCommand,
 } from "../../application/support-user.service.js";
-import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeCommandHandler,
+  makeQueryHandler,
+} from "../../../../shared/api/http/controller-factory.js";
 import { makeStatusMessageErrorHandler } from "../../../../shared/api/http/error-handlers.js";
 import { presentMessageData } from "../../../../shared/api/http/presenters.js";
 
 export const getOrCreateSupportConversation = makeQueryHandler({
   execute: (req) => getOrCreateSupportConversationForUser({ user: req.user }),
   present: (conversation) =>
-    presentMessageData(
-      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
-      { conversation },
-    ),
+    presentMessageData("Lấy cuộc trò chuyện hỗ trợ thành công", {
+      conversation,
+    }),
   onError: makeStatusMessageErrorHandler({
-    logMessage:
-      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y hoÃƒÂ¡Ã‚ÂºÃ‚Â·c tÃƒÂ¡Ã‚ÂºÃ‚Â¡o cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
-    fallbackMessage:
-      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+    logMessage: "Lỗi khi lấy hoặc tạo cuộc trò chuyện hỗ trợ:",
+    fallbackMessage: "Không thể lấy cuộc trò chuyện hỗ trợ",
   }),
 });
 
@@ -35,15 +35,10 @@ export const getUserSupportConversations = makeQueryHandler({
       sort: req.query.sort || "updatedAt-desc",
     }),
   present: (data) =>
-    presentMessageData(
-      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
-      data,
-    ),
+    presentMessageData("Lấy danh sách cuộc trò chuyện hỗ trợ thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage:
-      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
-    fallbackMessage:
-      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+    logMessage: "Lỗi khi lấy danh sách cuộc trò chuyện hỗ trợ:",
+    fallbackMessage: "Không thể lấy danh sách cuộc trò chuyện hỗ trợ",
   }),
 });
 
@@ -55,14 +50,10 @@ export const sendSupportMessage = makeCommandHandler({
       content: req.body.content,
     }),
   present: (data) =>
-    presentMessageData(
-      "GÃƒÂ¡Ã‚Â»Ã‚Â­i tin nhÃƒÂ¡Ã‚ÂºÃ‚Â¯n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
-      data,
-      201,
-    ),
+    presentMessageData("Gửi tin nhắn hỗ trợ thành công", data, 201),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi gÃƒÂ¡Ã‚Â»Ã‚Â­i tin nhÃƒÂ¡Ã‚ÂºÃ‚Â¯n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÂ¡Ã‚Â»Ã‚Â­i tin nhÃƒÂ¡Ã‚ÂºÃ‚Â¯n",
+    logMessage: "Lỗi khi gửi tin nhắn hỗ trợ:",
+    fallbackMessage: "Không thể gửi tin nhắn",
   }),
 });
 
@@ -73,15 +64,10 @@ export const getSupportConversationDetail = makeQueryHandler({
       conversationId: req.params.id,
     }),
   present: (data) =>
-    presentMessageData(
-      "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
-      data,
-    ),
+    presentMessageData("Lấy chi tiết cuộc trò chuyện hỗ trợ thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage:
-      "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi lÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
-    fallbackMessage:
-      "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ lÃƒÂ¡Ã‚ÂºÃ‚Â¥y chi tiÃƒÂ¡Ã‚ÂºÃ‚Â¿t cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+    logMessage: "Lỗi khi lấy chi tiết cuộc trò chuyện hỗ trợ:",
+    fallbackMessage: "Không thể lấy chi tiết cuộc trò chuyện hỗ trợ",
   }),
 });
 
@@ -92,12 +78,9 @@ export const deleteSupportConversation = makeCommandHandler({
       conversationId: req.params.id,
     }),
   present: (data) =>
-    presentMessageData(
-      "XÃƒÆ’Ã‚Â³a cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
-      data,
-    ),
+    presentMessageData("Xóa cuộc trò chuyện hỗ trợ thành công", data),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi xÃƒÆ’Ã‚Â³a cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£:",
-    fallbackMessage: "KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ xÃƒÆ’Ã‚Â³a cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£",
+    logMessage: "Lỗi khi xóa cuộc trò chuyện hỗ trợ:",
+    fallbackMessage: "Không thể xóa cuộc trò chuyện hỗ trợ",
   }),
 });

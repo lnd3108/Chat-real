@@ -1,4 +1,6 @@
-import Blocking, { BLOCKING_TYPE_DIRECT_ONLY } from "../../../models/Blocking.js";
+import Blocking, {
+  BLOCKING_TYPE_DIRECT_ONLY,
+} from "../../../models/Blocking.js";
 import User from "../../../models/User.js";
 import {
   deleteImageFromCloudinary,
@@ -54,20 +56,18 @@ export const getAuthMe = async ({ user }) => ({
   user: sanitizeUser(serializeUserAccess(user)),
 });
 
-export const searchUsersQuery = async ({ user, query, limit }) =>
-  ({
-    users: await searchDiscoverableUsersForViewer(user._id, query, limit),
-  });
+export const searchUsersQuery = async ({ user, query, limit }) => ({
+  users: await searchDiscoverableUsersForViewer(user._id, query, limit),
+});
 
-export const getUserSuggestionsQuery = async ({ user, limit }) =>
-  ({
-    users: await getUserSuggestionsForViewer(user._id, limit),
-  });
+export const getUserSuggestionsQuery = async ({ user, limit }) => ({
+  users: await getUserSuggestionsForViewer(user._id, limit),
+});
 
 export const uploadAvatarCommand = async ({ user, file }) => {
   const userId = user._id;
   if (!file) {
-    return { error: { status: 400, message: "Khong co file duoc tai len" } };
+    return { error: { status: 400, message: "Không có file được tải lên" } };
   }
 
   const currentUser = await User.findById(userId).select("avatarId");
@@ -75,7 +75,7 @@ export const uploadAvatarCommand = async ({ user, file }) => {
 
   if (currentUser?.avatarId) {
     await deleteImageFromCloudinary(currentUser.avatarId).catch((error) => {
-      console.error("Khong the xoa avatar cu tren Cloudinary:", error);
+      console.error("Không thể xóa avatar cũ trên Cloudinary:", error);
     });
   }
 
@@ -89,7 +89,7 @@ export const uploadAvatarCommand = async ({ user, file }) => {
   ).select("avatarUrl");
 
   if (!updatedUser.avatarUrl) {
-    return { error: { status: 400, message: "Avatar tra ve null" } };
+    return { error: { status: 400, message: "Avatar trả về null" } };
   }
 
   return { status: 200, payload: { avatarUrl: updatedUser.avatarUrl } };
@@ -131,7 +131,7 @@ export const updatePreferencesCommand = async ({ user, body }) => {
   ).select("-hashedPassword");
 
   return {
-    message: "Cap nhat cau hinh thanh cong!",
+    message: "Cập nhật cấu hình thành công!",
     user: serializeUserAccess(updatedUser?.toObject?.() || updatedUser),
   };
 };
@@ -147,15 +147,17 @@ export const blockUserCommand = async ({ user, targetUserId, reason }) => {
   const actorId = user?._id;
 
   if (!targetUserId) {
-    return { error: { status: 400, message: "Thieu nguoi dung can chan" } };
+    return { error: { status: 400, message: "Thiếu người dùng cần chặn" } };
   }
   if (actorId.toString() === targetUserId.toString()) {
-    return { error: { status: 400, message: "Ban khong the tu chan chinh minh" } };
+    return {
+      error: { status: 400, message: "Bạn không thể tự chặn chính mình" },
+    };
   }
 
   const targetUser = await User.findById(targetUserId).select("_id");
   if (!targetUser) {
-    return { error: { status: 404, message: "Nguoi dung khong ton tai" } };
+    return { error: { status: 404, message: "Người dùng không tồn tại" } };
   }
 
   const blockedAt = new Date();
@@ -204,7 +206,7 @@ export const blockUserCommand = async ({ user, targetUserId, reason }) => {
   return {
     status: 200,
     payload: {
-      message: "Da chan nguoi dung",
+      message: "Đã chặn người dùng",
       blockedUsers: await formatBlockedUsers(updatedUser?.blockedUsers ?? []),
     },
   };
@@ -213,7 +215,7 @@ export const blockUserCommand = async ({ user, targetUserId, reason }) => {
 export const unblockUserCommand = async ({ user, targetUserId }) => {
   const actorId = user?._id;
   if (!targetUserId) {
-    return { error: { status: 400, message: "Thieu nguoi dung can bo chan" } };
+    return { error: { status: 400, message: "Thiếu người dùng cần bỏ chặn" } };
   }
 
   const unblockedAt = new Date();
@@ -248,7 +250,7 @@ export const unblockUserCommand = async ({ user, targetUserId }) => {
   return {
     status: 200,
     payload: {
-      message: "Da bo chan nguoi dung",
+      message: "Đã bỏ chặn người dùng",
       blockedUsers: await formatBlockedUsers(updatedUser?.blockedUsers ?? []),
     },
   };
@@ -258,29 +260,36 @@ export const deleteMyAccountCommand = async ({ user, body }) => {
   const userId = user?._id;
   const { code, confirmationText } = body || {};
 
-  if (String(confirmationText || "").trim().toUpperCase() !== "DELETE") {
+  if (
+    String(confirmationText || "")
+      .trim()
+      .toUpperCase() !== "DELETE"
+  ) {
     return {
       error: {
         status: 400,
-        message: 'Vui long nhap dung "DELETE" de xac nhan xoa tai khoan.',
+        message: 'Vui lòng nhập đúng "DELETE" để xác nhận xóa tài khỏan.',
       },
     };
   }
 
   if (!code) {
-    return { error: { status: 400, message: "Vui long nhap ma xac minh." } };
+    return { error: { status: 400, message: "Vui lòng nhập mã xác minh." } };
   }
 
   const currentUser = await User.findById(userId);
   if (!currentUser) {
-    return { error: { status: 404, message: "Khong tim thay nguoi dung." } };
+    return { error: { status: 404, message: "Không tìm thấy người dùng." } };
   }
 
-  if (!currentUser.accountDeletionCodeHash || !currentUser.accountDeletionExpiresAt) {
+  if (
+    !currentUser.accountDeletionCodeHash ||
+    !currentUser.accountDeletionExpiresAt
+  ) {
     return {
       error: {
         status: 400,
-        message: "Khong tim thay yeu cau xoa tai khoan dang hoat dong.",
+        message: "Không tìm thấy yêu cầu xóa tài khoản đang họat động.",
       },
     };
   }
@@ -295,7 +304,7 @@ export const deleteMyAccountCommand = async ({ user, body }) => {
       error: {
         status: 400,
         message:
-          "Yeu cau xoa tai khoan da het han sau 5 phut. Vui long tao lai yeu cau moi.",
+          "Yêu cầu xóa tài khoản đã hết hạn sau 5 phút. Vui lòng tạo lại yêu cầu mới.",
       },
     };
   }
@@ -307,7 +316,7 @@ export const deleteMyAccountCommand = async ({ user, body }) => {
     .digest("hex");
 
   if (providedCodeHash !== currentUser.accountDeletionCodeHash) {
-    return { error: { status: 400, message: "Ma xac minh khong dung." } };
+    return { error: { status: 400, message: "Mã xác minh không đúng." } };
   }
 
   const { sendAccountDeletedEmail } = await import("../../../utils/mail.js");
@@ -323,7 +332,7 @@ export const deleteMyAccountCommand = async ({ user, body }) => {
   try {
     await sendAccountDeletedEmail({ email: accountEmail, displayName });
   } catch (mailError) {
-    console.error("Loi sendAccountDeletedEmail", mailError);
+    console.error("Lỗi sendAccountDeletedEmail", mailError);
   }
 
   return {
@@ -331,7 +340,7 @@ export const deleteMyAccountCommand = async ({ user, body }) => {
     clearRefreshToken: true,
     payload: {
       success: true,
-      message: "Tai khoan da duoc xoa.",
+      message: "Tài khoản đã được xóa.",
       data: summary,
     },
   };

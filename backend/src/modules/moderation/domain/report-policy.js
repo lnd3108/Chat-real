@@ -6,19 +6,19 @@ export const REPORT_TARGET_TYPES = ["user", "message", "conversation"];
 
 export const validateReportInput = ({ targetType, reason, description }) => {
   if (!targetType || !REPORT_TARGET_TYPES.includes(targetType)) {
-    return "Loai doi tuong bao cao khong hop le";
+    return "Loại đối tượng báo cáo không hợp lệ";
   }
 
   if (!reason || reason.trim().length === 0) {
-    return "Vui long nhap ly do bao cao";
+    return "Vui lòng nhập lý do báo cáo";
   }
 
   if (reason.trim().length > 500) {
-    return "Ly do bao cao khong duoc vuot qua 500 ky tu";
+    return "Lý do báo cáo không dược vượt quá 500 ký tự";
   }
 
   if (description && description.length > 2000) {
-    return "Mo ta chi tiet khong duoc vuot qua 2000 ky tu";
+    return "Mô tả chi tiết không được vượt quá 2000 ký tự";
   }
 
   return null;
@@ -32,30 +32,37 @@ export const validateReportTarget = async ({
   targetConversationId,
 }) => {
   if (targetType === "user") {
-    if (!targetUserId) return { status: 400, message: "Thieu nguoi dung bi bao cao" };
+    if (!targetUserId)
+      return { status: 400, message: "Thiếu người dùng bị báo cáo" };
     if (reporterId.toString() === targetUserId.toString()) {
-      return { status: 400, message: "Ban khong the tu bao cao chinh minh" };
+      return { status: 400, message: "Bạn không thể tự báo cáo chính mình" };
     }
 
     const targetUser = await User.findById(targetUserId).lean();
     if (!targetUser) {
-      return { status: 404, message: "Khong tim thay nguoi dung bi bao cao" };
+      return { status: 404, message: "Không tìm thấy người dùng bị báo cáo" };
     }
   }
 
   if (targetType === "message") {
-    if (!targetMessageId) return { status: 400, message: "Thieu tin nhan bi bao cao" };
+    if (!targetMessageId)
+      return { status: 400, message: "Thiếu tin nhắn bị báo cáo" };
     const message = await Message.findById(targetMessageId).lean();
-    if (!message) return { status: 404, message: "Khong tim thay tin nhan bi bao cao" };
+    if (!message)
+      return { status: 404, message: "Không tìm thấy tin nhắn bị báo cáo" };
   }
 
   if (targetType === "conversation") {
     if (!targetConversationId) {
-      return { status: 400, message: "Thieu cuoc tro chuyen bi bao cao" };
+      return { status: 400, message: "Thiếu cuộc trò chuyện bị báo cáo" };
     }
-    const conversation = await Conversation.findById(targetConversationId).lean();
+    const conversation =
+      await Conversation.findById(targetConversationId).lean();
     if (!conversation) {
-      return { status: 404, message: "Khong tim thay cuoc tro chuyen bi bao cao" };
+      return {
+        status: 404,
+        message: "Không tìm thấy cuộc trò chuyện bị báo cáo",
+      };
     }
   }
 

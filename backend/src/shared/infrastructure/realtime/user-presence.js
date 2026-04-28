@@ -12,7 +12,12 @@ const visibleByUser = new Map();
 const activeConversationBySocket = new Map();
 const userMetaByUser = new Map();
 
-export const registerSocketConnection = ({ userId, socketId, visible, userMeta }) => {
+export const registerSocketConnection = ({
+  userId,
+  socketId,
+  visible,
+  userMeta,
+}) => {
   if (!socketsByUser.has(userId)) {
     socketsByUser.set(userId, new Set());
   }
@@ -62,7 +67,9 @@ export const isConversationActiveForUser = (userId, conversationId) => {
   }
 
   for (const socketId of socketIds) {
-    if (activeConversationBySocket.get(socketId) === conversationId.toString()) {
+    if (
+      activeConversationBySocket.get(socketId) === conversationId.toString()
+    ) {
       return true;
     }
   }
@@ -89,19 +96,26 @@ export const emitOnlineUsers = () => {
   emitGlobal("online-users", getOnlineVisibleUserIds());
 };
 
-export const emitAdminUserPresence = ({ buildSocketUserPayload, eventType, user, isOnline }) => {
+export const emitAdminUserPresence = ({
+  buildSocketUserPayload,
+  eventType,
+  user,
+  isOnline,
+}) => {
   if (hasAdminPanelAccess(user)) {
     return;
   }
 
-  getIo().to(SOCKET_ROOMS.ADMINS).emit(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, {
-    eventType,
-    userId: user._id.toString(),
-    isOnline,
-    status: isOnline ? "online" : "offline",
-    user: buildSocketUserPayload(user),
-    changedAt: new Date().toISOString(),
-  });
+  getIo()
+    .to(SOCKET_ROOMS.ADMINS)
+    .emit(ADMIN_SOCKET_EVENTS.USER_STATUS_CHANGED, {
+      eventType,
+      userId: user._id.toString(),
+      isOnline,
+      status: isOnline ? "online" : "offline",
+      user: buildSocketUserPayload(user),
+      changedAt: new Date().toISOString(),
+    });
 };
 
 export const disconnectUserSockets = (userId) => {
@@ -129,7 +143,9 @@ export const disconnectUserSockets = (userId) => {
   emitOnlineUsers();
 };
 
-export const disconnectAllNonAdminSockets = (message = "He thong dang bao tri") => {
+export const disconnectAllNonAdminSockets = (
+  message = "Hệ thống đang bảo trì",
+) => {
   const io = getIo();
 
   io.sockets.sockets.forEach((socket) => {

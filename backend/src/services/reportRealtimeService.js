@@ -1,5 +1,8 @@
 import Report from "../models/Report.js";
-import { buildAdminActor, emitAdminNotification } from "./adminNotificationService.js";
+import {
+  buildAdminActor,
+  emitAdminNotification,
+} from "./adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "./dashboardRealtimeService.js";
 import {
   emitReportCreatedRealtime,
@@ -24,8 +27,8 @@ export const emitNewReportCreated = async (reportId) => {
 
   emitAdminNotification({
     type: "report",
-    title: "Co bao cao moi",
-    message: `Bao cao moi tu @${report.reporterSnapshot?.userName ?? "unknown"}`,
+    title: "Có báo cáo mới",
+    message: `Báo cáo mới từ @${report.reporterSnapshot?.userName ?? "unknown"}`,
     link: `/admin/reports/${report._id}`,
     entityId: report._id.toString(),
     actor: buildAdminActor(report.reporterSnapshot),
@@ -36,7 +39,10 @@ export const emitNewReportCreated = async (reportId) => {
     severity: "warning",
   });
 
-  await emitDashboardStatsUpdated({ reason: "report:new", reportId: report._id.toString() });
+  await emitDashboardStatsUpdated({
+    reason: "report:new",
+    reportId: report._id.toString(),
+  });
   return report;
 };
 
@@ -50,8 +56,8 @@ export const emitReportUpdated = async (reportId, metadata = {}) => {
 
   emitAdminNotification({
     type: "report",
-    title: "Bao cao da duoc cap nhat",
-    message: `Bao cao ${report._id.toString().slice(-6)} da chuyen sang ${report.status}`,
+    title: "Báo cáo đã được cập nhật",
+    message: `Báo cáo ${report._id.toString().slice(-6)} đã chuyển sang ${report.status}`,
     link: `/admin/reports/${report._id}`,
     entityId: report._id.toString(),
     actor: buildAdminActor(report.reviewedByAdminId),
@@ -61,6 +67,9 @@ export const emitReportUpdated = async (reportId, metadata = {}) => {
     },
   });
 
-  await emitDashboardStatsUpdated({ reason: "report:updated", reportId: report._id.toString() });
+  await emitDashboardStatsUpdated({
+    reason: "report:updated",
+    reportId: report._id.toString(),
+  });
   return report;
 };

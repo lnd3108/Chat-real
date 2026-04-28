@@ -1,4 +1,7 @@
-import { buildAdminActor, emitAdminNotification } from "./adminNotificationService.js";
+import {
+  buildAdminActor,
+  emitAdminNotification,
+} from "./adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "./dashboardRealtimeService.js";
 import { emitSupportConversationRealtimeEvent } from "../shared/infrastructure/realtime/support-realtime.js";
 
@@ -18,12 +21,14 @@ export const emitSupportConversationRealtime = async ({
 
   emitAdminNotification({
     type: "support",
-    title: "Co tin nhan ho tro moi",
+    title: "Có tin nhắn hỗ trợ mới",
     message:
       type === "reply"
-        ? "Admin vua tra loi mot yeu cau ho tro"
-        : "Nguoi dung vua gui mot tin nhan ho tro moi",
-    link: conversation?._id ? `/admin/support/${conversation._id}` : "/admin/support",
+        ? "Admin vừa trả lời một yêu cầu hỗ trợ"
+        : "Người dùng vừa gửi một tin nhắn hỗ trợ mới",
+    link: conversation?._id
+      ? `/admin/support/${conversation._id}`
+      : "/admin/support",
     entityId: conversation?._id?.toString?.() ?? null,
     actor: buildAdminActor(actor ?? conversation?.supportCreatedByUser),
     metadata: {

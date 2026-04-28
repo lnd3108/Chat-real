@@ -23,6 +23,8 @@ export const socketAuthMiddleWare = async (socket, next) => {
     socket.user = result.user;
     return next();
   } catch (error) {
-    return next(createSocketAuthError("Khong the xac thuc socket", "TOKEN_INVALID"));
+    return next(
+      createSocketAuthError("Không thể xác thực socket", "TOKEN_INVALID"),
+    );
   }
 };

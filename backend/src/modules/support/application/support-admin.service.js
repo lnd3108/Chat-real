@@ -65,7 +65,10 @@ export const getSupportConversationsQuery = async ({
     .limit(limitNum)
     .populate("supportCreatedByUserId", "displayName userName avatarUrl email")
     .populate("assignedAdminId", "displayName userName avatarUrl")
-    .populate("participants.userId", "displayName userName avatarUrl email role");
+    .populate(
+      "participants.userId",
+      "displayName userName avatarUrl email role",
+    );
 
   const total = await Conversation.countDocuments(query);
 
@@ -87,13 +90,15 @@ export const getSupportConversationDetailQuery = async ({ conversationId }) => {
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
 
   await populateSupportConversation(conversation);
-  const messages = await Message.find({ conversationId }).sort({ createdAt: 1 }).lean();
+  const messages = await Message.find({ conversationId })
+    .sort({ createdAt: 1 })
+    .lean();
 
   return {
     conversation: formatSupportConversation(conversation),
@@ -101,17 +106,21 @@ export const getSupportConversationDetailQuery = async ({ conversationId }) => {
   };
 };
 
-export const sendSupportReplyCommand = async ({ admin, conversationId, content }) => {
+export const sendSupportReplyCommand = async ({
+  admin,
+  conversationId,
+  content,
+}) => {
   const adminId = admin._id;
 
   if (!conversationId) {
-    const error = new Error("Thieu ma cuoc tro chuyen");
+    const error = new Error("Thiếu mã cuộc trò chuyện");
     error.status = 400;
     throw error;
   }
 
   if (!content || content.trim().length === 0) {
-    const error = new Error("Vui long nhap noi dung tin nhan");
+    const error = new Error("Vui lòng nhập nội dung tin nhắn");
     error.status = 400;
     throw error;
   }
@@ -122,7 +131,7 @@ export const sendSupportReplyCommand = async ({ admin, conversationId, content }
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
@@ -166,8 +175,9 @@ export const sendSupportReplyCommand = async ({ admin, conversationId, content }
   await populateSupportConversation(conversation);
 
   const formattedConversation = formatSupportConversation(conversation);
-  const socketConversationPayload =
-    buildSupportConversationSocketPayload(formattedConversation);
+  const socketConversationPayload = buildSupportConversationSocketPayload(
+    formattedConversation,
+  );
   const socketMessagePayload = {
     _id: message._id,
     conversationId,
@@ -218,7 +228,7 @@ export const updateSupportStatusCommand = async ({
   status,
 }) => {
   if (!status || !SUPPORT_STATUS_SET.includes(status)) {
-    const error = new Error("Trang thai khong hop le");
+    const error = new Error("Trạng thái không hợp lệ");
     error.status = 400;
     throw error;
   }
@@ -229,7 +239,7 @@ export const updateSupportStatusCommand = async ({
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
@@ -255,8 +265,8 @@ export const updateSupportStatusCommand = async ({
   });
   emitAdminNotification({
     type: "support",
-    title: "Trang thai ho tro da thay doi",
-    message: `Hoi thoai ${conversationId.toString().slice(-6)} da chuyen sang ${status}`,
+    title: "Trạng thái hỗ trợ đã thay đổi",
+    message: `Hội thọai ${conversationId.toString().slice(-6)} đã chuyển sang ${status}`,
     link: `/admin/support/${conversationId}`,
     entityId: conversationId.toString(),
     actor: buildAdminActor(admin),
@@ -275,7 +285,7 @@ export const assignSupportAdminCommand = async ({
   adminId,
 }) => {
   if (!adminId) {
-    const error = new Error("Thieu ma quan tri vien");
+    const error = new Error("Thiếu mã quản trị viên");
     error.status = 400;
     throw error;
   }
@@ -286,14 +296,17 @@ export const assignSupportAdminCommand = async ({
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
 
   const admin = await User.findById(adminId);
-  if (!admin || !hasPermission(admin.toObject(), APP_PERMISSIONS.SUPPORT_VIEW)) {
-    const error = new Error("Ma quan tri vien khong hop le");
+  if (
+    !admin ||
+    !hasPermission(admin.toObject(), APP_PERMISSIONS.SUPPORT_VIEW)
+  ) {
+    const error = new Error("Mã quản trị viên không hợp lệ");
     error.status = 400;
     throw error;
   }
@@ -315,8 +328,8 @@ export const assignSupportAdminCommand = async ({
   });
   emitAdminNotification({
     type: "support",
-    title: "Hoi thoai da duoc assign",
-    message: `${admin.displayName} vua nhan xu ly mot yeu cau ho tro`,
+    title: "Hội thọai đã được assign",
+    message: `${admin.displayName} vừa nhận xử lý một yêu cầu hỗ trợ`,
     link: `/admin/support/${conversationId}`,
     entityId: conversationId.toString(),
     actor: buildAdminActor(admin),

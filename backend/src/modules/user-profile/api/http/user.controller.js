@@ -1,4 +1,7 @@
-import { makeCommandHandler, makeQueryHandler } from "../../../../shared/api/http/controller-factory.js";
+import {
+  makeCommandHandler,
+  makeQueryHandler,
+} from "../../../../shared/api/http/controller-factory.js";
 import {
   makeServerErrorHandler,
   makeStatusMessageErrorHandler,
@@ -33,8 +36,8 @@ export const authMe = makeQueryHandler({
   execute: (req) => getAuthMe({ user: req.user }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeServerErrorHandler({
-    logMessage: "Loi khi goi authMe",
-    message: "Loi he thong",
+    logMessage: "Lỗi khi gọi authMe",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -42,8 +45,8 @@ export const test = makeQueryHandler({
   execute: async () => null,
   present: () => presentNoContent(),
   onError: makeServerErrorHandler({
-    logMessage: "Loi khi goi user-profile/test",
-    message: "Loi he thong",
+    logMessage: "Lỗi khi gọi user-profile/test",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -57,15 +60,17 @@ export const searchUserByUserName = makeQueryHandler({
     });
 
     if (!query) {
-      throw Object.assign(new Error("Can cung cap tu khoa tim kiem."), { status: 400 });
+      throw Object.assign(new Error("Cần cung cấp từ khóa tìm kiếm."), {
+        status: 400,
+      });
     }
 
     return searchUsersQuery({ user: req.user, query, limit });
   },
   present: (payload) => presentJson({ body: payload }),
   onError: makeStatusMessageErrorHandler({
-    logMessage: "Loi xay ra khi searchUserByUserName",
-    fallbackMessage: "Loi he thong",
+    logMessage: "Lỗi xảy ra khi searchUserByUserName",
+    fallbackMessage: "Lỗi hệ thống",
   }),
 });
 
@@ -81,8 +86,8 @@ export const getUserSuggestions = makeQueryHandler({
     }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeServerErrorHandler({
-    logMessage: "Loi khi lay user suggestions",
-    message: "Loi he thong",
+    logMessage: "Lỗi khi lấy user suggestions",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -90,8 +95,8 @@ export const uploadAvatar = makeCommandHandler({
   execute: (req) => uploadAvatarCommand({ user: req.user, file: req.file }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "Loi khi upload avatar",
-    message: "Loi he thong",
+    logMessage: "Lỗi khi upload avatar",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -100,7 +105,7 @@ export const updateMe = makeCommandHandler({
     updateProfileCommand({ user: req.user, body: req.body, req }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeSuccessFlagErrorHandler({
-    fallbackMessage: "Loi he thong",
+    fallbackMessage: "Lỗi hệ thống",
     extraKeys: ["resendAfter"],
   }),
 });
@@ -110,7 +115,7 @@ export const sendEmailChangeOtp = makeCommandHandler({
     sendEmailChangeOtpCommand({ user: req.user, body: req.body, req }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeSuccessFlagErrorHandler({
-    fallbackMessage: "Khong the gui ma xac minh email moi.",
+    fallbackMessage: "Không thể gửi mã xác minh email mới.",
     extraKeys: ["resendAfter"],
   }),
 });
@@ -120,7 +125,7 @@ export const verifyMyEmailChange = makeCommandHandler({
     verifyEmailChangeCommand({ user: req.user, body: req.body }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeSuccessFlagErrorHandler({
-    fallbackMessage: "Khong the xac minh email moi.",
+    fallbackMessage: "Không thể xác minh email mới.",
   }),
 });
 
@@ -129,7 +134,7 @@ export const cancelMyEmailChange = makeCommandHandler({
     cancelEmailChangeCommand({ user: req.user, body: req.body }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeSuccessFlagErrorHandler({
-    fallbackMessage: "Khong the huy xac minh email moi.",
+    fallbackMessage: "Không thể hủy xác minh email mới.",
   }),
 });
 
@@ -138,8 +143,8 @@ export const updatePreferences = makeCommandHandler({
     updatePreferencesCommand({ user: req.user, body: req.body }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeServerErrorHandler({
-    logMessage: "Loi updatePreferences",
-    message: "Loi he thong",
+    logMessage: "Lỗi updatePreferences",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -147,8 +152,8 @@ export const getBlockedUsers = makeQueryHandler({
   execute: (req) => getBlockedUsersQuery({ user: req.user }),
   present: (payload) => presentJson({ body: payload }),
   onError: makeServerErrorHandler({
-    logMessage: "Loi getBlockedUsers",
-    message: "Loi he thong",
+    logMessage: "Lỗi getBlockedUsers",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -161,8 +166,8 @@ export const blockUser = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "Loi blockUser",
-    message: "Loi he thong",
+    logMessage: "Lỗi blockUser",
+    message: "Lỗi hệ thống",
   }),
 });
 
@@ -174,14 +179,17 @@ export const unblockUser = makeCommandHandler({
     }),
   present: presentCommandResult,
   onError: makeServerErrorHandler({
-    logMessage: "Loi unblockUser",
-    message: "Loi he thong",
+    logMessage: "Lỗi unblockUser",
+    message: "Lỗi hệ thống",
   }),
 });
 
 export const deleteMyAccount = makeCommandHandler({
   execute: async (req, res) => {
-    const result = await deleteMyAccountCommand({ user: req.user, body: req.body });
+    const result = await deleteMyAccountCommand({
+      user: req.user,
+      body: req.body,
+    });
     if (result?.clearRefreshToken) {
       res.clearCookie("refreshToken");
     }
@@ -189,7 +197,7 @@ export const deleteMyAccount = makeCommandHandler({
   },
   present: presentCommandResult,
   onError: makeStatusMessageErrorHandler({
-    logMessage: "Loi deleteMyAccount",
-    fallbackMessage: "Khong the xoa tai khoan. Vui long thu lai.",
+    logMessage: "Lỗi deleteMyAccount",
+    fallbackMessage: "Không thể xóa tài khoản. Vui lòng thử lại.",
   }),
 });

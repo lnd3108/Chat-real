@@ -62,7 +62,7 @@ export const getReportDetailQuery = async ({ reportId }) => {
     .lean();
 
   if (!report) {
-    const error = new Error("Khong tim thay bao cao");
+    const error = new Error("Không tìm thấy báo cáo");
     error.status = 404;
     throw error;
   }
@@ -75,14 +75,17 @@ export const getReportDetailQuery = async ({ reportId }) => {
       displayName:
         report.targetUserId.displayName ??
         report.targetUserSnapshot?.displayName ??
-        "Nguoi dung da xoa",
+        "Người dùng đã xóa",
       userName:
         report.targetUserId.userName ??
         report.targetUserSnapshot?.userName ??
         "deleted-user",
-      email: report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
+      email:
+        report.targetUserId.email ?? report.targetUserSnapshot?.email ?? null,
       avatarUrl:
-        report.targetUserId.avatarUrl ?? report.targetUserSnapshot?.avatarUrl ?? null,
+        report.targetUserId.avatarUrl ??
+        report.targetUserSnapshot?.avatarUrl ??
+        null,
       status: report.targetUserId.status ?? "active",
       source: "target_user",
     };
@@ -95,7 +98,7 @@ export const getReportDetailQuery = async ({ reportId }) => {
         displayName:
           sender.displayName ??
           report.targetMessagePreview?.senderDisplayName ??
-          "Nguoi gui",
+          "Người gửi",
         userName: sender.userName ?? "unknown",
         email: sender.email ?? null,
         avatarUrl: sender.avatarUrl ?? null,
@@ -117,7 +120,8 @@ export const getReportDetailQuery = async ({ reportId }) => {
 
   return {
     report,
-    moderationTargetUser: buildModerationTargetUser(report) ?? moderationTargetUser,
+    moderationTargetUser:
+      buildModerationTargetUser(report) ?? moderationTargetUser,
   };
 };
 
@@ -147,14 +151,16 @@ export const updateReportStatusCommand = async ({
     updateData.resolutionNote = resolutionNote.trim();
   }
 
-  const report = await Report.findByIdAndUpdate(reportId, updateData, { new: true })
+  const report = await Report.findByIdAndUpdate(reportId, updateData, {
+    new: true,
+  })
     .populate("reporterId", "displayName userName avatarUrl")
     .populate("targetUserId", "displayName userName avatarUrl")
     .populate("reviewedByAdminId", "displayName userName")
     .lean();
 
   if (!report) {
-    const error = new Error("Khong tim thay bao cao");
+    const error = new Error("Không tìm thấy báo cáo");
     error.status = 404;
     throw error;
   }
@@ -175,7 +181,7 @@ export const resolveReportWithActionCommand = async ({
 }) => {
   const report = await Report.findById(reportId);
   if (!report) {
-    const error = new Error("Khong tim thay bao cao");
+    const error = new Error("Không tìm thấy báo cáo");
     error.status = 404;
     throw error;
   }
@@ -184,18 +190,18 @@ export const resolveReportWithActionCommand = async ({
 
   if (action === "ban-user" && report.targetUserId) {
     await User.findByIdAndUpdate(report.targetUserId, { status: "banned" });
-    actionResult = "Da khoa nguoi dung";
+    actionResult = "Đã khóa người dùng";
   } else if (action === "unban-user" && report.targetUserId) {
     await User.findByIdAndUpdate(report.targetUserId, { status: "active" });
-    actionResult = "Da mo khoa nguoi dung";
+    actionResult = "Đã mở khóa người dùng";
   } else if (action === "delete-account" && report.targetUserId) {
     await User.findByIdAndUpdate(report.targetUserId, { status: "inactive" });
-    actionResult = "Da danh dau tai khoan de xoa";
+    actionResult = "Đã đánh dấu tài khoản để xóa";
   } else if (action === "delete-message" && report.targetMessageId) {
     await Message.findByIdAndUpdate(report.targetMessageId, {
       isDeletedForEveryone: true,
     });
-    actionResult = "Da xoa tin nhan";
+    actionResult = "Đã xóa tin nhắn";
   }
 
   const updateData = {
@@ -204,7 +210,7 @@ export const resolveReportWithActionCommand = async ({
     reviewedAt: new Date(),
     resolutionNote: resolutionNote
       ? `[${action}] ${resolutionNote.trim()}`
-      : `[${action}] Da xu ly theo hanh dong`,
+      : `[${action}] Đã xử lý theo hành động`,
   };
 
   const updatedReport = await Report.findByIdAndUpdate(reportId, updateData, {

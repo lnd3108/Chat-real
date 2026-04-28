@@ -1,6 +1,6 @@
 import { emitToUser } from "../../../../shared/infrastructure/realtime/socket-gateway.js";
 
-export const DELETED_USER_DISPLAY_NAME = "Nguoi dung da xoa";
+export const DELETED_USER_DISPLAY_NAME = "Người dùng đã xóa";
 
 const getParticipantUserId = (participant) => {
   if (!participant) return null;
@@ -47,7 +47,7 @@ const buildSenderSnapshot = (message, senderIdOverride) => {
 export const buildLastMessagePayload = (message, senderIdOverride) => {
   const lastMessageContent = message.isDeletedForEveryone
     ? "Ban da xoa mot tin nhan"
-    : message.content?.trim() || (message.imgUrl ? "[Hinh anh]" : null);
+    : message.content?.trim() || (message.imgUrl ? "[Hình ảnh]" : null);
 
   return {
     _id: message._id,
@@ -105,16 +105,20 @@ export const syncConversationLastMessage = (conversation, message) => {
   });
 };
 
-export const emitNewMessage = (io, conversation, message, conversationPayload) => {
+export const emitNewMessage = (
+  io,
+  conversation,
+  message,
+  conversationPayload,
+) => {
   const payload = {
     message,
-    conversation:
-      conversationPayload ?? {
-        _id: conversation._id,
-        lastMessage: conversation.lastMessage,
-        lastMessageAt: conversation.lastMessageAt,
-        seenBy: conversation.seenBy,
-      },
+    conversation: conversationPayload ?? {
+      _id: conversation._id,
+      lastMessage: conversation.lastMessage,
+      lastMessageAt: conversation.lastMessageAt,
+      seenBy: conversation.seenBy,
+    },
     unreadCounts: conversation.unreadCounts,
   };
 

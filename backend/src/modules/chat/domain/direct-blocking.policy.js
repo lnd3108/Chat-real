@@ -58,7 +58,7 @@ export const ensureDirectMessagingAllowed = ({
       allowed: false,
       status: 403,
       message:
-        "Ban da chan nguoi dung nay. Ban khong the nhan tin cho ho trong cuoc tro chuyen nay.",
+        "Bạn đã chặn người dùng này. Bạn không thể nhắn tin cho họ trong cuộc trò chuyện này.",
       code: "DIRECT_BLOCKED_BY_SENDER",
     };
   }
@@ -68,7 +68,7 @@ export const ensureDirectMessagingAllowed = ({
     return {
       allowed: false,
       status: 403,
-      message: "Ban hien khong the nhan tin cho tai khoan nay.",
+      message: "Bạn hiện không thể nhắn tin cho tài khoản này.",
       code: "DIRECT_BLOCKED_BY_RECIPIENT",
     };
   }
@@ -84,7 +84,10 @@ export const findDirectConversationBetweenUsers = async (userAId, userBId) =>
     },
   }).select("_id participants type");
 
-export const getDirectConversationOtherParticipantId = (conversation, userId) => {
+export const getDirectConversationOtherParticipantId = (
+  conversation,
+  userId,
+) => {
   if (!conversation || conversation.type !== "direct") return "";
 
   const otherParticipant = (conversation.participants || []).find(

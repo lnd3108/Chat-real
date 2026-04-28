@@ -32,7 +32,7 @@ export const getOrCreateSupportConversationForUser = async ({ user }) => {
 
     if (!admin) {
       const error = new Error(
-        "Hien khong co quan tri vien ho tro. Vui long thu lai sau.",
+        "Hiện không có quản trị viên hỗ trợ. Vui lòng thử lại sau.",
       );
       error.status = 503;
       throw error;
@@ -55,7 +55,8 @@ export const getOrCreateSupportConversationForUser = async ({ user }) => {
 
     await supportConversation.save();
     await populateSupportConversation(supportConversation);
-    const formattedConversation = formatSupportConversation(supportConversation);
+    const formattedConversation =
+      formatSupportConversation(supportConversation);
 
     await emitSupportConversationRealtime({
       type: "new-conversation",
@@ -70,7 +71,12 @@ export const getOrCreateSupportConversationForUser = async ({ user }) => {
   return formatSupportConversation(supportConversation);
 };
 
-export const getUserSupportConversationsQuery = async ({ userId, page = 1, limit = 20, sort }) => {
+export const getUserSupportConversationsQuery = async ({
+  userId,
+  page = 1,
+  limit = 20,
+  sort,
+}) => {
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
@@ -87,8 +93,14 @@ export const getUserSupportConversationsQuery = async ({ userId, page = 1, limit
     .sort(sortObj)
     .skip(skip)
     .limit(limitNum)
-    .populate("participants.userId", "displayName userName avatarUrl role email")
-    .populate("supportCreatedByUserId", "displayName userName avatarUrl email role")
+    .populate(
+      "participants.userId",
+      "displayName userName avatarUrl role email",
+    )
+    .populate(
+      "supportCreatedByUserId",
+      "displayName userName avatarUrl email role",
+    )
     .populate("assignedAdminId", "displayName userName avatarUrl email role");
 
   const total = await Conversation.countDocuments({
@@ -108,7 +120,10 @@ export const getUserSupportConversationsQuery = async ({ userId, page = 1, limit
   };
 };
 
-export const getSupportConversationDetailForUser = async ({ userId, conversationId }) => {
+export const getSupportConversationDetailForUser = async ({
+  userId,
+  conversationId,
+}) => {
   const conversation = await Conversation.findOne({
     _id: conversationId,
     type: "support",
@@ -116,13 +131,15 @@ export const getSupportConversationDetailForUser = async ({ userId, conversation
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
 
   await populateSupportConversation(conversation);
-  const messages = await Message.find({ conversationId }).sort({ createdAt: 1 }).lean();
+  const messages = await Message.find({ conversationId })
+    .sort({ createdAt: 1 })
+    .lean();
 
   const unreadCounts = new Map(conversation.unreadCounts || {});
   unreadCounts.set(userId.toString(), 0);
@@ -135,17 +152,21 @@ export const getSupportConversationDetailForUser = async ({ userId, conversation
   };
 };
 
-export const sendSupportMessageCommand = async ({ user, conversationId, content }) => {
+export const sendSupportMessageCommand = async ({
+  user,
+  conversationId,
+  content,
+}) => {
   const userId = user._id;
 
   if (!conversationId) {
-    const error = new Error("Thieu ma cuoc tro chuyen");
+    const error = new Error("Thiếu mã cuộc trò chuyện");
     error.status = 400;
     throw error;
   }
 
   if (!content || content.trim().length === 0) {
-    const error = new Error("Vui long nhap noi dung tin nhan");
+    const error = new Error("Vui lòng nhập nội dung tin nhắn");
     error.status = 400;
     throw error;
   }
@@ -157,12 +178,17 @@ export const sendSupportMessageCommand = async ({ user, conversationId, content 
   });
 
   if (!conversation) {
-    const error = new Error("Ban khong co quyen truy cap cuoc tro chuyen ho tro nay");
+    const error = new Error(
+      "Bạn không có quyền truy cập cuộc trò chuyện hỗ trợ này",
+    );
     error.status = 403;
     throw error;
   }
 
-  if (conversation.supportStatus === "resolved" || conversation.supportStatus === "closed") {
+  if (
+    conversation.supportStatus === "resolved" ||
+    conversation.supportStatus === "closed"
+  ) {
     conversation.supportStatus = "open";
     conversation.lastMessageAt = new Date();
   }
@@ -200,7 +226,9 @@ export const sendSupportMessageCommand = async ({ user, conversationId, content 
   await populateSupportConversation(conversation);
 
   const formattedConversation = formatSupportConversation(conversation);
-  const socketConversationPayload = buildSupportConversationSocketPayload(formattedConversation);
+  const socketConversationPayload = buildSupportConversationSocketPayload(
+    formattedConversation,
+  );
   const socketMessagePayload = {
     _id: message._id,
     conversationId,
@@ -234,7 +262,10 @@ export const sendSupportMessageCommand = async ({ user, conversationId, content 
   };
 };
 
-export const deleteSupportConversationForUser = async ({ userId, conversationId }) => {
+export const deleteSupportConversationForUser = async ({
+  userId,
+  conversationId,
+}) => {
   const conversation = await Conversation.findOne({
     _id: conversationId,
     type: "support",
@@ -242,7 +273,7 @@ export const deleteSupportConversationForUser = async ({ userId, conversationId 
   });
 
   if (!conversation) {
-    const error = new Error("Khong tim thay cuoc tro chuyen ho tro");
+    const error = new Error("Không tìm thấy cuộc trò chuyện hỗ trợ");
     error.status = 404;
     throw error;
   }
