@@ -3,15 +3,16 @@ import { jest } from "@jest/globals";
 const mockCreateReportCommand = jest.fn();
 const mockGetMyReportsQuery = jest.fn();
 
-jest.unstable_mockModule("../../modules/moderation/application/report-user.service.js", () => ({
-  createReportCommand: mockCreateReportCommand,
-  getMyReportsQuery: mockGetMyReportsQuery,
-}));
+jest.unstable_mockModule(
+  "../../modules/moderation/application/report-user.service.js",
+  () => ({
+    createReportCommand: mockCreateReportCommand,
+    getMyReportsQuery: mockGetMyReportsQuery,
+  }),
+);
 
-const {
-  createReport,
-  getMyReports,
-} = await import("../../modules/moderation/api/http/report.controller.js");
+const { createReport, getMyReports } =
+  await import("../../modules/moderation/api/http/report.controller.js");
 
 const createRes = () => {
   const res = {
@@ -42,9 +43,10 @@ describe("moderation report controller", () => {
       user: req.user,
       body: req.body,
     });
+
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
-      message: "TÃƒÂ¡Ã‚ÂºÃ‚Â¡o bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      message: "Tạo báo cáo thành công",
       data: { report: { _id: "report-1" } },
     });
   });
@@ -70,8 +72,9 @@ describe("moderation report controller", () => {
       status: "pending",
       targetType: "user",
     });
+
     expect(res.json).toHaveBeenCalledWith({
-      message: "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y danh sÃƒÆ’Ã‚Â¡ch bÃƒÆ’Ã‚Â¡o cÃƒÆ’Ã‚Â¡o thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      message: "Lấy danh sách báo cáo thành công",
       data: {
         reports: [{ _id: "report-1" }],
         pagination: { page: 1, limit: 20, total: 1, pages: 1 },

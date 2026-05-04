@@ -336,7 +336,7 @@ describe("authControllers", () => {
       mockDeleteMyAccountCommand.mockResolvedValue({
         status: 200,
         payload: {
-          message: "XÃ³a tÃ i khoáº£n thÃ nh cÃ´ng.",
+          message: "Xóa tài khoản thành công.",
         },
       });
 
@@ -357,7 +357,7 @@ describe("authControllers", () => {
       });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "XÃ³a tÃ i khoáº£n thÃ nh cÃ´ng.",
+        message: "Xóa tài khoản thành công.",
       });
     });
   });

@@ -42,7 +42,7 @@ describe("support controller", () => {
       user: req.user,
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "LÃƒÂ¡Ã‚ÂºÃ‚Â¥y cuÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢c trÃƒÆ’Ã‚Â² chuyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡n hÃƒÂ¡Ã‚Â»Ã¢â‚¬â€ trÃƒÂ¡Ã‚Â»Ã‚Â£ thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng",
+      message: "Lấy cuộc trò chuyện hỗ trợ thành công",
       data: { conversation: { _id: "support-1" } },
     });
   });

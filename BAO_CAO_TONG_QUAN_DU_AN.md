@@ -2,9 +2,9 @@
 
 ## 1. Thông tin cơ bản
 
-**Tên dự án:** ChatRealTime / Chat-Real  
-**Loại dự án:** Ứng dụng web chat thời gian thực  
-**Mô hình phát triển:** Full-stack Web Application  
+**Tên dự án:** ChatRealTime / Chat-Real
+**Loại dự án:** Ứng dụng web chat thời gian thực
+**Mô hình phát triển:** Full-stack Web Application
 **Mục đích:** Xây dựng hệ thống nhắn tin trực tuyến có xác thực người dùng, quản lý hội thoại, gửi nhận tin nhắn realtime, quản trị hệ thống và hỗ trợ người dùng.
 
 Dự án được tổ chức thành hai phần chính:

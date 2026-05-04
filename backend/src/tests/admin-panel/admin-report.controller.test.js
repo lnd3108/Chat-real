@@ -287,7 +287,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportsQuery).toHaveBeenCalledWith(req.query);
     expect(res.json).toHaveBeenCalledWith({
-      message: "LÃ¡ÂºÂ¥y danh sÃƒÂ¡ch bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
+      message: "Lấy danh sách báo cáo thành công",
       data: {
         reports: [{ _id: "r1" }],
         pagination: { page: 1, limit: 20, total: 1, pages: 1 },
@@ -308,7 +308,7 @@ describe("admin-panel report controller", () => {
 
     expect(mockGetReportDetailQuery).toHaveBeenCalledWith({ reportId: "r1" });
     expect(res.json).toHaveBeenCalledWith({
-      message: "LÃ¡ÂºÂ¥y chi tiÃ¡ÂºÂ¿t bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
+      message: "Lấy chi tiết báo cáo thành công",
       data: {
         report: { _id: "r1" },
         moderationTargetUser: { _id: "u2" },
@@ -335,7 +335,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i bÃƒÂ¡o cÃƒÂ¡o thÃƒÂ nh cÃƒÂ´ng",
+      message: "Cập nhật trạng thái báo cáo thành công",
       data: { report: { _id: "r1", status: "resolved" } },
     });
   });
@@ -362,7 +362,7 @@ describe("admin-panel report controller", () => {
       adminId: "admin-1",
     });
     expect(res.json).toHaveBeenCalledWith({
-      message: "XÃ¡Â»Â­ lÃƒÂ½ bÃƒÂ¡o cÃƒÂ¡o bÃ¡ÂºÂ±ng hÃƒÂ nh Ã„â€˜Ã¡Â»â„¢ng thÃƒÂ nh cÃƒÂ´ng",
+      message: "Xử lý báo cáo bằng hành động thành công",
       data: {
         report: { _id: "r1", status: "resolved" },
         action: "Da khoa nguoi dung",

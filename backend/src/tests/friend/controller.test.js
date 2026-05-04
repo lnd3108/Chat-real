@@ -142,7 +142,7 @@ describe("friendController.removeFriend", () => {
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Da huy ket ban thanh cong",
+      message: "Đã hủy kết bạn thành công",
       conversationId: "conversation-1",
       clearedDirectChat: true,
     });
@@ -173,7 +173,7 @@ describe("friendController.removeFriend", () => {
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Da huy ket ban thanh cong",
+      message: "Đã hủy kết bạn thành công",
       conversationId: null,
       clearedDirectChat: false,
     });
