@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { getMailConfig } from "../config/mail.js";
+import { shouldDisableExternalSideEffects } from "./loadTestGuard.js";
 
 let transporter;
 
@@ -59,6 +60,10 @@ const normalizeRecipients = (value) => {
 };
 
 const sendMail = async ({ to, subject, text, html }) => {
+  if (shouldDisableExternalSideEffects()) {
+    return;
+  }
+
   if (!isMailConfigured()) {
     throw new Error(
       "SMTP not configured. Please set mail environment variables.",
@@ -317,6 +322,13 @@ export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
 };
 
 const getMailConfigStatus = () => {
+  if (shouldDisableExternalSideEffects()) {
+    return {
+      ok: false,
+      message: "Email sending is disabled for load test mode.",
+    };
+  }
+
   const config = getMailConfig();
 
   if (!config.host || !config.port) {

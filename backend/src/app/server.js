@@ -12,9 +12,11 @@ import { initSocket } from "./socket/initSocket.js";
 import { maintenanceCheckMiddleware } from "../middlewares/maintenanceMiddleware.js";
 import { connectDB } from "../shared/infrastructure/db/connect-db.js";
 import { getMailConfigStatus } from "../utils/mail.js";
+import { assertLoadTestIsNotProduction } from "../utils/loadTestGuard.js";
 
 // lấy biến môi trường từ file .env
 dotenv.config();
+assertLoadTestIsNotProduction();
 
 export const createApp = () => {
   // tạo ứng dụng Express

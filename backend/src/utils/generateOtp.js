@@ -1,6 +1,12 @@
 import crypto from "crypto";
+import { getMockOtpCode } from "./loadTestGuard.js";
 
 export const generateNumericOtp = (length = 6) => {
+  const mockOtp = getMockOtpCode(length);
+  if (mockOtp) {
+    return mockOtp;
+  }
+
   const digits = [];
 
   while (digits.length < length) {

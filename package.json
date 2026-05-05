@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "google-auth-library": "^10.6.2"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.31",
+    "socket.io-client": "^4.8.3"
   }
 }
