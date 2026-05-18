@@ -123,6 +123,11 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
+    /* Scrollbar */
+    --app-scrollbar-track: transparent;
+    --app-scrollbar-thumb: rgba(100, 116, 139, 0.35);
+    --app-scrollbar-thumb-hover: rgba(100, 116, 139, 0.55);
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -212,6 +217,10 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --app-scrollbar-track: transparent;
+    --app-scrollbar-thumb: rgba(148, 163, 184, 0.28);
+    --app-scrollbar-thumb-hover: rgba(148, 163, 184, 0.48);
   }
 }
 
@@ -292,8 +301,99 @@
   }
 
   /* Scrollbar */
-  .beautiful-scrollbar {
-    @apply scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-600;
+  .app-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+    scrollbar-gutter: stable;
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: var(--app-scrollbar-track);
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
+    background-clip: content-box;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  .app-scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+  }
+
+  .app-scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .app-scrollbar-thin::-webkit-scrollbar-track {
+    background: var(--app-scrollbar-track);
+  }
+
+  .app-scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    border-radius: 999px;
+  }
+
+  .app-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
+  }
+
+  .app-scrollbar-hidden {
+    scrollbar-width: none;
+  }
+
+  .app-scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  .beautiful-scrollbar,
+  .beautiful-scroll-bar,
+  .beautifull-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+  }
+
+  .beautiful-scrollbar::-webkit-scrollbar,
+  .beautiful-scroll-bar::-webkit-scrollbar,
+  .beautifull-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .beautiful-scrollbar::-webkit-scrollbar-track,
+  .beautiful-scroll-bar::-webkit-scrollbar-track,
+  .beautifull-scrollbar::-webkit-scrollbar-track {
+    background: var(--app-scrollbar-track);
+  }
+
+  .beautiful-scrollbar::-webkit-scrollbar-thumb,
+  .beautiful-scroll-bar::-webkit-scrollbar-thumb,
+  .beautifull-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    border-radius: 999px;
+  }
+
+  .beautiful-scrollbar::-webkit-scrollbar-thumb:hover,
+  .beautiful-scroll-bar::-webkit-scrollbar-thumb:hover,
+  .beautifull-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
   }
 
   /* Animations */
@@ -375,6 +475,11 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
   }
 
   /* LIGHT MODE: Near Moon background */

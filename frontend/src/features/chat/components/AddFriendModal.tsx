@@ -149,7 +149,7 @@ const AddFriendModal = () => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <div className="app-scrollbar-thin flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

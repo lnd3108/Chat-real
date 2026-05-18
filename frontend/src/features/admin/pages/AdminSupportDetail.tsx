@@ -270,7 +270,7 @@ const AdminSupportDetail = () => {
 
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
             <h3 className="mb-4 font-semibold text-foreground">Cuộc trò chuyện</h3>
-            <div className="space-y-4 max-h-[500px] overflow-y-auto">
+            <div className="app-scrollbar-thin max-h-[500px] space-y-4 overflow-y-auto">
               {messages.length === 0 ? (
                 <p className="text-center text-muted-foreground">Chưa có tin nhắn nào.</p>
               ) : (

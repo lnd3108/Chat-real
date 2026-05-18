@@ -39,42 +39,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { convoLoading } = useChatStore();
 
   return (
-    <Sidebar variant="inset" {...props}>
-      <SidebarHeader>
+    <Sidebar variant="inset" className="md:flex-shrink-0" {...props}>
+      <SidebarHeader className="border-b border-sidebar-border/70">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="bg-gradient-primary">
-              <a href="#">
-                <div className="flex w-full items-center justify-between px-2">
-                  <h1 className="text-xl font-bold text-white">ChatRealTime</h1>
-                  <div className="flex items-center gap-2">
-                    <Sun className="size-4 text-white/80" />
+            <SidebarMenuButton
+              size="lg"
+              className="h-auto min-h-16 cursor-default bg-gradient-primary p-3 hover:bg-gradient-primary hover:text-white"
+            >
+              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
+                <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-white sm:text-xl">
+                  ChatRealTime
+                </h1>
+
+                <div className="flex flex-shrink-0 items-center gap-3 rounded-full bg-white/10 px-2.5 py-1.5 backdrop-blur-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Sun className="size-4 flex-shrink-0 text-white/80" />
                     <Switch
                       checked={isDark}
                       onCheckedChange={toggleTheme}
-                      className="data-[state=checked]:bg-background/80"
+                      className="flex-shrink-0 data-[state=checked]:bg-background/80"
+                      aria-label="Đổi theme"
                     />
-                    <Moon className="size-4 text-white/80" />
+                    <Moon className="size-4 flex-shrink-0 text-white/80" />
+                  </div>
+
+                  <div className="h-5 w-px bg-white/25" />
+
+                  <div className="flex items-center gap-1.5">
                     {soundEnabled ? (
-                      <Volume2 className="size-4 text-white/80" />
+                      <Volume2 className="size-4 flex-shrink-0 text-white/80" />
                     ) : (
-                      <VolumeX className="size-4 text-white/80" />
+                      <VolumeX className="size-4 flex-shrink-0 text-white/80" />
                     )}
                     <Switch
                       checked={soundEnabled}
                       onCheckedChange={setSoundEnabled}
-                      className="data-[state=checked]:bg-background/80"
+                      className="flex-shrink-0 data-[state=checked]:bg-background/80"
                       aria-label="Bật hoặc tắt âm thanh"
                     />
                   </div>
                 </div>
-              </a>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="beautifull-scrollbar">
+      <SidebarContent className="app-scrollbar-thin">
         <SidebarGroup>
           <SidebarGroupContent>
             <CreateNewChat />

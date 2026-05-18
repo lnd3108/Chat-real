@@ -112,7 +112,7 @@ const FriendListModal = ({
             Danh sách bạn bè
           </h1>
 
-          <div className="max-h-60 space-y-2 overflow-y-auto">
+          <div className="app-scrollbar-thin max-h-60 space-y-2 overflow-y-auto">
             {loading ? (
               <div className="py-8 text-center text-muted-foreground">
                 Đang tải danh sách bạn bè...

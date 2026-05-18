@@ -318,3 +318,72 @@ Metadata lịch sử cuộc gọi:
 
 - `object-contain` tránh crop mặt nhưng có thể tạo viền đen nếu tỷ lệ camera không khớp container. Đây là lựa chọn có chủ đích để ưu tiên không cắt nội dung video chính.
 - Production vẫn cần TURN server để video call ổn định qua NAT/firewall khó.
+
+## Chuẩn hóa scrollbar và responsive chat sidebar
+
+Đã chuẩn hóa scrollbar dùng chung theo light/dark theme và sửa layout sidebar chat để header, content scroll và footer không chen/lệch nhau trên desktop/mobile.
+
+### Files changed
+
+- `frontend/src/index.css`
+- `frontend/src/shared/ui/sidebar.tsx`
+- `frontend/src/shared/ui/dropdown-menu.tsx`
+- `frontend/src/features/chat/pages/ChatAppPage.tsx`
+- `frontend/src/features/chat/components/sidebar/app-sidebar.tsx`
+- `frontend/src/features/chat/components/ChatWindowLayout.tsx`
+- `frontend/src/features/chat/components/ChatWindowBody.tsx`
+- `frontend/src/features/chat/components/DirrectMessageList.tsx`
+- `frontend/src/features/chat/components/GroupChatList.tsx`
+- `frontend/src/features/chat/components/AddFriendModal.tsx`
+- `frontend/src/features/chat/components/FriendManagementDialog.tsx`
+- `frontend/src/features/chat/components/DirectInfoDialog.tsx`
+- `frontend/src/features/chat/components/GroupInfoDialog.tsx`
+- `frontend/src/features/chat/components/GroupMemberManagerDialog.tsx`
+- `frontend/src/features/chat/components/createNewChat/FriendListModal.tsx`
+- `frontend/src/features/chat/components/newGroupChat/InviteSuggestionList.tsx`
+- `frontend/src/features/admin/components/AdminLayout.tsx`
+- `frontend/src/features/admin/components/AdminSidebar.tsx`
+- `frontend/src/features/admin/components/AdminNotificationCenterDialog.tsx`
+- `frontend/src/features/admin/pages/AdminConversations.tsx`
+- `frontend/src/features/admin/pages/AdminSupportDetail.tsx`
+- `frontend/src/features/notification/components/NotificationCenterDialog.tsx`
+- `frontend/src/features/settings/components/profile/ProfileDialog.tsx`
+- `frontend/src/features/settings/components/profile/BlockReportDialog.tsx`
+- `frontend/src/features/settings/components/profile/BlockTab.tsx`
+- `frontend/src/features/settings/components/profile/SuggestUserInput.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Scrollbar utility đã tạo
+
+- Thêm CSS variables: `--app-scrollbar-track`, `--app-scrollbar-thumb`, `--app-scrollbar-thumb-hover`.
+- Light theme dùng thumb xám nhẹ, hover rõ hơn vừa phải, track transparent.
+- Dark theme dùng thumb xám sáng alpha thấp, hover sáng hơn nhẹ, track transparent.
+- Thêm utilities: `app-scrollbar`, `app-scrollbar-thin`, `app-scrollbar-hidden`.
+- Giữ alias cũ `beautiful-scrollbar`, `beautiful-scroll-bar`, `beautifull-scrollbar` trỏ về style mới để tránh scrollbar trắng nếu còn usage cũ.
+
+### Khu vực đã áp dụng
+
+- Chat sidebar content và message list.
+- Modal/panel: profile/settings, notification center, add friend, friend management, direct info, group info, group member manager, create group friend list, invite suggestion list.
+- Admin shell: main content, admin sidebar, notification dialog, conversation detail dialog, support message list.
+- Shared dropdown menu content.
+
+### Sidebar responsive đã sửa
+
+- Chat page root chuyển sang `h-dvh`, `min-h-0`, `overflow-hidden`; main chat có `min-w-0`, `flex-1`, `overflow-hidden`.
+- Shared sidebar width desktop dùng `clamp(18.75rem, 24vw, 23.75rem)` và mobile dùng `min(86vw, 22.5rem)`.
+- Sidebar root/header/footer/content có flex shrink/min-height rõ ràng; content là vùng scroll duy nhất với `app-scrollbar-thin`.
+- Header ChatRealTime dùng truncate, controls có `flex-shrink-0`, wrap khi thiếu chỗ, không còn ép tất cả vào một hàng `h-12`.
+- Direct/group conversation lists bỏ scroll lồng nhau để không tạo double scrollbar và không đè footer.
+- Message list giữ nguyên `scrollableDiv`, `InfiniteScroll inverse` và ref auto-scroll, chỉ đổi scrollbar class và thêm `min-h-0/flex-1`.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars).
+- Scoped eslint trên các file đã sửa: không có error; còn 3 warning hook deps có sẵn trong `AdminConversations.tsx`, `AdminSupportDetail.tsx`, `NotificationCenterDialog.tsx`, và `index.css` bị eslint ignore.
+
+### Remaining risks
+
+- Chưa chạy manual UI trên trình duyệt thật cho toàn bộ checklist dark/light, drawer mobile, send/receive realtime, unreadCounts, seenBy và online-users.
+- Full lint vẫn cần xử lý lint debt cũ nếu muốn pipeline `npm run lint` xanh toàn bộ.

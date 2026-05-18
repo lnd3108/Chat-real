@@ -143,7 +143,7 @@ const FriendManagementDialog = () => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <div className="app-scrollbar-thin flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {loading || loadingBlocked ? (
             <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />

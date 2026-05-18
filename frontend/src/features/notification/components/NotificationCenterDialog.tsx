@@ -215,7 +215,7 @@ const NotificationCenterDialog = ({
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-            <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
+            <div className="app-scrollbar-thin max-h-[55vh] space-y-3 overflow-y-auto pr-1">
               {allNotifications.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Chưa có thông báo nào.

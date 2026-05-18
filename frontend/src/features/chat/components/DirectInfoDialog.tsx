@@ -193,7 +193,7 @@ const DirectInfoDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2">
+        <div className="app-scrollbar-thin max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2">
           <section className="flex items-center gap-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
             <UserAvatar
               type="sidebar"
@@ -279,7 +279,7 @@ const DirectInfoDialog = ({
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="max-h-[65vh] overflow-y-auto pr-2">
+                        <div className="app-scrollbar-thin max-h-[65vh] overflow-y-auto pr-2">
                           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                             {sharedMedia.map((media) => (
                               <a

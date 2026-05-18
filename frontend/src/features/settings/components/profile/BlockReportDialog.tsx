@@ -118,7 +118,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong max-h-[85vh] overflow-y-auto border-border/30 sm:max-w-2xl">
+      <DialogContent className="glass-strong app-scrollbar-thin max-h-[85vh] overflow-y-auto border-border/30 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldBan className="h-5 w-5 text-primary" />

@@ -45,7 +45,7 @@ const ProfileDialog = ({ open, setOpen }: ProfileDialogProps) => {
               <h1 className="text-2xl font-bold text-foreground">Hồ sơ và cài đặt</h1>
             </div>
 
-            <div className="max-h-[calc(92vh-4rem)] overflow-y-auto pr-1">
+            <div className="app-scrollbar-thin max-h-[calc(92vh-4rem)] overflow-y-auto pr-1">
               <ProfileCard user={user} />
 
               <Tabs className="my-4" defaultValue="personal">

@@ -76,7 +76,7 @@ const SuggestUserInput = ({
                 Không tìm thấy bạn bè phù hợp.
               </p>
             ) : (
-              <div className="max-h-56 overflow-auto">
+              <div className="app-scrollbar-thin max-h-56 overflow-auto">
                 {filteredFriends.slice(0, 10).map((friend) => {
                   const active = friend.userName === value.trim();
 

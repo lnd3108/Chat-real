@@ -125,7 +125,7 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
               onChange={(e) => setSearch(e.target.value)}
             />
 
-            <div className="max-h-48 space-y-2 overflow-y-auto pr-2">
+            <div className="app-scrollbar-thin max-h-48 space-y-2 overflow-y-auto pr-2">
               {!loading &&
                 availableFriends.map((friend) => (
                   <div
@@ -166,7 +166,7 @@ const GroupMemberManagerDialog = ({ chat }: GroupMemberManagerDialogProps) => {
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Thành viên hiện tại</h3>
 
-            <div className="max-h-56 space-y-2 overflow-y-auto pr-2">
+            <div className="app-scrollbar-thin max-h-56 space-y-2 overflow-y-auto pr-2">
               {members.map((member) => (
                 <div
                   key={member._id}

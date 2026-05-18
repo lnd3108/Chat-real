@@ -305,7 +305,7 @@ const GroupInfoDialog = ({
 
         <div
           ref={scrollContainerRef}
-          className="max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent"
+          className="app-scrollbar-thin max-h-[calc(88vh-96px)] space-y-5 overflow-y-auto pr-2"
         >
           <section className="flex items-center gap-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
             <GroupChatAvatar
@@ -493,7 +493,7 @@ const GroupInfoDialog = ({
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="max-h-[65vh] overflow-y-auto pr-2">
+                        <div className="app-scrollbar-thin max-h-[65vh] overflow-y-auto pr-2">
                           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                             {sharedMedia.map((media) => (
                               <a
@@ -574,7 +574,7 @@ const GroupInfoDialog = ({
                 onChange={(event) => setSearch(event.target.value)}
               />
 
-              <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+              <div className="app-scrollbar-thin max-h-44 space-y-2 overflow-y-auto pr-1">
                 {!loading &&
                   availableFriends.map((friend) => (
                     <div
@@ -625,7 +625,7 @@ const GroupInfoDialog = ({
               </p>
             </div>
 
-            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            <div className="app-scrollbar-thin max-h-72 space-y-2 overflow-y-auto pr-1">
               {members.map((member) => (
                 <div
                   key={member._id}

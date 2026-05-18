@@ -442,7 +442,7 @@ const AdminConversations = () => {
               <LoadingSpinner className="h-8 w-8" />
             </div>
           ) : (
-            <div className="max-h-[60vh] space-y-5 overflow-y-auto pr-4">
+            <div className="app-scrollbar-thin max-h-[60vh] space-y-5 overflow-y-auto pr-4">
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${

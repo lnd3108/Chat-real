@@ -180,7 +180,7 @@ const BlockTab = ({
       {blocked.length === 0 ? (
         <p className="text-sm text-muted-foreground">Chưa có ai bị chặn.</p>
       ) : (
-        <div className="max-h-52 space-y-2 overflow-auto pr-1">
+        <div className="app-scrollbar-thin max-h-52 space-y-2 overflow-auto pr-1">
           {blocked.map((user) => (
             <div
               key={user._id}

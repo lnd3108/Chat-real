@@ -38,7 +38,7 @@ const InviteSuggestionList = ({
   }
 
   return (
-    <div className="border rounded-xl mt-3 max-h-[280px] overflow-y-auto divide-y bg-muted/20 scrollbar-thin scrollbar-thumb-muted-foreground/30">
+    <div className="app-scrollbar-thin mt-3 max-h-[280px] divide-y overflow-y-auto rounded-xl border bg-muted/20">
       {filteredFriends.map((friend) => {
         const isSelected = selectedUserIds.includes(friend._id);
         return (

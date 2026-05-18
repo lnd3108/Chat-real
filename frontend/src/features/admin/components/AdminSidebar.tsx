@@ -46,7 +46,7 @@ const AdminSidebar = () => {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-6">
+      <nav className="app-scrollbar-thin flex-1 space-y-2 overflow-y-auto px-3 py-6">
         {menuItems.map((item) => {
           const Icon = item.icon;
 
