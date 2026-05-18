@@ -62,3 +62,19 @@ npx artillery run tests/load/socket-test.js
 # or:
 npx artillery run tests/load/socket-test.yml
 ```
+
+Lệnh Chạy
+cd backend
+npm install
+node scripts/seed-test-users.js
+node --env-file=.env.test src/server.js
+Mở terminal khác từ repo root:
+k6 run -e NODE_ENV=test -e LOAD_TEST=true -e BASE_URL=http://127.0.0.1:5001 tests/load/login-test.js
+
+$env:NODE_ENV = "test"; $env:LOAD_TEST = "true"; $env:BASE_URL = "http://127.0.0.1:5001"
+npx artillery run tests/load/socket-test.js
+
+Cleanup sau test:
+
+cd backend
+node scripts/cleanup-test-data.js
