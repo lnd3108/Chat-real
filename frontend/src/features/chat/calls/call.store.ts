@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { CALL_ERROR_MESSAGES, CALL_SOCKET_EVENTS, CALL_STATUS } from "@/features/chat/calls/call.constants";
+import { stopRingtone } from "@/features/chat/calls/call-ringtone.service";
 import type { CallSessionPayload, CallState, CallStatus, CallType } from "@/features/chat/calls/call.types";
 import { webRTCVoiceCallService } from "@/features/chat/calls/webrtc.service";
 
@@ -168,6 +169,7 @@ export const useCallStore = create<CallState>((set, get) => {
     acceptCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().incomingCall);
       if (!targetCallId) return;
+      stopRingtone();
       emitCallCommand(CALL_SOCKET_EVENTS.ACCEPT, { callSessionId: targetCallId });
       set((state) => ({
         currentCall: state.incomingCall,
@@ -180,12 +182,14 @@ export const useCallStore = create<CallState>((set, get) => {
     rejectCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().incomingCall);
       if (!targetCallId) return;
+      stopRingtone();
       emitCallCommand(CALL_SOCKET_EVENTS.REJECT, { callSessionId: targetCallId });
       get().clearCall();
     },
 
     cancelCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().currentCall);
+      stopRingtone();
       if (!targetCallId) {
         pendingCancelledConversationId = get().currentCall?.conversationId ?? null;
         get().clearCall();
@@ -197,6 +201,7 @@ export const useCallStore = create<CallState>((set, get) => {
 
     endCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().currentCall);
+      stopRingtone();
       if (targetCallId) {
         emitCallCommand(CALL_SOCKET_EVENTS.END, { callSessionId: targetCallId });
       }
@@ -204,6 +209,7 @@ export const useCallStore = create<CallState>((set, get) => {
     },
 
     clearCall: () => {
+      stopRingtone();
       stopDurationTimer();
       webRTCVoiceCallService.cleanup();
       set({

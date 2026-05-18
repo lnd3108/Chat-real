@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { CALL_ERROR_MESSAGES, CALL_SOCKET_EVENTS, CALL_STATUS } from "@/features/chat/calls/call.constants";
+import { playIncomingRingtone, stopRingtone } from "@/features/chat/calls/call-ringtone.service";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import type { CallErrorPayload, CallSessionPayload, CallSignalPayload } from "@/features/chat/calls/call.types";
 import { webRTCVoiceCallService } from "@/features/chat/calls/webrtc.service";
@@ -61,6 +62,7 @@ export class CallSocketHandler {
       this.socket = null;
       useCallStore.getState().setSocket(null);
     }
+    stopRingtone();
   }
 
   private emitSignal = (eventName: string, payload: Record<string, unknown>) => {
@@ -75,9 +77,11 @@ export class CallSocketHandler {
     }
 
     callState.setIncomingCall(call);
+    playIncomingRingtone();
   };
 
   private handleAccepted = (call: CallSessionPayload) => {
+    stopRingtone();
     const callState = useCallStore.getState();
     callState.setCurrentCall(call);
     callState.setCallStatus(CALL_STATUS.CONNECTING);
@@ -94,26 +98,31 @@ export class CallSocketHandler {
   };
 
   private handleRejected = () => {
+    stopRingtone();
     useCallStore.getState().clearCall();
     toast.info("Cuộc gọi đã bị từ chối.");
   };
 
   private handleCancelled = () => {
+    stopRingtone();
     useCallStore.getState().clearCall();
     toast.info("Cuộc gọi đã bị hủy.");
   };
 
   private handleEnded = () => {
+    stopRingtone();
     useCallStore.getState().clearCall();
     toast.info("Cuộc gọi đã kết thúc.");
   };
 
   private handleMissed = () => {
+    stopRingtone();
     useCallStore.getState().clearCall();
     toast.info("Cuộc gọi nhỡ.");
   };
 
   private handleBusy = (payload: CallErrorPayload) => {
+    stopRingtone();
     const message = getErrorMessage(payload);
     useCallStore.getState().clearCall();
     useCallStore.getState().setError(message);
@@ -121,6 +130,7 @@ export class CallSocketHandler {
   };
 
   private handleError = (payload: CallErrorPayload) => {
+    stopRingtone();
     const message = getErrorMessage(payload);
     useCallStore.getState().setError(message);
     if (shouldClearCallOnError(payload.code)) {
@@ -130,6 +140,7 @@ export class CallSocketHandler {
   };
 
   private handleOffer = (signal: CallSignalPayload<RTCSessionDescriptionInit>) => {
+    stopRingtone();
     const callState = useCallStore.getState();
     const call = callState.currentCall ?? callState.incomingCall;
     if (!call) return;

@@ -217,3 +217,58 @@ Metadata lịch sử cuộc gọi:
 - Tạo manual QA script cho video call hai browser: accept, reject, cancel, missed, busy, reload, disconnect, camera denied, microphone denied.
 - Bổ sung TURN configuration qua environment variable.
 - Thêm rendering riêng cho call history message trong chat timeline.
+
+## Nhạc chuông cuộc gọi dùng chung
+
+Đã thêm cơ chế phát nhạc chuông dùng chung cho voice call 1-1 hiện tại và video call 1-1 sau này.
+
+### File âm thanh public đang dùng
+
+- File gốc vẫn được giữ nguyên: `frontend/public/Nhoi Nhoi Donate - Độ Mixigaming_[cut_17sec].mp3`.
+- File path an toàn đã được copy thêm: `frontend/public/sounds/call-ringtone.mp3`.
+- Frontend sử dụng public URL: `/sounds/call-ringtone.mp3`.
+
+### File đã thay đổi
+
+- `frontend/public/sounds/call-ringtone.mp3`
+- `frontend/src/features/chat/calls/call-ringtone.service.ts`
+- `frontend/src/features/chat/calls/call.socket.ts`
+- `frontend/src/features/chat/calls/call.store.ts`
+- `frontend/src/features/chat/calls/components/CallLayer.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Service đã tạo
+
+- `call-ringtone.service.ts` quản lý một `HTMLAudioElement` singleton, tránh tạo audio mới trong từng component.
+- Hàm hỗ trợ:
+  - `playIncomingRingtone()`
+  - `playOutgoingRingtone()`
+  - `stopRingtone()`
+  - `setVolume(volume)`
+  - `isRingtonePlaying()`
+- Volume mặc định là `0.7`.
+- Ringtone có `loop = true` khi đang ringing.
+- Service tôn trọng setting âm thanh chung hiện có qua `enableAll` và `soundEnabled`.
+- Lỗi autoplay của trình duyệt được bắt an toàn và log cảnh báo ngắn bằng tiếng Việt có dấu.
+
+### Flow đã tích hợp
+
+- Khi nhận `call:incoming`: phát nhạc chuông cuộc gọi đến.
+- Khi nhận `call:accepted`, `call:rejected`, `call:cancelled`, `call:ended`, `call:missed`, `call:busy`, `call:error`: dừng nhạc chuông.
+- Khi user bấm chấp nhận, từ chối, hủy hoặc kết thúc cuộc gọi: dừng nhạc chuông ngay.
+- Khi `CallLayer` unmount hoặc socket unregister/reconnect: dừng nhạc chuông.
+- `playOutgoingRingtone()` đã có sẵn để dùng chung sau này, nhưng hiện chưa tự phát cho caller để tránh dùng cùng file nhạc chuông như âm chờ.
+
+### Kết quả kiểm tra
+
+- Đã kiểm tra bằng code review rằng voice call và video call dùng chung service nhạc chuông, không tạo `new Audio()` trong UI component.
+- Đã kiểm tra các terminal event đều gọi `stopRingtone()`.
+- Đã kiểm tra service không phát chồng nhiều audio khi nhận duplicate ringing event vì dùng singleton và bỏ qua nếu audio đang phát.
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/chat/calls src/features/chat/pages/ChatAppPage.tsx src/features/chat/components/ChatWindowHeader.tsx` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi call/ringtone trong `admin`, `auth`, `ChatSocketHandler`, `FriendSocketHandler`, `notification`, `settings`.
+- `git diff --check`: đạt, chỉ có cảnh báo line ending CRLF khi Git chạm file.
+
+### Giới hạn đã biết
+
+- Trình duyệt có thể chặn autoplay nếu user chưa từng tương tác với trang. Khi đó app không crash và service log cảnh báo: “Không thể phát nhạc chuông do trình duyệt chặn tự động phát âm thanh.”
