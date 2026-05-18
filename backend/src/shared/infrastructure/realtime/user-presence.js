@@ -92,6 +92,11 @@ export const getOnlineVisibleUserIds = () => {
   return userIds;
 };
 
+export const isUserOnline = (userId) => {
+  const socketIds = socketsByUser.get(userId?.toString());
+  return Boolean(socketIds && socketIds.size > 0);
+};
+
 export const emitOnlineUsers = () => {
   emitGlobal("online-users", getOnlineVisibleUserIds());
 };

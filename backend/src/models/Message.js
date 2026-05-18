@@ -63,6 +63,37 @@ const reactionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const callMetadataSchema = new mongoose.Schema(
+  {
+    callSessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CallSession",
+      default: null,
+    },
+    callStatus: {
+      type: String,
+      enum: ["ringing", "accepted", "rejected", "missed", "cancelled", "ended", "failed"],
+      default: null,
+    },
+    callDurationSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    callerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    receiverId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 // Schema chính cho tin nhắn, bao gồm các trường cơ bản và các trường phụ để lưu thông tin trả lời và phản ứng
 const messageSchema = new mongoose.Schema(
   {
@@ -113,6 +144,10 @@ const messageSchema = new mongoose.Schema(
     reactions: {
       type: [reactionSchema],
       default: [],
+    },
+    callMetadata: {
+      type: callMetadataSchema,
+      default: null,
     },
     deletedFor: [
       {

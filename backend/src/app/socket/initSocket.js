@@ -1,6 +1,8 @@
 import { Server } from "socket.io";
 
 import { getUserConversationIdsForRealtime } from "../../modules/chat/application/conversation.query-service.js";
+import { handleUserDisconnectedFromCalls } from "../../modules/calls/application/call.service.js";
+import { registerCallSocketHandlers } from "../../modules/calls/api/socket/call.socket-handler.js";
 import { socketAuthMiddleWare } from "../../modules/identity/api/socket/socket-auth.middleware.js";
 import { SOCKET_ROOMS, USER_SOCKET_EVENTS } from "../../shared/domain/constants/socket-events.js";
 import {
@@ -104,6 +106,7 @@ export const initSocket = (server) => {
     // tham gia các phòng trò chuyện mà người dùng đang tham gia để nhận thông báo thời gian thực
     const conversations = await getUserConversationIdsForRealtime(user._id);
     conversations.forEach((id) => socket.join(id.toString()));
+    registerCallSocketHandlers(socket);
 
     // xử lý khi người dùng ngắt kết nối 
     socket.on("disconnect", () => {
@@ -114,6 +117,9 @@ export const initSocket = (server) => {
       emitOnlineUsers();
 
       if (becameOffline) {
+        void handleUserDisconnectedFromCalls(userId).catch((error) => {
+          console.error("Không thể dọn dẹp cuộc gọi khi socket ngắt kết nối:", error);
+        });
         emitAdminUserPresence({
           buildSocketUserPayload,
           eventType: USER_SOCKET_EVENTS.OFFLINE,

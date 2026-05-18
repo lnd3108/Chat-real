@@ -2,6 +2,7 @@ import axios from "@/shared/api/axios";
 import { AdminRoleSocketHandler } from "@/features/admin/realtime/AdminRoleSocketHandler";
 import { AccountSocketHandler } from "@/features/auth/realtime/AccountSocketHandler";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
+import { CallSocketHandler } from "@/features/chat/calls/call.socket";
 import { ChatSocketHandler } from "@/features/chat/realtime/ChatSocketHandler";
 import { FriendSocketHandler } from "@/features/friend/realtime/FriendSocketHandler";
 import { NotificationSocketHandler } from "@/features/notification/realtime/NotificationSocketHandler";
@@ -40,6 +41,7 @@ export const useSocketStore = create<SocketState>((set, get) => {
     accountHandler,
     new AdminRoleSocketHandler(),
     new NotificationSocketHandler(),
+    new CallSocketHandler(),
   );
 
   let isRefreshingSocketAuth = false;

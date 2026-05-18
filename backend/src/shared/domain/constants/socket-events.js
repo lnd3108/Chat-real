@@ -38,3 +38,22 @@ export const ADMIN_SOCKET_EVENTS = {
   MAINTENANCE_ON: "admin:maintenance:on",
   MAINTENANCE_OFF: "admin:maintenance:off",
 };
+
+export const CALL_SOCKET_EVENTS = {
+  INVITE: "call:invite",
+  ACCEPT: "call:accept",
+  REJECT: "call:reject",
+  CANCEL: "call:cancel",
+  END: "call:end",
+  OFFER: "call:offer",
+  ANSWER: "call:answer",
+  ICE_CANDIDATE: "call:ice-candidate",
+  INCOMING: "call:incoming",
+  ACCEPTED: "call:accepted",
+  REJECTED: "call:rejected",
+  CANCELLED: "call:cancelled",
+  ENDED: "call:ended",
+  MISSED: "call:missed",
+  BUSY: "call:busy",
+  ERROR: "call:error",
+};

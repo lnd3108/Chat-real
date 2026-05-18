@@ -3,7 +3,8 @@ import type { Conversation } from "@/shared/types/chat";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { Separator } from "@radix-ui/react-separator";
-import { Settings } from "lucide-react";
+import { Phone, Settings } from "lucide-react";
+import { useCallStore } from "@/features/chat/calls/call.store";
 import UserAvatar from "@/features/chat/components/UserAvatar";
 import StatusBadge from "@/features/chat/components/StatusBadge";
 import GroupChatAvatar from "@/features/chat/components/GroupChatAvatar";
@@ -25,6 +26,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
   const { user } = useAuthStore();
   const { onlineUsers } = useSocketStore();
+  const startCall = useCallStore((state) => state.startCall);
+  const currentCall = useCallStore((state) => state.currentCall);
+  const incomingCall = useCallStore((state) => state.incomingCall);
 
   const activeChat = chat ?? conversations.find((c) => c._id === activeConversationId);
 
@@ -44,6 +48,14 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
       : undefined;
   const otherUser = getParticipantProfile(otherParticipant);
   const otherId = getParticipantId(otherParticipant);
+  const isDirectBlocked =
+    activeChat.type === "direct" && activeChat.blockInfo?.canSendMessage === false;
+  const isCallUnavailable =
+    activeChat.type !== "direct" ||
+    !activeConversationId ||
+    !otherId ||
+    isDirectBlocked ||
+    Boolean(currentCall || incomingCall);
 
   if (activeChat.type === "direct" && (!user || !otherUser)) {
     return null;
@@ -193,6 +205,30 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               </Button>
             }
           />
+        )}
+
+        {activeChat.type === "direct" && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              disabled={isCallUnavailable}
+              onClick={() => {
+                if (!activeConversationId || !otherId) return;
+                startCall(activeConversationId, otherId);
+              }}
+              title={
+                isDirectBlocked
+                  ? "Không thể gọi khi đang bị chặn"
+                  : "Gọi thoại"
+              }
+            >
+              <Phone className="size-4" />
+              <span className="sr-only">Gọi thoại</span>
+            </Button>
+          </>
         )}
 
         {activeChat.type === "direct" && (
