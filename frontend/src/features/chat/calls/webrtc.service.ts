@@ -11,6 +11,22 @@ type WebRTCCallbacks = {
   setError: (message: string | null) => void;
 };
 
+const logVideoTrackState = (
+  label: string,
+  stream: MediaStream | null,
+  extra?: Record<string, unknown>,
+) => {
+  if (!import.meta.env.DEV) return;
+
+  const videoTrack = stream?.getVideoTracks()[0];
+  console.debug(`[CallVideo] ${label}`, {
+    audioTracks: stream?.getAudioTracks().length ?? 0,
+    videoTracks: stream?.getVideoTracks().length ?? 0,
+    videoEnabled: videoTrack?.enabled ?? false,
+    ...extra,
+  });
+};
+
 class WebRTCVoiceCallService {
   private peerConnection: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
@@ -34,6 +50,7 @@ class WebRTCVoiceCallService {
       });
       this.localStream = stream;
       this.callbacks?.setLocalStream(stream);
+      logVideoTrackState("Local media initialized", stream, { callType });
       this.callbacks?.setMicPermissionDenied(false);
       this.callbacks?.setCameraPermissionDenied(false);
       this.callbacks?.setScreenReady(true);
@@ -82,6 +99,9 @@ class WebRTCVoiceCallService {
       if (stream) {
         this.remoteStream = stream;
         this.callbacks?.setRemoteStream(stream);
+        logVideoTrackState("Remote stream received", stream, {
+          remoteVideoReceived: Boolean(stream.getVideoTracks().length),
+        });
         return;
       }
 
@@ -89,6 +109,10 @@ class WebRTCVoiceCallService {
         this.remoteStream?.addTrack(event.track);
       }
       this.callbacks?.setRemoteStream(this.remoteStream);
+      logVideoTrackState("Remote track added", this.remoteStream, {
+        trackKind: event.track?.kind,
+        remoteVideoReceived: Boolean(this.remoteStream?.getVideoTracks().length),
+      });
     };
 
     this.peerConnection = peerConnection;

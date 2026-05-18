@@ -38,14 +38,14 @@ const VideoCallPanel = () => {
   const peerName = peerProfile?.displayName || "Người đang gọi";
 
   return (
-    <div className="fixed inset-4 z-40 overflow-hidden rounded-lg border bg-background shadow-lg">
-      <div className="relative h-full w-full bg-muted">
+    <div className="fixed inset-3 z-40 min-h-0 overflow-hidden rounded-lg border bg-black shadow-lg sm:inset-4">
+      <div className="relative h-full min-h-0 w-full overflow-hidden bg-black">
         <RemoteVideo stream={remoteStream} />
-        <div className="absolute left-4 top-4 rounded-md bg-background/80 px-3 py-2 shadow-sm">
+        <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-8rem)] rounded-md bg-background/85 px-3 py-2 shadow-sm backdrop-blur sm:left-4 sm:top-4 sm:max-w-[calc(100%-14rem)]">
           <p className="text-sm font-medium text-foreground">{peerName}</p>
           <p className="text-xs text-muted-foreground">{formatDuration(durationSeconds)}</p>
         </div>
-        <div className="absolute right-4 top-4 h-32 w-24 overflow-hidden rounded-md border bg-background shadow-md sm:h-40 sm:w-32">
+        <div className="absolute right-3 top-3 z-30 aspect-video w-28 overflow-hidden rounded-md border bg-background shadow-md sm:right-4 sm:top-4 sm:w-40 md:w-44">
           {isCameraEnabled ? (
             <LocalVideoPreview stream={localStream} />
           ) : (
@@ -54,12 +54,24 @@ const VideoCallPanel = () => {
             </div>
           )}
         </div>
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background/90 p-3 shadow-lg">
-          <Button type="button" variant="ghost" size="icon" onClick={toggleMute}>
+        <div className="absolute bottom-4 left-1/2 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-lg border bg-background/90 p-2 shadow-lg backdrop-blur sm:gap-3 sm:p-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            title={isMuted ? "Bật mic" : "Tắt mic"}
+          >
             {isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}
             <span className="sr-only">{isMuted ? "Bật mic" : "Tắt mic"}</span>
           </Button>
-          <Button type="button" variant="ghost" size="icon" onClick={toggleCamera}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleCamera}
+            title={isCameraEnabled ? "Tắt camera" : "Bật camera"}
+          >
             {isCameraEnabled ? (
               <Video className="size-4" />
             ) : (
@@ -74,6 +86,7 @@ const VideoCallPanel = () => {
             variant="destructive"
             size="icon"
             onClick={() => endCall(currentCall.callSessionId)}
+            title="Kết thúc"
           >
             <PhoneOff className="size-4" />
             <span className="sr-only">Kết thúc</span>

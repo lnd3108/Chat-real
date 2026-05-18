@@ -272,3 +272,49 @@ Metadata lịch sử cuộc gọi:
 ### Giới hạn đã biết
 
 - Trình duyệt có thể chặn autoplay nếu user chưa từng tương tác với trang. Khi đó app không crash và service log cảnh báo: “Không thể phát nhạc chuông do trình duyệt chặn tự động phát âm thanh.”
+
+## Hardening UI video call 1-1
+
+Đã rà soát và sửa layout video call 1-1 để khung chính luôn là remote stream, khung preview luôn là local stream, đồng thời giảm tình trạng crop quá mạnh làm mất mặt người dùng.
+
+### File đã thay đổi
+
+- `frontend/src/features/chat/calls/components/VideoCallPanel.tsx`
+- `frontend/src/features/chat/calls/components/RemoteVideo.tsx`
+- `frontend/src/features/chat/calls/components/LocalVideoPreview.tsx`
+- `frontend/src/features/chat/calls/webrtc.service.ts`
+- `docs/03_CURRENT_STATUS.md`
+
+### Nguyên nhân lỗi UI
+
+- `RemoteVideo` trước đó dùng `object-cover` cho video chính nên dễ crop quá mạnh, làm người dùng bị cắt mặt hoặc chỉ thấy một phần khung hình.
+- Preview và main video đã bind đúng stream, nhưng UI chưa có fallback rõ khi remote video track chưa sẵn sàng nên dễ gây nhầm lẫn.
+- Video element chưa cleanup `srcObject = null` trong effect cleanup.
+
+### Cách fix layout
+
+- Khung chính vẫn nhận `remoteStream` và đã đổi sang `object-contain` trên nền đen để ưu tiên không cắt mặt người dùng.
+- Khung preview vẫn nhận `localStream`, luôn `muted`, `playsInline`, `autoPlay` và mirror bằng CSS `scaleX(-1)`.
+- Remote video không mirror và có `muted={false}`.
+- Thêm fallback tiếng Việt có dấu: “Đang kết nối video...” khi remote stream chưa có video track.
+- Local preview nằm góc phải trên, có `aspect-video`, kích thước responsive, border và z-index cao hơn main video.
+- Control bar nằm bottom center, có tooltip/title và `sr-only` tiếng Việt có dấu: “Bật mic”, “Tắt mic”, “Bật camera”, “Tắt camera”, “Kết thúc”.
+- Video elements cleanup `srcObject = null` khi stream đổi hoặc component unmount.
+- Thêm log dev-only ngắn gọn trong `RemoteVideo`, `LocalVideoPreview` và `webrtc.service.ts` để kiểm tra số lượng audio/video track, trạng thái local video track và remote video track received. Không log SDP/candidate.
+
+### Kết quả kiểm tra
+
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/chat/calls` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi video call UI trong `admin`, `auth`, `ChatSocketHandler`, `FriendSocketHandler`, `notification`, `settings`.
+
+### Trường hợp chưa xác minh thủ công
+
+- Chưa test end-to-end bằng hai browser hoặc hai account trong phiên này.
+- Chưa xác nhận bằng mắt rằng bên A thấy camera của B ở khung lớn và camera của A ở preview, và ngược lại.
+- Chưa xác nhận thủ công các case tắt camera, tắt mic, reload, end call, từ chối quyền camera và remote video qua NAT thực tế.
+
+### Giới hạn còn lại
+
+- `object-contain` tránh crop mặt nhưng có thể tạo viền đen nếu tỷ lệ camera không khớp container. Đây là lựa chọn có chủ đích để ưu tiên không cắt nội dung video chính.
+- Production vẫn cần TURN server để video call ổn định qua NAT/firewall khó.
