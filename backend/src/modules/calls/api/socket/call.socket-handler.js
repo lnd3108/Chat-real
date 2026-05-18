@@ -50,6 +50,7 @@ export const registerCallSocketHandlers = (socket) => {
         callerId: userId,
         conversationId: payload.conversationId,
         receiverId: payload.receiverId,
+        callType: payload.callType,
       });
 
       emitCommandError({ socket, result });

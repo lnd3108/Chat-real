@@ -3,7 +3,7 @@ import type { Conversation } from "@/shared/types/chat";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { Separator } from "@radix-ui/react-separator";
-import { Phone, Settings } from "lucide-react";
+import { Phone, Settings, Video } from "lucide-react";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import UserAvatar from "@/features/chat/components/UserAvatar";
 import StatusBadge from "@/features/chat/components/StatusBadge";
@@ -26,7 +26,8 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const { conversations, activeConversationId } = useChatStore();
   const { user } = useAuthStore();
   const { onlineUsers } = useSocketStore();
-  const startCall = useCallStore((state) => state.startCall);
+  const startVoiceCall = useCallStore((state) => state.startVoiceCall);
+  const startVideoCall = useCallStore((state) => state.startVideoCall);
   const currentCall = useCallStore((state) => state.currentCall);
   const incomingCall = useCallStore((state) => state.incomingCall);
 
@@ -217,7 +218,7 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               disabled={isCallUnavailable}
               onClick={() => {
                 if (!activeConversationId || !otherId) return;
-                startCall(activeConversationId, otherId);
+                startVoiceCall(activeConversationId, otherId);
               }}
               title={
                 isDirectBlocked
@@ -227,6 +228,25 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
             >
               <Phone className="size-4" />
               <span className="sr-only">Gọi thoại</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              disabled={isCallUnavailable}
+              onClick={() => {
+                if (!activeConversationId || !otherId) return;
+                startVideoCall(activeConversationId, otherId);
+              }}
+              title={
+                isDirectBlocked
+                  ? "Không thể gọi khi đang bị chặn"
+                  : "Gọi video"
+              }
+            >
+              <Video className="size-4" />
+              <span className="sr-only">Gọi video</span>
             </Button>
           </>
         )}

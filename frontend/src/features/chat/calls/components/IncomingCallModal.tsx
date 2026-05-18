@@ -31,6 +31,8 @@ const IncomingCallModal = () => {
   const callerName =
     callerProfile?.displayName ||
     (incomingCall?.callerId === currentUserId ? "Bạn" : "Người gọi");
+  const callTypeLabel =
+    incomingCall?.callType === "video" ? "Cuộc gọi video đến" : "Cuộc gọi thoại đến";
 
   return (
     <Dialog open={Boolean(incomingCall)}>
@@ -42,7 +44,7 @@ const IncomingCallModal = () => {
             avatarUrl={callerProfile?.avatarUrl ?? undefined}
           />
           <DialogTitle>{callerName}</DialogTitle>
-          <DialogDescription>Cuộc gọi thoại đến</DialogDescription>
+          <DialogDescription>{callTypeLabel}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="grid grid-cols-2 gap-3 sm:grid-cols-2">
           <Button

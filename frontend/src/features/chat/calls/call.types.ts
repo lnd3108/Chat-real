@@ -2,12 +2,14 @@ import type { Socket } from "socket.io-client";
 import type { CALL_STATUS } from "@/features/chat/calls/call.constants";
 
 export type CallStatus = (typeof CALL_STATUS)[keyof typeof CALL_STATUS];
+export type CallType = "voice" | "video";
 
 export interface CallSessionPayload {
   callSessionId: string;
   conversationId: string;
   callerId: string;
   receiverId: string;
+  callType?: CallType;
   status: string;
   startedAt?: string | null;
   acceptedAt?: string | null;
@@ -43,9 +45,19 @@ export interface CallState {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   isMicPermissionDenied: boolean;
+  isCameraEnabled: boolean;
+  isCameraPermissionDenied: boolean;
+  isScreenReady: boolean;
 
   setSocket: (socket: Socket | null) => void;
   startCall: (conversationId: string, receiverId: string) => void;
+  startVoiceCall: (conversationId: string, receiverId: string) => void;
+  startVideoCall: (conversationId: string, receiverId: string) => void;
+  startVideoOrVoiceCall: (
+    conversationId: string,
+    receiverId: string,
+    callType: CallType,
+  ) => void;
   acceptCall: (callId?: string) => void;
   rejectCall: (callId?: string) => void;
   cancelCall: (callId?: string) => void;
@@ -58,5 +70,8 @@ export interface CallState {
   setLocalStream: (stream: MediaStream | null) => void;
   setRemoteStream: (stream: MediaStream | null) => void;
   setMicPermissionDenied: (value: boolean) => void;
+  setCameraPermissionDenied: (value: boolean) => void;
+  setScreenReady: (value: boolean) => void;
   toggleMute: () => void;
+  toggleCamera: () => void;
 }

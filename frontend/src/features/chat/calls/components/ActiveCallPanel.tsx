@@ -3,6 +3,7 @@ import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { CALL_STATUS } from "@/features/chat/calls/call.constants";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import RemoteAudio from "@/features/chat/calls/components/RemoteAudio";
+import VideoCallPanel from "@/features/chat/calls/components/VideoCallPanel";
 import UserAvatar from "@/features/chat/components/UserAvatar";
 import { getParticipantId, getParticipantProfile } from "@/features/chat/lib/chatParticipants";
 import { useChatStore } from "@/features/chat/stores/useChatStore";
@@ -30,6 +31,10 @@ const ActiveCallPanel = () => {
     (callStatus === CALL_STATUS.CONNECTING || callStatus === CALL_STATUS.ACTIVE);
 
   if (!isVisible || !currentCall) return null;
+
+  if (currentCall.callType === "video") {
+    return <VideoCallPanel />;
+  }
 
   const conversation = conversations.find(
     (item) => item._id === currentCall.conversationId,

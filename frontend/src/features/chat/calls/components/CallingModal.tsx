@@ -31,6 +31,8 @@ const CallingModal = () => {
   );
   const peerProfile = getParticipantProfile(peerParticipant);
   const peerName = peerProfile?.displayName || "Người nhận";
+  const callingLabel =
+    currentCall?.callType === "video" ? "Đang gọi video..." : "Đang gọi thoại...";
 
   return (
     <Dialog open={isCalling}>
@@ -42,7 +44,7 @@ const CallingModal = () => {
             avatarUrl={peerProfile?.avatarUrl ?? undefined}
           />
           <DialogTitle>{peerName}</DialogTitle>
-          <DialogDescription>Đang gọi...</DialogDescription>
+          <DialogDescription>{callingLabel}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button

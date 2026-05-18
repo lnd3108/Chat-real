@@ -75,6 +75,11 @@ const callMetadataSchema = new mongoose.Schema(
       enum: ["ringing", "accepted", "rejected", "missed", "cancelled", "ended", "failed"],
       default: null,
     },
+    callType: {
+      type: String,
+      enum: ["voice", "video"],
+      default: "voice",
+    },
     callDurationSeconds: {
       type: Number,
       default: 0,

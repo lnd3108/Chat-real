@@ -1,10 +1,13 @@
 import { CALL_SOCKET_EVENTS, STUN_SERVERS } from "@/features/chat/calls/call.constants";
+import type { CallType } from "@/features/chat/calls/call.types";
 
 type EmitSignal = (eventName: string, payload: Record<string, unknown>) => void;
 type WebRTCCallbacks = {
   setLocalStream: (stream: MediaStream | null) => void;
   setRemoteStream: (stream: MediaStream | null) => void;
   setMicPermissionDenied: (value: boolean) => void;
+  setCameraPermissionDenied: (value: boolean) => void;
+  setScreenReady: (value: boolean) => void;
   setError: (message: string | null) => void;
 };
 
@@ -21,25 +24,40 @@ class WebRTCVoiceCallService {
     this.callbacks = callbacks;
   }
 
-  async initLocalAudio() {
+  async initLocalMedia(callType: CallType = "voice") {
     if (this.localStream) return this.localStream;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: false,
+        video: callType === "video",
       });
       this.localStream = stream;
       this.callbacks?.setLocalStream(stream);
       this.callbacks?.setMicPermissionDenied(false);
+      this.callbacks?.setCameraPermissionDenied(false);
+      this.callbacks?.setScreenReady(true);
       return stream;
     } catch (error) {
+      const errorName = error instanceof DOMException ? error.name : "";
+      const isVideoCall = callType === "video";
       this.callbacks?.setMicPermissionDenied(true);
+      if (isVideoCall) {
+        this.callbacks?.setCameraPermissionDenied(true);
+      }
       this.callbacks?.setError(
-        "Không thể truy cập microphone. Vui lòng cấp quyền và thử lại.",
+        isVideoCall
+          ? errorName === "NotFoundError"
+            ? "Không tìm thấy camera. Vui lòng kiểm tra thiết bị."
+            : "Không thể truy cập camera hoặc micro. Vui lòng kiểm tra quyền trình duyệt."
+          : "Không thể truy cập micro. Vui lòng kiểm tra quyền trình duyệt.",
       );
       throw error;
     }
+  }
+
+  async initLocalAudio() {
+    return this.initLocalMedia("voice");
   }
 
   createPeerConnection(callSessionId: string, emitSignal: EmitSignal) {
@@ -77,13 +95,15 @@ class WebRTCVoiceCallService {
     return peerConnection;
   }
 
-  async startAsCaller(callSessionId: string, emitSignal: EmitSignal) {
-    const stream = await this.initLocalAudio();
+  async startAsCaller(
+    callSessionId: string,
+    emitSignal: EmitSignal,
+    callType: CallType = "voice",
+  ) {
+    const stream = await this.initLocalMedia(callType);
     const peerConnection = this.createPeerConnection(callSessionId, emitSignal);
 
-    stream.getAudioTracks().forEach((track) => {
-      peerConnection.addTrack(track, stream);
-    });
+    this.addLocalTracks(peerConnection, stream);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
@@ -98,16 +118,12 @@ class WebRTCVoiceCallService {
     callSessionId: string,
     offer: RTCSessionDescriptionInit,
     emitSignal: EmitSignal,
+    callType: CallType = "voice",
   ) {
-    const stream = await this.initLocalAudio();
+    const stream = await this.initLocalMedia(callType);
     const peerConnection = this.createPeerConnection(callSessionId, emitSignal);
 
-    stream.getAudioTracks().forEach((track) => {
-      const alreadyAdded = peerConnection
-        .getSenders()
-        .some((sender) => sender.track === track);
-      if (!alreadyAdded) peerConnection.addTrack(track, stream);
-    });
+    this.addLocalTracks(peerConnection, stream);
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
     await this.flushPendingIceCandidates();
@@ -147,6 +163,18 @@ class WebRTCVoiceCallService {
     return !nextEnabled;
   }
 
+  toggleCamera() {
+    if (!this.localStream) return false;
+    const videoTracks = this.localStream.getVideoTracks();
+    if (videoTracks.length === 0) return false;
+
+    const nextEnabled = !videoTracks.some((track) => track.enabled);
+    videoTracks.forEach((track) => {
+      track.enabled = nextEnabled;
+    });
+    return nextEnabled;
+  }
+
   cleanup() {
     this.localStream?.getTracks().forEach((track) => track.stop());
     this.localStream = null;
@@ -164,6 +192,16 @@ class WebRTCVoiceCallService {
 
     this.callbacks?.setLocalStream(null);
     this.callbacks?.setRemoteStream(null);
+    this.callbacks?.setScreenReady(false);
+  }
+
+  private addLocalTracks(peerConnection: RTCPeerConnection, stream: MediaStream) {
+    stream.getTracks().forEach((track) => {
+      const alreadyAdded = peerConnection
+        .getSenders()
+        .some((sender) => sender.track === track);
+      if (!alreadyAdded) peerConnection.addTrack(track, stream);
+    });
   }
 
   private async flushPendingIceCandidates() {

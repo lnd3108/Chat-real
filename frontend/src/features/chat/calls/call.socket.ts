@@ -10,6 +10,20 @@ const getErrorMessage = (payload: CallErrorPayload) =>
   payload.message ||
   "Không thể thực hiện cuộc gọi.";
 
+const shouldClearCallOnError = (code?: string) =>
+  [
+    "CALL_NOT_DIRECT_CONVERSATION",
+    "CALL_CONVERSATION_NOT_FOUND",
+    "CALL_FORBIDDEN",
+    "CALL_BLOCKED",
+    "CALL_RECEIVER_OFFLINE",
+    "CALL_USER_BUSY",
+    "CALL_NOT_FOUND",
+    "CALL_INVALID_TYPE",
+    "CALL_VIDEO_NOT_SUPPORTED",
+    "CALL_INVALID_STATE",
+  ].includes(code ?? "");
+
 export class CallSocketHandler {
   private socket: Socket | null = null;
 
@@ -69,9 +83,12 @@ export class CallSocketHandler {
     callState.setCallStatus(CALL_STATUS.CONNECTING);
 
     void webRTCVoiceCallService
-      .startAsCaller(call.callSessionId, this.emitSignal)
+      .startAsCaller(call.callSessionId, this.emitSignal, call.callType ?? "voice")
       .catch(() => {
         callState.setMicPermissionDenied(true);
+        if (call.callType === "video") {
+          callState.setCameraPermissionDenied(true);
+        }
         callState.endCall(call.callSessionId);
       });
   };
@@ -106,12 +123,7 @@ export class CallSocketHandler {
   private handleError = (payload: CallErrorPayload) => {
     const message = getErrorMessage(payload);
     useCallStore.getState().setError(message);
-    if (
-      payload.code === "CALL_RECEIVER_OFFLINE" ||
-      payload.code === "CALL_USER_BUSY" ||
-      payload.code === "CALL_BLOCKED" ||
-      payload.code === "CALL_INVALID_STATE"
-    ) {
+    if (shouldClearCallOnError(payload.code)) {
       useCallStore.getState().clearCall();
     }
     toast.error(message);
@@ -127,10 +139,18 @@ export class CallSocketHandler {
     callState.setCallStatus(CALL_STATUS.CONNECTING);
 
     void webRTCVoiceCallService
-      .handleOffer(signal.callSessionId, signal.payload, this.emitSignal)
+      .handleOffer(
+        signal.callSessionId,
+        signal.payload,
+        this.emitSignal,
+        call.callType ?? "voice",
+      )
       .then(() => callState.setCallStatus(CALL_STATUS.ACTIVE))
       .catch(() => {
         callState.setMicPermissionDenied(true);
+        if (call.callType === "video") {
+          callState.setCameraPermissionDenied(true);
+        }
         callState.endCall(signal.callSessionId);
       });
   };
@@ -140,7 +160,7 @@ export class CallSocketHandler {
       .handleAnswer(signal.payload)
       .then(() => useCallStore.getState().setCallStatus(CALL_STATUS.ACTIVE))
       .catch(() => {
-        useCallStore.getState().setError("Không thể kết nối âm thanh.");
+        useCallStore.getState().setError("Không thể kết nối âm thanh hoặc video.");
       });
   };
 

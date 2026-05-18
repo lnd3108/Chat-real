@@ -10,6 +10,11 @@ export const CALL_SESSION_STATUSES = {
   FAILED: "failed",
 };
 
+export const CALL_SESSION_TYPES = {
+  VOICE: "voice",
+  VIDEO: "video",
+};
+
 const callSessionSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -27,6 +32,13 @@ const callSessionSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
+    },
+    callType: {
+      type: String,
+      enum: Object.values(CALL_SESSION_TYPES),
+      default: CALL_SESSION_TYPES.VOICE,
       required: true,
       index: true,
     },

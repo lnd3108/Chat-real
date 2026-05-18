@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { CALL_ERROR_MESSAGES, CALL_SOCKET_EVENTS, CALL_STATUS } from "@/features/chat/calls/call.constants";
-import type { CallSessionPayload, CallState, CallStatus } from "@/features/chat/calls/call.types";
+import type { CallSessionPayload, CallState, CallStatus, CallType } from "@/features/chat/calls/call.types";
 import { webRTCVoiceCallService } from "@/features/chat/calls/webrtc.service";
 
 let durationTimer: ReturnType<typeof setInterval> | null = null;
@@ -19,6 +19,20 @@ const getCallId = (call?: CallSessionPayload | null) => call?.callSessionId;
 
 const formatError = (code?: string, message?: string) =>
   (code && CALL_ERROR_MESSAGES[code]) || message || "Không thể thực hiện cuộc gọi.";
+
+const shouldClearCallOnError = (code?: string) =>
+  [
+    "CALL_NOT_DIRECT_CONVERSATION",
+    "CALL_CONVERSATION_NOT_FOUND",
+    "CALL_FORBIDDEN",
+    "CALL_BLOCKED",
+    "CALL_RECEIVER_OFFLINE",
+    "CALL_USER_BUSY",
+    "CALL_NOT_FOUND",
+    "CALL_INVALID_TYPE",
+    "CALL_VIDEO_NOT_SUPPORTED",
+    "CALL_INVALID_STATE",
+  ].includes(code ?? "");
 
 export const useCallStore = create<CallState>((set, get) => {
   const startDurationTimer = (startedAt = Date.now()) => {
@@ -58,6 +72,9 @@ export const useCallStore = create<CallState>((set, get) => {
       }) => {
         if (response?.error) {
           const errorMessage = formatError(response.error.code, response.error.message);
+          if (shouldClearCallOnError(response.error.code)) {
+            get().clearCall();
+          }
           set({ error: errorMessage });
           toast.error(errorMessage);
           return;
@@ -80,10 +97,24 @@ export const useCallStore = create<CallState>((set, get) => {
     localStream: null,
     remoteStream: null,
     isMicPermissionDenied: false,
+    isCameraEnabled: true,
+    isCameraPermissionDenied: false,
+    isScreenReady: false,
 
     setSocket: (socket: Socket | null) => set({ socket }),
 
-    startCall: (conversationId: string, receiverId: string) => {
+    startCall: (conversationId: string, receiverId: string) =>
+      get().startVoiceCall(conversationId, receiverId),
+
+    startVoiceCall: (conversationId: string, receiverId: string) => {
+      get().startVideoOrVoiceCall(conversationId, receiverId, "voice");
+    },
+
+    startVideoCall: (conversationId: string, receiverId: string) => {
+      get().startVideoOrVoiceCall(conversationId, receiverId, "video");
+    },
+
+    startVideoOrVoiceCall: (conversationId: string, receiverId: string, callType: CallType) => {
       if (get().currentCall || get().incomingCall) {
         toast.error("Bạn đang trong một cuộc gọi khác.");
         return;
@@ -96,16 +127,22 @@ export const useCallStore = create<CallState>((set, get) => {
           conversationId,
           callerId: "",
           receiverId,
+          callType,
           status: "ringing",
           startedAt: new Date().toISOString(),
         },
         incomingCall: null,
         callStatus: CALL_STATUS.RINGING,
         error: null,
+        isMuted: false,
+        isCameraEnabled: true,
+        isCameraPermissionDenied: false,
+        isMicPermissionDenied: false,
+        isScreenReady: false,
       });
       emitCallCommand(
         CALL_SOCKET_EVENTS.INVITE,
-        { conversationId, receiverId },
+        { conversationId, receiverId, callType },
         (call) => {
           if (!call) return;
 
@@ -174,6 +211,10 @@ export const useCallStore = create<CallState>((set, get) => {
         incomingCall: null,
         callStatus: CALL_STATUS.IDLE,
         isMuted: false,
+        isCameraEnabled: true,
+        isCameraPermissionDenied: false,
+        isMicPermissionDenied: false,
+        isScreenReady: false,
         callStartedAt: null,
         durationSeconds: 0,
         localStream: null,
@@ -200,10 +241,17 @@ export const useCallStore = create<CallState>((set, get) => {
     setLocalStream: (stream) => set({ localStream: stream }),
     setRemoteStream: (stream) => set({ remoteStream: stream }),
     setMicPermissionDenied: (value) => set({ isMicPermissionDenied: value }),
+    setCameraPermissionDenied: (value) => set({ isCameraPermissionDenied: value }),
+    setScreenReady: (value) => set({ isScreenReady: value }),
 
     toggleMute: () => {
       const isMuted = webRTCVoiceCallService.toggleMic();
       set({ isMuted });
+    },
+
+    toggleCamera: () => {
+      const isCameraEnabled = webRTCVoiceCallService.toggleCamera();
+      set({ isCameraEnabled });
     },
   };
 });
@@ -213,6 +261,9 @@ webRTCVoiceCallService.configure({
   setRemoteStream: (stream) => useCallStore.getState().setRemoteStream(stream),
   setMicPermissionDenied: (value) =>
     useCallStore.getState().setMicPermissionDenied(value),
+  setCameraPermissionDenied: (value) =>
+    useCallStore.getState().setCameraPermissionDenied(value),
+  setScreenReady: (value) => useCallStore.getState().setScreenReady(value),
   setError: (message) => useCallStore.getState().setError(message),
 });
 

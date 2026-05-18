@@ -38,6 +38,8 @@ export const CALL_ERROR_MESSAGES: Record<string, string> = {
   CALL_RECEIVER_OFFLINE: "Người nhận đang ngoại tuyến.",
   CALL_USER_BUSY: "Người dùng đang trong cuộc gọi khác.",
   CALL_NOT_FOUND: "Không tìm thấy cuộc gọi.",
+  CALL_INVALID_TYPE: "Loại cuộc gọi không hợp lệ.",
+  CALL_VIDEO_NOT_SUPPORTED: "Cuộc gọi video chưa được hỗ trợ.",
   CALL_INVALID_STATE: "Trạng thái cuộc gọi không hợp lệ.",
   CALL_SIGNALING_FORBIDDEN: "Bạn không có quyền gửi tín hiệu cuộc gọi.",
 };

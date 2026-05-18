@@ -17,6 +17,7 @@ import {
   CALL_ERROR_CODES,
   CALL_RING_TIMEOUT_MS,
   CALL_STATUSES,
+  CALL_TYPES,
 } from "../domain/call.constants.js";
 
 const activeCallsByUser = new Map();
@@ -38,6 +39,8 @@ const toIdString = (value) => {
 
 const buildError = (code, message) => ({ code, message });
 const isValidId = (value) => mongoose.isValidObjectId(value);
+const normalizeCallType = (callType) => callType ?? CALL_TYPES.VOICE;
+const isValidCallType = (callType) => Object.values(CALL_TYPES).includes(callType);
 
 const normalizeCallSession = (callSession) => {
   if (!callSession) return null;
@@ -48,6 +51,7 @@ const normalizeCallSession = (callSession) => {
     conversationId: toIdString(raw.conversationId),
     callerId: toIdString(raw.callerId),
     receiverId: toIdString(raw.receiverId),
+    callType: raw.callType ?? CALL_TYPES.VOICE,
     status: raw.status,
     startedAt: raw.startedAt ?? null,
     acceptedAt: raw.acceptedAt ?? null,
@@ -116,19 +120,24 @@ const calculateDurationSeconds = (callSession, endedAt) => {
 };
 
 const getCallHistoryContent = (callSession) => {
+  const label =
+    (callSession.callType ?? CALL_TYPES.VOICE) === CALL_TYPES.VIDEO
+      ? "Cuộc gọi video"
+      : "Cuộc gọi thoại";
+
   switch (callSession.status) {
     case CALL_STATUSES.REJECTED:
-      return "Cuộc gọi thoại đã bị từ chối";
+      return `${label} bị từ chối`;
     case CALL_STATUSES.MISSED:
-      return "Cuộc gọi thoại nhỡ";
+      return `${label} nhỡ`;
     case CALL_STATUSES.CANCELLED:
-      return "Cuộc gọi thoại đã bị hủy";
+      return `${label} đã hủy`;
     case CALL_STATUSES.ENDED:
-      return `Cuộc gọi thoại đã kết thúc (${callSession.durationSeconds ?? 0}s)`;
+      return `${label} đã kết thúc (${callSession.durationSeconds ?? 0}s)`;
     case CALL_STATUSES.FAILED:
-      return "Cuộc gọi thoại thất bại";
+      return `${label} thất bại`;
     default:
-      return "Cuộc gọi thoại";
+      return label;
   }
 };
 
@@ -146,6 +155,7 @@ const createCallHistoryMessage = async (callSession) => {
     content: getCallHistoryContent(callSession),
     callMetadata: {
       callSessionId: callSession._id,
+      callType: callSession.callType ?? CALL_TYPES.VOICE,
       callStatus: callSession.status,
       callDurationSeconds: callSession.durationSeconds ?? 0,
       callerId: callSession.callerId,
@@ -173,7 +183,7 @@ const loadDirectConversationForInvite = async ({
   callerId,
   receiverId,
 }) => {
-  if (![conversationId, callerId, receiverId].every(isValidId)) {
+  if (![conversationId, callerId].every(isValidId)) {
     return {
       error: buildError(CALL_ERROR_CODES.FORBIDDEN, "Dữ liệu cuộc gọi không hợp lệ"),
     };
@@ -202,7 +212,7 @@ const loadDirectConversationForInvite = async ({
     toIdString(participant.userId),
   );
   const normalizedCallerId = toIdString(callerId);
-  const normalizedReceiverId = toIdString(receiverId);
+  const normalizedReceiverId = receiverId ? toIdString(receiverId) : null;
   const expectedReceiverId = memberIds.find(
     (memberId) => memberId !== normalizedCallerId,
   );
@@ -216,19 +226,22 @@ const loadDirectConversationForInvite = async ({
     };
   }
 
-  if (!expectedReceiverId || normalizedReceiverId !== expectedReceiverId) {
+  if (
+    !expectedReceiverId ||
+    (normalizedReceiverId && normalizedReceiverId !== expectedReceiverId)
+  ) {
     return {
       error: buildError(CALL_ERROR_CODES.FORBIDDEN, "Người nhận không hợp lệ"),
     };
   }
 
-  if (normalizedCallerId === normalizedReceiverId) {
+  if (normalizedCallerId === (normalizedReceiverId ?? expectedReceiverId)) {
     return {
       error: buildError(CALL_ERROR_CODES.FORBIDDEN, "Không thể tự gọi chính mình"),
     };
   }
 
-  return { conversation };
+  return { conversation, receiverId: expectedReceiverId };
 };
 
 const validateDirectBlock = async ({ callerId, receiverId }) => {
@@ -357,7 +370,22 @@ const scheduleMissedTimeout = (callSessionId) => {
   timeoutByCallId.set(callSessionId, timeout);
 };
 
-export const inviteCall = async ({ callerId, conversationId, receiverId }) => {
+export const inviteCall = async ({
+  callerId,
+  conversationId,
+  receiverId,
+  callType,
+}) => {
+  const resolvedCallType = normalizeCallType(callType);
+  if (!isValidCallType(resolvedCallType)) {
+    return {
+      error: buildError(
+        CALL_ERROR_CODES.INVALID_TYPE,
+        "Loại cuộc gọi không hợp lệ",
+      ),
+    };
+  }
+
   const context = await loadDirectConversationForInvite({
     conversationId,
     callerId,
@@ -365,16 +393,20 @@ export const inviteCall = async ({ callerId, conversationId, receiverId }) => {
   });
   if (context.error) return { error: context.error };
 
-  const blockValidation = await validateDirectBlock({ callerId, receiverId });
+  const resolvedReceiverId = context.receiverId;
+  const blockValidation = await validateDirectBlock({
+    callerId,
+    receiverId: resolvedReceiverId,
+  });
   if (blockValidation.error) return { error: blockValidation.error };
 
-  if (!isUserOnline(receiverId)) {
+  if (!isUserOnline(resolvedReceiverId)) {
     return {
       error: buildError(CALL_ERROR_CODES.RECEIVER_OFFLINE, "Người nhận đang ngoại tuyến"),
     };
   }
 
-  if (isUserBusy(callerId) || isUserBusy(receiverId)) {
+  if (isUserBusy(callerId) || isUserBusy(resolvedReceiverId)) {
     return {
       error: buildError(
         CALL_ERROR_CODES.USER_BUSY,
@@ -386,7 +418,8 @@ export const inviteCall = async ({ callerId, conversationId, receiverId }) => {
   const callSession = await CallSession.create({
     conversationId,
     callerId,
-    receiverId,
+    receiverId: resolvedReceiverId,
+    callType: resolvedCallType,
     status: CALL_STATUSES.RINGING,
     startedAt: new Date(),
   });
@@ -395,7 +428,7 @@ export const inviteCall = async ({ callerId, conversationId, receiverId }) => {
   scheduleMissedTimeout(toIdString(callSession._id));
 
   const payload = normalizeCallSession(callSession);
-  emitToUser(receiverId, CALL_SOCKET_EVENTS.INCOMING, payload);
+  emitToUser(resolvedReceiverId, CALL_SOCKET_EVENTS.INCOMING, payload);
 
   return { payload };
 };
