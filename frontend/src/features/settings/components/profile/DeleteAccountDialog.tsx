@@ -67,20 +67,17 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const navigate = useNavigate();
   const clearState = useAuthStore((s) => s.clearState);
   const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
-
   const initialSession = useMemo(() => readDeleteSession(), []);
 
   const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState(initialSession.confirmText);
   const [code, setCode] = useState(initialSession.code);
   const [email, setEmail] = useState<string | null>(initialSession.email);
-  const [expiresAt, setExpiresAt] = useState<number | null>(
-    initialSession.expiresAt,
-  );
+  const [expiresAt, setExpiresAt] = useState<number | null>(initialSession.expiresAt);
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(
     initialSession.resendAvailableAt,
   );
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -127,10 +124,6 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   const handleCancel = () => {
     resetDialog();
     setOpen(false);
-  };
-
-  const handleDismiss = (nextOpen: boolean) => {
-    setOpen(nextOpen);
   };
 
   const isDeleteWordValid = useMemo(
@@ -221,14 +214,8 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
         "Đã xóa tài khoản thành công. Hẹn gặp lại bạn trong tương lai!";
 
       await authService.confirmAccountDeletion(confirmText, code);
-
-      // Disconnect socket first to prevent any more socket events
       disconnectSocket();
-
-      // Abort all pending requests
       abortAllRequests();
-
-      // Show immediate success toast before navigation
       toast.success(successMessage);
 
       window.sessionStorage.setItem(
@@ -243,7 +230,6 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
       clearState();
       setOpen(false);
 
-      // Small delay to ensure toast is visible before navigation
       setTimeout(() => {
         navigate("/signin", { replace: true });
       }, 500);
@@ -268,8 +254,8 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleDismiss}>
-      <DialogContent className="glass-strong border-border/30">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="glass-strong max-h-[85vh] overflow-hidden border-border/30 sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="h-5 w-5" />
@@ -278,13 +264,11 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
           <DialogDescription>
             Hành động này không thể hoàn tác. Bạn cần nhập{" "}
             <strong>{DELETE_CONFIRM_WORD}</strong> và xác minh mã được gửi về
-            email trong vòng 5 phút trước khi tài khoản bị xóa vĩnh viễn. Nếu
-            chỉ đóng cửa sổ, phiên xác minh vẫn được giữ nguyên cho đến khi hết
-            hạn hoặc bạn bấm <strong>Hủy</strong>.
+            email trong vòng 5 phút trước khi tài khoản bị xóa vĩnh viễn.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-2 space-y-4">
+        <div className="app-scrollbar-thin mt-2 space-y-4 overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label htmlFor="delete-confirm">Nhập từ xác nhận</Label>
             <Input
@@ -296,13 +280,12 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
             />
           </div>
 
-          <div className="space-y-2 rounded-xl border border-border/30 bg-background/30 p-4">
-            <div className="flex items-start justify-between gap-3">
+          <div className="space-y-3 rounded-xl border border-border/30 bg-background/30 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-medium">Bước 1: Gửi mã xác minh</p>
-                <p className="text-sm text-muted-foreground">
-                  Mã xác minh xóa tài khoản sẽ được gửi tới email đăng nhập của
-                  bạn.
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Mã xác minh xóa tài khoản sẽ được gửi tới email đăng nhập của bạn.
                 </p>
               </div>
 
@@ -334,12 +317,12 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
               </Button>
             </div>
 
-            {hasRequestedCode && (
+            {hasRequestedCode ? (
               <p className="text-sm text-muted-foreground">
                 Mã đã được gửi tới <strong>{email}</strong>. Phiên xác minh còn
                 hiệu lực <strong>{secondsToExpire}s</strong>.
               </p>
-            )}
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -357,7 +340,7 @@ const DeleteAccountDialog = ({ open, setOpen }: Props) => {
             />
           </div>
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row">
             <Button
               variant="outline"
               className="glass-light flex-1 border-border/30"

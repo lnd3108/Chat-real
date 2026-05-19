@@ -20,14 +20,14 @@ const AdminSidebar = () => {
   return (
     <aside
       className={cn(
-        "flex flex-col border-r border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 ease-in-out",
+        "app-surface flex flex-col border-r transition-all duration-300 ease-in-out",
         isCollapsed ? "w-20" : "w-64",
       )}
     >
       <div className="flex items-center justify-between border-b border-border/50 px-4 py-6">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-chat font-bold text-white">
+            <div className="app-hero-gradient flex h-8 w-8 items-center justify-center rounded-lg font-bold text-white">
               A
             </div>
             <span className="text-lg font-bold">Admin</span>

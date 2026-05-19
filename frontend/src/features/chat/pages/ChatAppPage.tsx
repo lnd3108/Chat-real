@@ -5,7 +5,7 @@ import { SidebarProvider } from "@/shared/ui/sidebar";
 
 const ChatAppPage = () => {
   return (
-    <SidebarProvider className="h-dvh min-h-0 overflow-hidden">
+    <SidebarProvider className="app-shell-bg h-dvh min-h-0 overflow-hidden">
       <AppSidebar />
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden p-2">
         <ChatWindowLayout />

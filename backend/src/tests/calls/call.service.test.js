@@ -67,7 +67,7 @@ jest.unstable_mockModule("../../shared/infrastructure/realtime/user-presence.js"
   isUserOnline: mockIsUserOnline,
 }));
 
-const { acceptCall, inviteCall } = await import("../../modules/calls/application/call.service.js");
+const { acceptCall, endCall, inviteCall, rejectCall } = await import("../../modules/calls/application/call.service.js");
 
 describe("call service callType", () => {
   beforeEach(() => {
@@ -80,6 +80,9 @@ describe("call service callType", () => {
         { userId: "507f1f77bcf86cd799439012" },
         { userId: "507f1f77bcf86cd799439013" },
       ],
+      unreadCounts: new Map(),
+      seenBy: [],
+      save: jest.fn().mockResolvedValue(undefined),
     });
     mockUserFindById.mockImplementation(() => ({
       select: jest.fn().mockResolvedValue({ blockedUsers: [] }),
@@ -177,6 +180,72 @@ describe("call service callType", () => {
       "507f1f77bcf86cd799439012",
       "call:accepted",
       expect.objectContaining({ callType: "video" }),
+    );
+  });
+
+  it("calculates ended duration from acceptedAt, not startedAt", async () => {
+    await inviteCall({
+      callerId: "507f1f77bcf86cd799439012",
+      conversationId: "507f1f77bcf86cd799439011",
+      callType: "voice",
+    });
+
+    const acceptedAt = new Date("2026-05-18T00:00:10.000Z");
+    const callSession = {
+      _id: "507f1f77bcf86cd799439014",
+      conversationId: "507f1f77bcf86cd799439011",
+      callerId: "507f1f77bcf86cd799439012",
+      receiverId: "507f1f77bcf86cd799439013",
+      callType: "voice",
+      status: "accepted",
+      startedAt: new Date("2026-05-18T00:00:00.000Z"),
+      acceptedAt,
+      endedAt: null,
+      durationSeconds: 0,
+      endReason: null,
+      save: jest.fn().mockImplementation(function save() {
+        return Promise.resolve(this);
+      }),
+      toObject() {
+        return this;
+      },
+    };
+    mockCallSessionFindById.mockResolvedValueOnce(callSession);
+    jest.setSystemTime(new Date("2026-05-18T00:01:15.000Z"));
+
+    const result = await endCall({
+      userId: "507f1f77bcf86cd799439012",
+      callSessionId: "507f1f77bcf86cd799439014",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload).toEqual(
+      expect.objectContaining({
+        status: "ended",
+        durationSeconds: 65,
+      }),
+    );
+    expect(callSession.durationSeconds).toBe(65);
+  });
+
+  it("keeps rejected call duration at zero", async () => {
+    await inviteCall({
+      callerId: "507f1f77bcf86cd799439012",
+      conversationId: "507f1f77bcf86cd799439011",
+      callType: "voice",
+    });
+
+    const result = await rejectCall({
+      userId: "507f1f77bcf86cd799439013",
+      callSessionId: "507f1f77bcf86cd799439014",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.payload).toEqual(
+      expect.objectContaining({
+        status: "rejected",
+        durationSeconds: 0,
+      }),
     );
   });
 });

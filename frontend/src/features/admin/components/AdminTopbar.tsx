@@ -61,7 +61,7 @@ const AdminTopbar = () => {
 
   return (
     <>
-      <header className="border-b border-border/50 bg-card/50 px-4 py-4 backdrop-blur-sm md:px-6">
+      <header className="app-surface border-b px-4 py-4 shadow-none md:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-md flex-1">
             <div className="relative">

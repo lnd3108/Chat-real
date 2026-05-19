@@ -43,13 +43,13 @@ const ChatWelcomeScreen = () => {
         <SidebarTrigger className="-ml-1 text-foreground" />
       </header>
 
-      <div className="flex flex-1 items-center justify-center rounded-2xl bg-primary-foreground p-6">
+      <div className="app-surface flex flex-1 items-center justify-center rounded-2xl border p-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
           <div className="text-center">
-            <div className="pulse-ring mx-auto mb-6 flex size-24 items-center justify-center rounded-full bg-gradient-chat shadow-glow">
+            <div className="pulse-ring app-hero-gradient mx-auto mb-6 flex size-24 items-center justify-center rounded-full shadow-glow">
               <span className="text-3xl">💬</span>
             </div>
-            <h2 className="mb-2 bg-gradient-chat bg-clip-text text-2xl font-bold text-transparent">
+            <h2 className="app-primary-gradient mb-2 bg-clip-text text-2xl font-bold text-transparent">
               Chào Mừng bạn đến với ChatRealTime
             </h2>
             <p className="text-muted-foreground">

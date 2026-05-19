@@ -1,6 +1,7 @@
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { CALL_STATUS } from "@/features/chat/calls/call.constants";
+import { formatCallDuration } from "@/features/chat/calls/call-format";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import RemoteAudio from "@/features/chat/calls/components/RemoteAudio";
 import VideoCallPanel from "@/features/chat/calls/components/VideoCallPanel";
@@ -8,12 +9,6 @@ import UserAvatar from "@/features/chat/components/UserAvatar";
 import { getParticipantId, getParticipantProfile } from "@/features/chat/lib/chatParticipants";
 import { useChatStore } from "@/features/chat/stores/useChatStore";
 import { Button } from "@/shared/ui/button";
-
-const formatDuration = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remain = seconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remain).padStart(2, "0")}`;
-};
 
 const ActiveCallPanel = () => {
   const currentCall = useCallStore((state) => state.currentCall);
@@ -58,7 +53,7 @@ const ActiveCallPanel = () => {
           <p className="truncate text-sm font-medium text-foreground">{peerName}</p>
           <p className="text-xs text-muted-foreground">
             {callStatus === CALL_STATUS.ACTIVE
-              ? formatDuration(durationSeconds)
+              ? formatCallDuration(durationSeconds)
               : "Đang kết nối..."}
           </p>
         </div>

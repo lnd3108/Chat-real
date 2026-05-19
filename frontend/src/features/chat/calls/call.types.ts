@@ -63,6 +63,7 @@ export interface CallState {
   cancelCall: (callId?: string) => void;
   endCall: (callId?: string) => void;
   clearCall: () => void;
+  startAcceptedCallTimer: (call?: CallSessionPayload | null) => void;
   setIncomingCall: (call: CallSessionPayload | null) => void;
   setCallStatus: (status: CallStatus) => void;
   setCurrentCall: (call: CallSessionPayload | null) => void;

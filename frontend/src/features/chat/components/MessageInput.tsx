@@ -15,7 +15,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
   if (!composer.user) return null;
 
   return (
-    <div className="space-y-2 bg-background p-3">
+    <div className="app-surface space-y-2 border-t p-3 shadow-none">
       {composer.statusText && (
         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
           <Loader2 className="size-4 animate-spin" />
@@ -107,7 +107,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
                 ? "Nhập nội dung cần hỗ trợ..."
                 : "Soạn tin nhắn..."
             }
-            className="h-9 resize-none border-border/50 bg-white pr-20 transition-smooth focus:border-primary/50"
+            className="h-9 resize-none border-border/50 bg-background/70 pr-20 transition-smooth focus:border-primary/50"
             disabled={composer.sending || composer.isComposerBlocked}
           />
           <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
@@ -136,7 +136,7 @@ const MessageInput = ({ selectedConvo }: { selectedConvo: Conversation }) => {
             playClickSound();
             void composer.sendMessage();
           }}
-          className="min-w-24 bg-gradient-chat transition-smooth hover:scale-105 hover:shadow-glow"
+          className="app-primary-gradient min-w-24 border-0 text-slate-950 transition-smooth hover:scale-105 hover:shadow-glow"
           disabled={
             composer.sending ||
             composer.isComposerBlocked ||

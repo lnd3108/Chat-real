@@ -191,11 +191,11 @@ const BlockTab = ({
                 <p className="truncate text-xs text-muted-foreground">
                   {user.displayName}
                 </p>
-                {user.reason && (
+                {user.reason ? (
                   <p className="truncate text-xs text-muted-foreground">
                     Lý do: {user.reason}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <Button

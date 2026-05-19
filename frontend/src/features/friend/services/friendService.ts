@@ -1,22 +1,30 @@
 import api from "@/shared/api/axios";
 import type { DiscoverUser, Friend, FriendRequest } from "@/shared/types/user";
 
+type AvatarLike = {
+  avatar?: string | null;
+  avatarUrl?: string | null;
+  profilePicture?: string | null;
+  photoURL?: string | null;
+};
+
+const resolveAvatarUrl = (user: AvatarLike) =>
+  user.avatarUrl ?? user.avatar ?? user.profilePicture ?? user.photoURL ?? null;
+
 const normalizeDiscoverUser = (user: Partial<DiscoverUser> & {
   id?: string;
   fullName?: string;
   username?: string;
   userName?: string;
-  avatar?: string | null;
-  avatarUrl?: string | null;
-}): DiscoverUser => ({
+} & AvatarLike): DiscoverUser => ({
   id: String(user.id ?? user._id ?? ""),
   fullName: String(user.fullName ?? user.displayName ?? ""),
   _id: String(user._id ?? ""),
   username: String(user.username ?? user.userName ?? ""),
   userName: String(user.userName ?? user.username ?? ""),
   displayName: String(user.displayName ?? user.fullName ?? ""),
-  avatar: user.avatar ?? user.avatarUrl ?? null,
-  avatarUrl: user.avatarUrl ?? user.avatar ?? null,
+  avatar: resolveAvatarUrl(user),
+  avatarUrl: resolveAvatarUrl(user),
   mutualFriendsCount: Number(user.mutualFriendsCount ?? 0),
   reasonText:
     typeof user.reasonText === "string" && user.reasonText.trim()
@@ -27,6 +35,16 @@ const normalizeDiscoverUser = (user: Partial<DiscoverUser> & {
   requestReceived: Boolean(user.requestReceived),
   canSendFriendRequest:
     typeof user.canSendFriendRequest === "boolean" ? user.canSendFriendRequest : true,
+});
+
+const normalizeFriend = (user: Partial<Friend> & {
+  id?: string;
+  username?: string;
+} & AvatarLike): Friend => ({
+  _id: String(user._id ?? user.id ?? ""),
+  userName: String(user.userName ?? user.username ?? ""),
+  displayName: String(user.displayName ?? ""),
+  avatarUrl: resolveAvatarUrl(user) ?? undefined,
 });
 
 export const friendService = {
@@ -97,7 +115,7 @@ export const friendService = {
 
   async getFriendList() {
     const res = await api.get("/friends");
-    return res.data.friends;
+    return (res.data.friends ?? []).map(normalizeFriend);
   },
 
   async removeFriend(targetUserId: string) {

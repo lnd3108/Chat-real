@@ -7,7 +7,7 @@ const AdminLayout = () => {
   useAdminSocket();
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
+    <div className="app-shell-bg flex h-dvh min-h-0 overflow-hidden">
       {/* Sidebar */}
       <AdminSidebar />
 
@@ -17,7 +17,7 @@ const AdminLayout = () => {
         <AdminTopbar />
 
         {/* Content */}
-        <main className="app-scrollbar flex-1 overflow-y-auto px-6 py-6">
+        <main className="app-scrollbar min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6">
           <Outlet />
         </main>
       </div>

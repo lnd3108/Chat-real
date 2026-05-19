@@ -54,6 +54,11 @@ export const useCallStore = create<CallState>((set, get) => {
     }, 1000);
   };
 
+  const getAcceptedTimerStart = (call?: CallSessionPayload | null) => {
+    const acceptedAt = call?.acceptedAt ? new Date(call.acceptedAt).getTime() : NaN;
+    return Number.isFinite(acceptedAt) ? acceptedAt : Date.now();
+  };
+
   const emitCallCommand = (
     eventName: string,
     payload: Record<string, unknown>,
@@ -170,7 +175,17 @@ export const useCallStore = create<CallState>((set, get) => {
       const targetCallId = callId ?? getCallId(get().incomingCall);
       if (!targetCallId) return;
       stopRingtone();
-      emitCallCommand(CALL_SOCKET_EVENTS.ACCEPT, { callSessionId: targetCallId });
+      emitCallCommand(
+        CALL_SOCKET_EVENTS.ACCEPT,
+        { callSessionId: targetCallId },
+        (call) => {
+          const acceptedCall = call ?? get().currentCall;
+          if (acceptedCall) {
+            set({ currentCall: acceptedCall });
+          }
+          get().startAcceptedCallTimer(acceptedCall);
+        },
+      );
       set((state) => ({
         currentCall: state.incomingCall,
         incomingCall: null,
@@ -228,6 +243,20 @@ export const useCallStore = create<CallState>((set, get) => {
       });
     },
 
+    startAcceptedCallTimer: (call) => {
+      const state = get();
+      const activeCall = call ?? state.currentCall;
+      if (!activeCall) return;
+
+      set({
+        currentCall: {
+          ...activeCall,
+          status: activeCall.status || "accepted",
+        },
+      });
+      startDurationTimer(getAcceptedTimerStart(activeCall));
+    },
+
     setIncomingCall: (call) =>
       set({
         incomingCall: call,
@@ -238,7 +267,7 @@ export const useCallStore = create<CallState>((set, get) => {
     setCallStatus: (status: CallStatus) => {
       set({ callStatus: status });
       if (status === CALL_STATUS.ACTIVE && !get().callStartedAt) {
-        startDurationTimer();
+        get().startAcceptedCallTimer(get().currentCall);
       }
     },
 

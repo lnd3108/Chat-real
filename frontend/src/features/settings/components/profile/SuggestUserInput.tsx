@@ -3,6 +3,8 @@ import { Check } from "lucide-react";
 
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { cn } from "@/shared/lib/utils";
+import UserAvatar from "@/features/chat/components/UserAvatar";
 
 export type FriendItem = {
   _id?: string;
@@ -69,7 +71,7 @@ const SuggestUserInput = ({
           className="glass-light border-border/30"
         />
 
-        {showSuggestions && (
+        {showSuggestions ? (
           <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-border/40 bg-popover p-2 text-popover-foreground shadow-xl">
             {filteredFriends.length === 0 ? (
               <p className="px-2 py-2 text-sm text-muted-foreground">
@@ -89,16 +91,20 @@ const SuggestUserInput = ({
                         setValue(friend.userName);
                         setOpen(false);
                       }}
-                      className={[
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left",
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left",
                         "select-none transition",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        active ? "bg-accent text-accent-foreground" : "",
-                      ].join(" ")}
+                        active
+                          ? "border-primary/30 bg-primary/10 text-foreground"
+                          : "border-transparent hover:border-border/50 hover:bg-muted/60",
+                      )}
                     >
-                      <div className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-semibold">
-                        {friend.displayName?.[0]?.toUpperCase() || "U"}
-                      </div>
+                      <UserAvatar
+                        type="chat"
+                        name={friend.displayName || friend.userName}
+                        avatarUrl={friend.avatarUrl || undefined}
+                        className="size-10 shrink-0 text-sm"
+                      />
 
                       <div className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate font-medium leading-5">
@@ -109,20 +115,20 @@ const SuggestUserInput = ({
                         </span>
                       </div>
 
-                      {active && <Check className="size-4 text-primary" />}
+                      {active ? <Check className="size-4 text-primary" /> : null}
                     </button>
                   );
                 })}
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
-        {open && friends.length === 0 && (
+        {open && friends.length === 0 ? (
           <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-border/40 bg-popover p-4 text-sm text-muted-foreground shadow-xl">
             Bạn chưa có bạn bè để gợi ý.
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

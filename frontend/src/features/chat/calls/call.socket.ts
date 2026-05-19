@@ -84,6 +84,7 @@ export class CallSocketHandler {
     stopRingtone();
     const callState = useCallStore.getState();
     callState.setCurrentCall(call);
+    callState.startAcceptedCallTimer(call);
     callState.setCallStatus(CALL_STATUS.CONNECTING);
 
     void webRTCVoiceCallService

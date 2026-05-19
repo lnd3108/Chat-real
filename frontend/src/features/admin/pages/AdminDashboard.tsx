@@ -80,6 +80,22 @@ interface ApiState<T> {
 
 const formatNumber = (value: number) => value.toLocaleString("vi-VN");
 
+const formatShortDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const shouldShowChartTick = (index: number, total: number) => {
+  if (total <= 7) return true;
+  const interval = Math.ceil(total / 7);
+  return index === 0 || index === total - 1 || index % interval === 0;
+};
+
 const chartLegend = {
   direct: {
     label: "Direct",
@@ -110,7 +126,7 @@ const supportColors: Record<string, string> = {
 };
 
 const DashboardHeroSkeleton = () => (
-  <div className="rounded-[28px] border border-border/50 bg-card/70 p-6 shadow-sm">
+  <div className="app-surface rounded-[28px] border p-6">
     <Skeleton className="h-4 w-28" />
     <Skeleton className="mt-3 h-10 w-64" />
     <Skeleton className="mt-3 h-4 w-full max-w-2xl" />
@@ -128,7 +144,7 @@ const DashboardHeroSkeleton = () => (
 );
 
 const DashboardSectionSkeleton = () => (
-  <div className="rounded-[28px] border border-border/50 bg-card/65 p-6 shadow-sm">
+  <div className="app-surface rounded-[28px] border p-6">
     <Skeleton className="h-5 w-40" />
     <Skeleton className="mt-3 h-4 w-full max-w-xl" />
     <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -148,7 +164,7 @@ const StatCard = ({ title, value, description, to, accent }: StatCardItem) => {
   const content = (
     <div
       className={cn(
-        "group rounded-2xl border border-border/50 bg-background/70 p-5 shadow-sm transition-all",
+        "app-surface group rounded-2xl border p-5 transition-all",
         to && "hover:-translate-y-0.5 hover:border-border hover:shadow-md",
       )}
     >
@@ -194,7 +210,7 @@ const DashboardSection = ({
   icon: typeof Users;
   items: StatCardItem[];
 }) => (
-  <section className="rounded-[28px] border border-border/50 bg-card/65 p-6 shadow-sm">
+  <section className="app-surface rounded-[24px] border p-5 sm:p-6">
     <div className="flex items-center gap-3">
       <div className="rounded-2xl bg-primary/10 p-3 text-primary">
         <Icon className="h-5 w-5" />
@@ -230,7 +246,7 @@ const ChartShell = ({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <section className="rounded-[28px] border border-border/50 bg-card/65 p-6 shadow-sm">
+  <section className="app-surface rounded-[28px] border p-6">
     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div>
         <h2 className="text-xl font-semibold text-foreground">{title}</h2>
@@ -241,7 +257,7 @@ const ChartShell = ({
       {actions}
     </div>
 
-    <div className="mt-6">
+    <div className="mt-5 rounded-2xl border border-border/35 bg-background/35 p-3 shadow-inner shadow-black/[0.02] sm:p-4">
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-5 w-40" />
@@ -259,12 +275,13 @@ const ChartShell = ({
 );
 
 const EmptyChartState = ({ message }: { message: string }) => (
-  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/40 p-6 text-center text-sm text-muted-foreground">
+  <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/50 p-6 text-center text-sm text-muted-foreground">
     {message}
   </div>
 );
 
 const LineChart = ({ points }: { points: UserChartPoint[] }) => {
+  const [activePoint, setActivePoint] = useState<UserChartPoint | null>(null);
   const maxValue = Math.max(...points.map((point) => point.total), 0);
 
   if (!points.length || maxValue === 0) {
@@ -282,7 +299,8 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
 
   const chartPoints = points.map((point, index) => {
     const x = points.length === 1 ? width / 2 : index * xStep;
-    const y = topPadding + usableHeight - (point.total / maxValue) * usableHeight;
+    const y =
+      topPadding + usableHeight - (point.total / maxValue) * usableHeight;
     return { ...point, x, y };
   });
 
@@ -296,7 +314,9 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Tổng user mới</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Tổng người dùng mới
+          </p>
           <p className="mt-1 text-2xl font-bold text-foreground">
             {formatNumber(points.reduce((sum, point) => sum + point.total, 0))}
           </p>
@@ -304,13 +324,31 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
         <div className="text-right text-sm text-muted-foreground">
           <p>Đỉnh cao nhất</p>
           <p className="mt-1 font-medium text-foreground">
-            {formatNumber(maxValue)} user
+            {formatNumber(maxValue)} người dùng
           </p>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full overflow-visible">
+      <div className="relative rounded-2xl border border-border/45 bg-background/70 p-4">
+        <div
+          className="pointer-events-none absolute right-4 top-4 z-10 rounded-xl border border-border/45 bg-popover/95 px-3 py-2 text-xs text-popover-foreground opacity-0 shadow-lg backdrop-blur transition-opacity data-[visible=true]:opacity-100"
+          data-visible={Boolean(activePoint)}
+        >
+          <p className="font-semibold">
+            {activePoint ? formatShortDate(activePoint.date) : "Ngày"}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Người dùng mới:{" "}
+            <span className="font-semibold text-foreground">
+              {formatNumber(activePoint?.total ?? 0)}
+            </span>
+          </p>
+        </div>
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="h-[280px] w-full overflow-visible"
+          onMouseLeave={() => setActivePoint(null)}
+        >
           {[0, 1, 2, 3].map((step) => {
             const y = topPadding + (usableHeight / 3) * step;
             return (
@@ -321,7 +359,7 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
                 x2={width}
                 y2={y}
                 stroke="currentColor"
-                className="text-border/60"
+                className="text-border/45"
                 strokeDasharray="1.5 2.5"
                 strokeWidth="0.4"
               />
@@ -334,34 +372,43 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
             fill="none"
             stroke="currentColor"
             className="text-primary"
-            strokeWidth="1.8"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
-          {chartPoints.map((point) => (
+          {chartPoints.map((point, index) => (
             <g key={point.date}>
               <circle
                 cx={point.x}
                 cy={point.y}
-                r="1.8"
+                r={activePoint?.date === point.date ? "2.8" : "2"}
                 fill="currentColor"
                 className="text-primary"
+                stroke="currentColor"
+                strokeWidth="1"
+                onMouseEnter={() => setActivePoint(point)}
               />
-              <text
-                x={point.x}
-                y={height - 3}
-                textAnchor="middle"
-                className="fill-muted-foreground text-[4px]"
-              >
-                {point.label}
-              </text>
+              {shouldShowChartTick(index, chartPoints.length) ? (
+                <text
+                  x={point.x}
+                  y={height - 2}
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[4px]"
+                >
+                  {formatShortDate(point.date)}
+                </text>
+              ) : null}
             </g>
           ))}
 
           <defs>
             <linearGradient id="userArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" className="text-primary" />
+              <stop
+                offset="0%"
+                stopColor="currentColor"
+                className="text-primary"
+              />
               <stop
                 offset="100%"
                 stopColor="currentColor"
@@ -377,6 +424,9 @@ const LineChart = ({ points }: { points: UserChartPoint[] }) => {
 };
 
 const StackedMessageChart = ({ points }: { points: MessageChartPoint[] }) => {
+  const [activePoint, setActivePoint] = useState<MessageChartPoint | null>(
+    null,
+  );
   const maxValue = Math.max(...points.map((point) => point.total), 0);
 
   if (!points.length || maxValue === 0) {
@@ -389,38 +439,112 @@ const StackedMessageChart = ({ points }: { points: MessageChartPoint[] }) => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
         {Object.entries(chartLegend).map(([key, item]) => (
-          <div key={key} className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div
+            key={key}
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+          >
             <span className={cn("h-3 w-3 rounded-full", item.className)} />
             <span>{item.label}</span>
           </div>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
-        <div className="flex h-64 items-end gap-3 overflow-x-auto">
-          {points.map((point) => {
+      <div
+        className="relative rounded-2xl border border-border/45 bg-background/70 p-4 pb-5"
+        onMouseLeave={() => setActivePoint(null)}
+      >
+        <div
+          className="pointer-events-none absolute right-4 top-4 z-10 rounded-xl border border-border/45 bg-popover/95 px-3 py-2 text-xs text-popover-foreground opacity-0 shadow-lg backdrop-blur transition-opacity data-[visible=true]:opacity-100"
+          data-visible={Boolean(activePoint)}
+        >
+          <p className="font-semibold">
+            {activePoint ? formatShortDate(activePoint.date) : "Ngày"}
+          </p>
+          <div className="mt-2 space-y-1 text-muted-foreground">
+            <p>
+              Direct:{" "}
+              <span className="font-semibold text-foreground">
+                {formatNumber(activePoint?.direct ?? 0)}
+              </span>
+            </p>
+            <p>
+              Group:{" "}
+              <span className="font-semibold text-foreground">
+                {formatNumber(activePoint?.group ?? 0)}
+              </span>
+            </p>
+            <p>
+              Support:{" "}
+              <span className="font-semibold text-foreground">
+                {formatNumber(activePoint?.support ?? 0)}
+              </span>
+            </p>
+            <p className="border-t border-border/50 pt-1">
+              Tổng:{" "}
+              <span className="font-semibold text-foreground">
+                {formatNumber(activePoint?.total ?? 0)}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          className="grid h-[280px] min-w-0 items-end gap-1.5 sm:gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))`,
+          }}
+        >
+          {points.map((point, index) => {
             const heightPercent = (point.total / maxValue) * 100;
-            const directPercent = point.total ? (point.direct / point.total) * 100 : 0;
-            const groupPercent = point.total ? (point.group / point.total) * 100 : 0;
-            const supportPercent = point.total ? (point.support / point.total) * 100 : 0;
+            const directPercent = point.total
+              ? (point.direct / point.total) * 100
+              : 0;
+            const groupPercent = point.total
+              ? (point.group / point.total) * 100
+              : 0;
+            const supportPercent = point.total
+              ? (point.support / point.total) * 100
+              : 0;
 
             return (
-              <div key={point.date} className="flex min-w-12 flex-1 flex-col items-center gap-2">
-                <div className="text-xs font-medium text-foreground">
-                  {formatNumber(point.total)}
+              <div
+                key={point.date}
+                className="flex min-w-0 flex-col items-center gap-2"
+                onMouseEnter={() => setActivePoint(point)}
+              >
+                <div className="hidden h-4 text-[11px] font-medium text-foreground sm:block">
+                  {point.total > 0 && points.length <= 14
+                    ? formatNumber(point.total)
+                    : ""}
                 </div>
-                <div className="flex h-52 w-full items-end justify-center">
+                <div className="flex h-52 w-full min-w-0 items-end justify-center">
                   <div
-                    className="flex w-full max-w-10 flex-col overflow-hidden rounded-t-xl bg-muted/40"
+                    className={cn(
+                      "flex w-full max-w-10 flex-col overflow-hidden rounded-t-lg bg-muted/40 transition-all",
+                      activePoint?.date === point.date &&
+                        "ring-2 ring-primary/40 ring-offset-2 ring-offset-background",
+                    )}
                     style={{ height: `${Math.max(heightPercent, 6)}%` }}
-                    title={`${point.label}: ${point.total} tin nhắn`}
+                    title={`${formatShortDate(point.date)}: ${point.total} tin nhắn`}
                   >
-                    <div className="bg-emerald-500" style={{ height: `${supportPercent}%` }} />
-                    <div className="bg-violet-500" style={{ height: `${groupPercent}%` }} />
-                    <div className="bg-sky-500" style={{ height: `${directPercent}%` }} />
+                    <div
+                      className="bg-emerald-500/90"
+                      style={{ height: `${supportPercent}%` }}
+                    />
+                    <div
+                      className="bg-violet-500/90"
+                      style={{ height: `${groupPercent}%` }}
+                    />
+                    <div
+                      className="bg-sky-500/90"
+                      style={{ height: `${directPercent}%` }}
+                    />
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground">{point.label}</div>
+                <div className="h-4 max-w-full truncate text-[10px] text-muted-foreground sm:text-xs">
+                  {shouldShowChartTick(index, points.length)
+                    ? formatShortDate(point.date)
+                    : ""}
+                </div>
               </div>
             );
           })}
@@ -450,7 +574,9 @@ const StatusBars = ({
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
         Tổng trạng thái:{" "}
-        <span className="font-semibold text-foreground">{formatNumber(total)}</span>
+        <span className="font-semibold text-foreground">
+          {formatNumber(total)}
+        </span>
       </div>
 
       <div className="space-y-4 rounded-2xl border border-border/50 bg-background/60 p-4">
@@ -461,15 +587,26 @@ const StatusBars = ({
             <div key={item.status} className="space-y-2">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className={cn("h-3 w-3 rounded-full", colorMap[item.status])} />
-                  <span className="font-medium text-foreground">{item.label}</span>
+                  <span
+                    className={cn(
+                      "h-3 w-3 rounded-full",
+                      colorMap[item.status],
+                    )}
+                  />
+                  <span className="font-medium text-foreground">
+                    {item.label}
+                  </span>
                 </div>
-                <span className="text-muted-foreground">{formatNumber(item.total)}</span>
+                <span className="text-muted-foreground">
+                  {formatNumber(item.total)}
+                </span>
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-muted/60">
                 <div
                   className={cn("h-full rounded-full", colorMap[item.status])}
-                  style={{ width: `${Math.max(widthPercent, item.total > 0 ? 8 : 0)}%` }}
+                  style={{
+                    width: `${Math.max(widthPercent, item.total > 0 ? 8 : 0)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -485,7 +622,9 @@ const AdminDashboard = () => {
   const dashboardOverview = useAdminDashboardStore((state) => state.overview);
   const dashboardLoading = useAdminDashboardStore((state) => state.loading);
   const dashboardError = useAdminDashboardStore((state) => state.error);
-  const fetchDashboardOverview = useAdminDashboardStore((state) => state.fetchOverview);
+  const fetchDashboardOverview = useAdminDashboardStore(
+    (state) => state.fetchOverview,
+  );
   const [userRange, setUserRange] = useState<7 | 30>(7);
   const [messageRange, setMessageRange] = useState<7 | 30>(7);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
@@ -497,7 +636,9 @@ const AdminDashboard = () => {
     loading: true,
     error: null,
   });
-  const [messageChart, setMessageChart] = useState<ApiState<MessageChartPoint[]>>({
+  const [messageChart, setMessageChart] = useState<
+    ApiState<MessageChartPoint[]>
+  >({
     data: null,
     loading: true,
     error: null,
@@ -507,11 +648,13 @@ const AdminDashboard = () => {
     loading: true,
     error: null,
   });
-  const [supportChart, setSupportChart] = useState<ApiState<StatusChartItem[]>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
+  const [supportChart, setSupportChart] = useState<ApiState<StatusChartItem[]>>(
+    {
+      data: null,
+      loading: true,
+      error: null,
+    },
+  );
 
   const fetchOverview = async () => {
     try {
@@ -523,7 +666,9 @@ const AdminDashboard = () => {
     } catch (err: unknown) {
       logger.error("Không thể tải overview admin", getErrorMeta(err));
       setOverview(null);
-      setOverviewError(getAdminErrorMessage(err, "Không thể tải dữ liệu tổng quan dashboard."));
+      setOverviewError(
+        getAdminErrorMessage(err, "Không thể tải dữ liệu tổng quan dashboard."),
+      );
     } finally {
       setOverviewLoading(false);
     }
@@ -544,14 +689,21 @@ const AdminDashboard = () => {
       setUserChart({
         data: null,
         loading: false,
-        error: getAdminErrorMessage(err, "Không thể tải biểu đồ người dùng mới."),
+        error: getAdminErrorMessage(
+          err,
+          "Không thể tải biểu đồ người dùng mới.",
+        ),
       });
     }
   };
 
   const fetchMessageChart = async (days: 7 | 30) => {
     try {
-      setMessageChart((current) => ({ ...current, loading: true, error: null }));
+      setMessageChart((current) => ({
+        ...current,
+        loading: true,
+        error: null,
+      }));
       const data = (await adminService.getDashboardMessageChart(days)) as {
         points?: MessageChartPoint[];
       };
@@ -591,7 +743,11 @@ const AdminDashboard = () => {
 
   const fetchSupportChart = async () => {
     try {
-      setSupportChart((current) => ({ ...current, loading: true, error: null }));
+      setSupportChart((current) => ({
+        ...current,
+        loading: true,
+        error: null,
+      }));
       const data = (await adminService.getDashboardSupportChart()) as {
         items?: StatusChartItem[];
       };
@@ -859,8 +1015,8 @@ const AdminDashboard = () => {
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {overviewError}. Dashboard vẫn được thiết kế fail-safe nên các
-                module admin riêng như Người dùng, Báo cáo hoặc Hỗ trợ vẫn có thể
-                truy cập độc lập.
+                module admin riêng như Người dùng, Báo cáo hoặc Hỗ trợ vẫn có
+                thể truy cập độc lập.
               </p>
             </div>
 
@@ -877,17 +1033,14 @@ const AdminDashboard = () => {
         </section>
       ) : (
         <>
-          <section className="overflow-hidden rounded-[28px] border border-border/50 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(59,130,246,0.06),rgba(255,255,255,0))] p-6 shadow-sm">
+          <section className="app-surface overflow-hidden rounded-[28px] border p-6">
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary/80">
               Tổng quan hệ thống
             </p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Chào {user?.displayName ?? "Admin"}, đây là tổng quan vận hành hệ thống.
+              Chào {user?.displayName ?? "Admin"}, đây là tổng quan vận hành hệ
+              thống.
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
-              Bản đầu ưu tiên card và biểu đồ cơ bản, nhẹ và dễ debug. Mỗi chart
-              dùng API riêng để khi một module lỗi vẫn không làm vỡ toàn bộ dashboard.
-            </p>
 
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
               {healthHighlights.map((item) => {
@@ -915,10 +1068,12 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-border/50 bg-card/65 p-6 shadow-sm">
+          <section className="app-surface rounded-[28px] border p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Thao tác nhanh</h2>
+                <h2 className="text-xl font-semibold text-foreground">
+                  Thao tác nhanh
+                </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Lối tắt vào các khu vực admin chính cần truy cập thường xuyên.
                 </p>
@@ -942,7 +1097,7 @@ const AdminDashboard = () => {
                   <Link
                     key={action.title}
                     to={action.to}
-                    className="group rounded-2xl border border-border/50 bg-background/70 p-5 transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md"
+                    className="app-surface group rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-md"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="rounded-2xl bg-primary/10 p-3 text-primary">
@@ -971,8 +1126,8 @@ const AdminDashboard = () => {
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <ChartShell
-              title="User mới theo ngày"
-              description={`Line chart cho ${userRange} ngày gần nhất.`}
+              title="Người dùng mới theo ngày"
+              description={`Xu hướng tài khoản mới trong ${userRange} ngày gần nhất.`}
               loading={userChart.loading}
               error={userChart.error}
               actions={
@@ -983,6 +1138,12 @@ const AdminDashboard = () => {
                       type="button"
                       variant={userRange === days ? "default" : "outline"}
                       size="sm"
+                      className={cn(
+                        "rounded-xl shadow-none transition-colors",
+                        userRange === days
+                          ? "bg-primary/90 text-primary-foreground hover:bg-primary"
+                          : "border-border/50 bg-background/55 hover:bg-muted/70",
+                      )}
                       onClick={() => setUserRange(days as 7 | 30)}
                     >
                       {days} ngày
@@ -995,8 +1156,8 @@ const AdminDashboard = () => {
             </ChartShell>
 
             <ChartShell
-              title="Messages theo ngày"
-              description={`Stacked bar chart tách direct / group / support trong ${messageRange} ngày gần nhất.`}
+              title="Tin nhắn theo ngày"
+              description={`Tin nhắn direct, group và support trong ${messageRange} ngày gần nhất.`}
               loading={messageChart.loading}
               error={messageChart.error}
               actions={
@@ -1007,6 +1168,12 @@ const AdminDashboard = () => {
                       type="button"
                       variant={messageRange === days ? "default" : "outline"}
                       size="sm"
+                      className={cn(
+                        "rounded-xl shadow-none transition-colors",
+                        messageRange === days
+                          ? "bg-primary/90 text-primary-foreground hover:bg-primary"
+                          : "border-border/50 bg-background/55 hover:bg-muted/70",
+                      )}
                       onClick={() => setMessageRange(days as 7 | 30)}
                     >
                       {days} ngày

@@ -68,7 +68,7 @@ export function SignInForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden border-border p-0">
+      <Card className="app-glass-card overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-6">
@@ -122,7 +122,7 @@ export function SignInForm({
 
               <Button
                 type="submit"
-                className="w-full"
+                className="app-primary-gradient w-full border-0 text-slate-950 shadow-[0_14px_34px_-18px_rgba(167,139,250,0.95)] hover:opacity-95"
                 disabled={isSubmitting || loading}
               >
                 {loading ? (
@@ -140,7 +140,7 @@ export function SignInForm({
                   <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
+                  <span className="bg-transparent px-2 text-muted-foreground">
                     Hoặc
                   </span>
                 </div>
@@ -175,7 +175,8 @@ export function SignInForm({
               </div>
             </div>
           </form>
-          <div className="relative hidden bg-muted md:block">
+          <div className="app-surface relative hidden border-l md:block">
+            <div className="app-hero-gradient pointer-events-none absolute inset-4 rounded-3xl opacity-20 blur-2xl" />
             <img
               src="/placeholderSignUp.png"
               alt="Image"

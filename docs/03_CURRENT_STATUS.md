@@ -387,3 +387,392 @@ Metadata lịch sử cuộc gọi:
 
 - Chưa chạy manual UI trên trình duyệt thật cho toàn bộ checklist dark/light, drawer mobile, send/receive realtime, unreadCounts, seenBy và online-users.
 - Full lint vẫn cần xử lý lint debt cũ nếu muốn pipeline `npm run lint` xanh toàn bộ.
+
+## Redesign Hồ sơ và cài đặt thành Settings Center
+
+Đã redesign modal "Hồ sơ và cài đặt" theo hướng Settings Center có sidebar bên trong, giảm khoảng trống thừa và hạn chế modal con chồng nhau cho các tác vụ bảo mật/thông báo.
+
+### Files changed
+
+- `frontend/src/features/settings/components/profile/ProfileDialog.tsx`
+- `frontend/src/features/settings/components/profile/PersonalInForm.tsx`
+- `frontend/src/features/settings/components/profile/ChangePasswordDialog.tsx`
+- `frontend/src/features/settings/components/profile/BlockReportDialog.tsx`
+- `frontend/src/features/settings/components/profile/BlockTab.tsx`
+- `frontend/src/features/settings/components/profile/SuggestUserInput.tsx`
+- `frontend/src/features/settings/components/profile/VerifyNewEmailSection.tsx`
+- `frontend/src/features/settings/components/profile/DeleteAccountDialog.tsx`
+- `frontend/src/features/notification/components/NotificationSettingsDialog.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Redesign summary
+
+- Modal chính dùng kích thước `min(1120px, calc(100vw - 48px))`, `max-height: 86dvh`, header cố định và body `overflow-hidden`.
+- Body chuyển sang layout desktop 2 cột: sidebar settings bên trái và content panel scroll riêng bên phải bằng `app-scrollbar-thin`.
+- Sidebar có mini profile card gồm avatar, display name, username, email và trạng thái online/offline.
+- Menu settings gồm: Tài khoản, Giao diện, Thông báo, Âm thanh, Quyền riêng tư, Bảo mật, Khu vực nguy hiểm.
+- Mobile/tablet dùng menu ngang có scroll nhẹ, content full width, không tạo scrollbar ngang toàn modal.
+- Bỏ profile banner gradient lớn trong modal chính, thay bằng mini profile card gọn.
+- Đổi mật khẩu và Chặn/Báo cáo render inline trong content panel; modal con vẫn được giữ để các nơi khác có thể dùng lại.
+- Xóa tài khoản vẫn dùng confirm dialog riêng vì đây là flow nguy hiểm cần xác nhận nhiều bước.
+
+### Các mục settings mới
+
+- Tài khoản: form thông tin cá nhân trong card gọn, grid 2 cột trên màn rộng, nút lưu cuối form.
+- Giao diện: setting rows cho Chế độ tối và Hiển thị trạng thái hoạt động.
+- Thông báo: thêm category/sidebar nhỏ gồm Tổng quan, Tin nhắn, Cuộc gọi, Kết bạn, Báo cáo / Hỗ trợ, Hệ thống.
+- Âm thanh: tách riêng mục âm thanh chung và hiển thị các dòng Âm thanh khi gõ, Âm thanh click, Âm thanh thông báo, Nhạc chuông cuộc gọi theo cài đặt chung.
+- Quyền riêng tư: giữ setting hiện có cho Hiển thị trạng thái hoạt động.
+- Bảo mật: action rows cho Đổi mật khẩu và Chặn/Báo cáo; form đổi mật khẩu render ngay trong panel.
+- Khu vực nguy hiểm: card riêng cho Xóa tài khoản với nút danger gọn.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Scoped eslint trên các file settings/notification đã sửa: đạt, không có error/warning.
+
+### Remaining risks
+
+- Chưa chạy manual UI trên trình duyệt thật cho mở/đóng modal, chuyển menu, responsive desktop/tablet/mobile, dark/light theme.
+- Chưa kiểm thử thủ công các flow chỉnh sửa tài khoản, đổi mật khẩu, chặn/báo cáo, lưu thông báo/âm thanh và xóa tài khoản bằng tài khoản thật trong phiên này.
+
+## Polish modal Hồ sơ và cài đặt với gradient glass
+
+Đã nâng cấp visual modal "Hồ sơ và cài đặt" theo hướng modern gradient glass settings center, giữ nguyên layout sidebar trái + content phải và không đổi business logic.
+
+### Files changed
+
+- `frontend/src/features/settings/components/profile/ProfileDialog.tsx`
+- `frontend/src/features/settings/components/profile/PersonalInForm.tsx`
+- `frontend/src/features/notification/components/NotificationSettingsDialog.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Visual redesign summary
+
+- Modal shell dùng background gradient theo theme, có radial highlight ở góc trên trái/phải và linear gradient nền tổng.
+- Sidebar được làm mềm hơn bằng nền bán trong suốt, border sáng nhẹ, blur và menu item bo góc lớn hơn.
+- Profile hero card trong sidebar chuyển sang card gradient nổi bật, avatar lớn hơn, text trắng đủ contrast và trạng thái online/offline dạng badge kính.
+- Active menu item có nền sáng nhẹ, border/ring primary và icon well riêng; inactive item sạch hơn nhưng vẫn đọc rõ.
+- Content header có eyebrow nhỏ, title rõ và mô tả section, đặt trong panel kính nhẹ để giảm cảm giác phẳng.
+- Content card/panel dùng nền trắng mờ ở light theme và lớp kính tối nhẹ ở dark theme, border/shadow mềm hơn.
+- Form tài khoản có input/textarea radius lớn hơn, nền tinted, border nhẹ, focus ring theo primary và textarea gọn hơn.
+- CTA lưu profile và lưu notification dùng gradient primary cyan/purple/pink theo yêu cầu, không áp dụng gradient tràn lan cho input/card.
+- Notification panel nhúng trong modal được polish đồng bộ: category tabs, setting rows và reset/save buttons mềm hơn.
+- Scroll vẫn dùng `app-scrollbar-thin`; content chính là vùng scroll dọc, menu mobile/tablet scroll ngang riêng.
+
+### Gradient strategy
+
+- Gradient chỉ dùng ở modal shell, profile hero card và primary CTA button.
+- Dark shell: radial violet/indigo + pink highlight trên nền slate/indigo đậm.
+- Light shell: radial indigo/pink tint nhẹ trên nền off-white xanh/tím rất nhạt.
+- Card, row và input không dùng gradient, chỉ dùng tint + glass + border/shadow để giữ readability.
+- Không thay đổi palette/design token toàn cục; các gradient bổ sung nằm scoped trong component.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/settings/components/profile/ProfileDialog.tsx src/features/settings/components/profile/PersonalInForm.tsx src/features/notification/components/NotificationSettingsDialog.tsx` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Dev server đã chạy tại `http://127.0.0.1:5174` vì port `5173` đang được dùng.
+- Responsive desktop/tablet/mobile và dark/light đã được kiểm tra bằng code review trên class layout/theme; chưa có browser automation hoặc manual visual QA trong phiên này.
+
+### Remaining risks
+
+- Cần manual QA trên trình duyệt thật cho dark/light theme, desktop/tablet/mobile, close button, sidebar stacked/horizontal scroll và không có scrollbar ngang.
+- Cần kiểm tra bằng mắt các trạng thái dài text/email/username để đảm bảo truncate và spacing ổn trên dữ liệu thật.
+- Full lint vẫn cần xử lý lint debt cũ nếu muốn pipeline `npm run lint` xanh toàn bộ.
+
+## Fix scroll modal Hồ sơ và cài đặt
+
+Đã sửa lỗi modal "Hồ sơ và cài đặt" bị cắt phần cuối form và làm mất nút chức năng trong màn hình thấp.
+
+### Files changed
+
+- `frontend/src/features/settings/components/profile/ProfileDialog.tsx`
+- `frontend/src/features/settings/components/profile/PersonalInForm.tsx`
+- `frontend/src/features/notification/components/NotificationSettingsDialog.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Nguyên nhân lỗi scroll
+
+- Modal shell dùng grid với `max-height` và `overflow-hidden`, nhưng body/sidebar/content chưa được khóa đầy đủ bằng `flex-1`, `min-height: 0` ở mọi breakpoint.
+- Trên viewport thấp, content phải không co đúng vào chiều cao còn lại sau header/sidebar nên phần cuối form nằm ngoài vùng scroll thực tế.
+- Nút cuối form nằm trong flow bình thường của card, không có sticky footer nên dễ bị cắt bởi lớp `overflow-hidden` phía trên.
+- Sidebar mobile/tablet không có giới hạn chiều cao riêng, có thể ăn mất không gian của content scroll.
+
+### Cách fix
+
+- Đổi `DialogContent` sang `flex flex-col`, giữ `max-h-[90dvh]` và `overflow-hidden`; desktop giữ `lg:max-h-[88dvh]`.
+- Header modal thêm `shrink-0` để không scroll theo content.
+- Body modal đổi thành `flex min-h-0 flex-1 flex-col overflow-hidden`, desktop dùng `lg:grid lg:grid-cols-[292px_minmax(0,1fr)]`.
+- Sidebar thêm `app-scrollbar-thin`, `shrink-0`, `overflow-y-auto`, `overflow-x-hidden`; mobile/tablet giới hạn `max-h-[34dvh]`, desktop bỏ giới hạn bằng `lg:max-h-none lg:min-h-0`.
+- Content phải thêm `min-w-0`, `min-h-0`, `flex-1`, `overflow-y-auto`, `overflow-x-hidden`, `app-scrollbar-thin` và padding bottom lớn hơn.
+- Footer form tài khoản đổi thành `position: sticky; bottom: 0` với nền kính theo theme, border top và backdrop blur để nút "Lưu thay đổi" luôn nằm trong vùng scroll.
+- Footer lưu notification cũng được sticky nhẹ để không mất nút reset/lưu khi category dài.
+- Không đổi logic update profile, notification, theme, sound, privacy, security hoặc delete account.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/settings/components/profile/ProfileDialog.tsx src/features/settings/components/profile/PersonalInForm.tsx src/features/notification/components/NotificationSettingsDialog.tsx` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Kiểm tra bằng code review các mục Tài khoản, Giao diện, Thông báo, Âm thanh, Quyền riêng tư, Bảo mật, Khu vực nguy hiểm: mỗi mục nằm trong content panel scroll riêng, không tạo scrollbar ngang chủ ý và không để action cuối nằm ngoài modal.
+
+### Remaining risks
+
+- Chưa chạy manual visual QA trên browser thật ở laptop 1366x768 cho cả dark/light theme trong phiên này.
+- Cần xác nhận bằng mắt rằng footer sticky không che nội dung cuối khi dữ liệu thật làm form dài hơn, đặc biệt ở mode xác minh email.
+
+## Fix action footer form Tài khoản
+
+Đã sửa lỗi nút "Lưu thay đổi" trong tab Tài khoản của modal "Hồ sơ và cài đặt" bị lệch và chen vào vùng input/textarea.
+
+### Files changed
+
+- `frontend/src/features/settings/components/profile/PersonalInForm.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Nguyên nhân lỗi button lệch
+
+- Footer action của form tài khoản đang dùng `position: sticky` ngay bên trong `CardContent`.
+- Khi content panel của modal là scroll container riêng, sticky footer bên trong card có thể bám theo viewport của panel và xuất hiện giữa form thay vì nằm sau textarea.
+- `-mx-6`, nền sticky và z-index làm nút có cảm giác đè lên textarea "Giới thiệu" trên màn hình thấp.
+
+### Cách fix
+
+- Bỏ sticky footer trong `PersonalInForm`.
+- Đưa action footer về flow bình thường sau textarea, Verify OTP section và message success/error.
+- Gom 4 field ngắn và textarea vào cùng grid: desktop 2 cột, mobile 1 cột.
+- Textarea "Giới thiệu" dùng `md:col-span-2` để full width.
+- Action footer dùng `flex`, `justify-end`, `gap`, `border-top` nhẹ và không absolute/sticky.
+- Thêm nút "Hủy" dạng outline để reset form về dữ liệu người dùng hiện tại thông qua `initialize(userInfo)`, không gọi backend và không đổi flow save profile.
+- Nút "Lưu thay đổi" giữ gradient primary hiện tại và nằm cuối card.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/settings/components/profile/PersonalInForm.tsx src/features/settings/components/profile/ProfileDialog.tsx` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Kiểm tra bằng code review tab Tài khoản: thứ tự DOM là field ngắn, textarea Giới thiệu full width, Verify section/message nếu có, action footer Hủy/Lưu cuối card.
+
+### Remaining risks
+
+- Chưa chạy manual browser QA ở 1366x768 cho cả dark/light theme trong phiên này.
+- Cần kiểm tra trực tiếp thao tác nhập tên, email, giới thiệu và scroll đến cuối modal bằng dữ liệu thật.
+
+## Fix avatar gợi ý Chặn và báo cáo
+
+Đã sửa danh sách gợi ý username trong mục "Chặn và báo cáo" của modal "Hồ sơ và cài đặt" để hiển thị ảnh đại diện thật nếu user có `avatarUrl`.
+
+### Files changed
+
+- `frontend/src/features/friend/services/friendService.ts`
+- `frontend/src/features/settings/components/profile/BlockReportDialog.tsx`
+- `frontend/src/features/settings/components/profile/SuggestUserInput.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Nguyên nhân avatar không hiển thị
+
+- Dữ liệu gợi ý trong "Chặn và báo cáo" lấy từ friend store qua API `/friends`.
+- Backend `getAllFriendsQuery` đã populate trường `avatarUrl` với projection `_id displayName avatarUrl userName`, không trả dữ liệu nhạy cảm.
+- Frontend `SuggestUserInput` vẫn tự render avatar fallback bằng chữ cái đầu, không dùng `friend.avatarUrl` và không reuse avatar component chung.
+- API client chưa normalize các alias avatar khác như `avatar`, `profilePicture`, `photoURL`, nên nếu response khác tên field thì suggestion vẫn mất ảnh.
+
+### Cách fix backend/frontend
+
+- Backend: đã kiểm tra `backend/src/modules/friendship/application/friendship.service.js`; endpoint `/friends` đã trả `_id`, `displayName`, `userName`, `avatarUrl`. Không cần đổi backend/schema.
+- Frontend service: normalize friend list trong `friendService.getFriendList()` để map avatar về `avatarUrl` từ `avatarUrl || avatar || profilePicture || photoURL`.
+- Frontend panel: `BlockReportDialog.normalizeFriend()` cũng nhận thêm alias avatar khi dữ liệu friend có nested `userId` hoặc `friendId`.
+- Frontend UI: `SuggestUserInput` dùng lại `UserAvatar` với `avatarUrl={friend.avatarUrl}`; nếu ảnh lỗi hoặc không có ảnh, `AvatarFallback` của component chung tự fallback chữ cái.
+- Selected state của suggestion item đổi sang `bg-primary/10`, `border-primary/30`, text foreground để dịu hơn và dễ đọc hơn dark/light theme.
+- Logic search local, click chọn username, block và report không đổi.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- `npx eslint src/features/friend/services/friendService.ts src/features/settings/components/profile/SuggestUserInput.tsx src/features/settings/components/profile/BlockReportDialog.tsx src/features/settings/components/profile/BlockTab.tsx src/features/settings/components/profile/ReportTab.tsx` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Kiểm tra bằng code review: suggestion item hiển thị avatar thật qua `UserAvatar`, fallback chữ cái khi không có ảnh hoặc ảnh lỗi, click chọn vẫn gọi `setValue(friend.userName)`.
+- API `/friends` không trả `email`, `hashedPassword`, token hoặc field nhạy cảm trong projection gợi ý này.
+
+### Remaining risks
+
+- Chưa chạy manual browser QA với tài khoản thật có avatar/không avatar trong phiên này.
+- Cần kiểm tra trực tiếp hai tab Chặn/Báo cáo ở dark/light theme để xác nhận ảnh remote load thành công trong môi trường runtime.
+
+## Fix duration voice/video call 1-1
+
+Đã sửa cách tính và hiển thị thời lượng cuộc gọi 1-1 để chỉ tính từ thời điểm receiver accept, không tính từ lúc ringing.
+
+### Files changed
+
+- `backend/src/modules/calls/application/call.service.js`
+- `backend/src/tests/calls/call.service.test.js`
+- `frontend/src/features/chat/calls/call-format.ts`
+- `frontend/src/features/chat/calls/call.store.ts`
+- `frontend/src/features/chat/calls/call.socket.ts`
+- `frontend/src/features/chat/calls/call.types.ts`
+- `frontend/src/features/chat/calls/components/ActiveCallPanel.tsx`
+- `frontend/src/features/chat/calls/components/VideoCallPanel.tsx`
+- `frontend/src/features/chat/components/MessageItem.tsx`
+- `frontend/src/shared/types/chat.ts`
+- `docs/03_CURRENT_STATUS.md`
+
+### Nguyên nhân lỗi duration
+
+- Backend đã có `acceptedAt`, nhưng text lịch sử cuộc gọi vẫn format duration theo giây thô như `(18s)`.
+- Frontend timer live chỉ bắt đầu khi WebRTC chuyển sang `ACTIVE`; mốc này có thể lệch so với thời điểm call được accept.
+- Message system render trực tiếp `message.content`, nên nếu content có dạng cũ `(18s)` thì UI vẫn hiện dạng cũ dù metadata có duration.
+
+### Cách fix acceptedAt/endedAt
+
+- Backend giữ mốc duration chuẩn: `durationSeconds = floor((endedAt - acceptedAt) / 1000)` chỉ khi status là `ended`.
+- Backend ép duration của `rejected`, `cancelled`, `missed`, `failed` về `0`.
+- Backend call history content dùng formatter MM:SS, ví dụ `Cuộc gọi thoại đã kết thúc (01:05)`.
+- Frontend thêm `startAcceptedCallTimer(call)` trong call store.
+- Caller bắt đầu timer khi nhận `call:accepted`; receiver bắt đầu timer khi ack của `call:accept` trả payload.
+- Timer dùng `acceptedAt` từ backend nếu có, fallback `Date.now()`; mỗi lần start đều clear interval cũ trước để tránh nhiều interval song song.
+- Các terminal path hiện có vẫn gọi `clearCall()`, trong đó clear interval và cleanup WebRTC/ringtone.
+
+### Format duration mới MM:SS
+
+- Thêm helper `formatCallDuration(seconds)`:
+  - `0` -> `00:00`
+  - `4` -> `00:04`
+  - `18` -> `00:18`
+  - `65` -> `01:05`
+  - `125` -> `02:05`
+- `ActiveCallPanel` và `VideoCallPanel` dùng helper chung.
+- `MessageItem` ưu tiên render call history từ `callMetadata` bằng `getCallHistoryLabel()`, nên ended dùng `MM:SS`, còn rejected/cancelled/missed không hiển thị duration.
+
+### Test results
+
+- Backend `npm test -- --runInBand src/tests/calls/call.service.test.js`: đạt, 5 tests.
+- Đã thêm test duration từ `acceptedAt`: accepted at `00:00:10`, ended at `00:01:15` -> `durationSeconds = 65`.
+- Đã thêm test rejected call luôn `durationSeconds = 0`.
+- Frontend scoped ESLint cho call store/socket/format/panels/message type: đạt.
+- Frontend `npm run build`: đạt.
+- Frontend `npm run lint` toàn repo: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Backend không có script lint/build riêng trong `backend/package.json`.
+
+### Remaining risks
+
+- Chưa chạy manual QA hai browser cho voice/video call trong phiên này.
+- Cần kiểm tra trực tiếp các case accept sau 10 giây ringing, end ở 4/18/65 giây, reject, cancel, missed và disconnect/reload trên browser thật.
+
+## Polish Admin Dashboard scrollbar và chart
+
+Đã cải thiện phần scrollbar và biểu đồ trong Admin Dashboard theo hướng mềm hơn, dễ đọc hơn và không còn phụ thuộc vào native horizontal scrollbar trong chart.
+
+### Files changed
+
+- `frontend/src/features/admin/components/AdminLayout.tsx`
+- `frontend/src/features/admin/pages/AdminDashboard.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Lỗi UI ban đầu
+
+- Admin main content chưa khóa `overflow-x`, nên chart/card rộng có thể làm page xuất hiện scrollbar ngang.
+- Stacked bar chart dùng `overflow-x-auto`, khi xem 30 ngày dễ hiện thanh scrollbar ngang mặc định màu trắng, đặc biệt xấu ở dark theme.
+- Trục ngày render toàn bộ label, làm các label ngày bị chồng khi chọn range 30 ngày.
+- Chart card và vùng chart hơi phẳng/cứng, spacing chưa tách lớp rõ giữa card, header và chart body.
+- Tooltip của chart chưa được polish theo dark/light theme.
+
+### Cách fix scrollbar
+
+- Giữ `app-scrollbar` cho admin main content và thêm `min-w-0`, `overflow-x-hidden` để tránh horizontal scrollbar toàn page.
+- Loại bỏ native horizontal scroll trong stacked bar chart; chart chuyển sang CSS grid responsive với `minmax(0, 1fr)` để fit đủ 7/30 ngày trong container.
+- Không thêm scrollbar custom mới vì project đã có utility `app-scrollbar`/`app-scrollbar-thin` dùng chung theo theme.
+
+### Cách fix chart tick/tooltip/responsive
+
+- Thêm `formatShortDate()` để label ngày hiển thị dạng ngắn `dd/mm`.
+- Thêm `shouldShowChartTick()` để giữ đủ data nhưng chỉ giảm số label trục X; range 7 ngày hiển thị đầy đủ, range 30 ngày còn khoảng 6-8 mốc chính.
+- Line chart được polish bằng grid line mờ hơn, stroke rõ hơn, dot/active dot nổi bật hơn và chart height ổn định `280px`.
+- Stacked bar chart bỏ scroll ngang, dùng bar radius nhẹ, gap responsive, label tổng chỉ hiện khi đủ chỗ và legend Direct/Group/Support gọn hơn.
+- Tooltip custom cho cả hai chart dùng `bg-popover`, border/shadow/backdrop blur theo theme; tooltip line chart hiển thị ngày và số người dùng mới, tooltip message chart hiển thị Direct, Group, Support và tổng số tin.
+- Chart card dùng background khác page một tầng, border subtle, shadow nhẹ, chart body có padding/card nội bộ và empty state cao ổn định.
+- Title chart đổi sang tiếng Việt có dấu: `Người dùng mới theo ngày`, `Tin nhắn theo ngày`.
+
+### Test results
+
+- `npx eslint src/features/admin/pages/AdminDashboard.tsx src/features/admin/components/AdminLayout.tsx` trong `frontend`: đạt.
+- `npm run build` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- Chưa chạy manual browser QA dark/light theme, filter 7/30 ngày và responsive desktop/tablet/mobile trong phiên này; đã kiểm tra bằng code review rằng chart không còn dùng native horizontal scrollbar và tick label 30 ngày được giảm số lượng.
+
+### Remaining risks
+
+- Cần kiểm tra trực tiếp dashboard với dữ liệu thật ở dark/light theme để tinh chỉnh cảm giác spacing, tooltip hover và mật độ bar khi dữ liệu 30 ngày có giá trị rất lớn hoặc rất lệch.
+
+## Chuẩn hóa gradient system toàn app
+
+Đã gom gradient/surface chính về token global để auth, chat, profile/settings modal và admin dashboard dùng cùng một visual language ở cả dark theme và light theme.
+
+### Files changed
+
+- `frontend/src/index.css`
+- `frontend/src/features/auth/pages/SignInPage.tsx`
+- `frontend/src/features/auth/pages/SignUpPasge.tsx`
+- `frontend/src/features/auth/pages/ForgotPasswordPage.tsx`
+- `frontend/src/features/auth/components/signin-form.tsx`
+- `frontend/src/features/auth/components/signup-form.tsx`
+- `frontend/src/features/auth/components/ProtectedRoute.tsx`
+- `frontend/src/features/auth/components/AdminProtectedRoute.tsx`
+- `frontend/src/features/chat/pages/ChatAppPage.tsx`
+- `frontend/src/features/chat/components/ChatWindowLayout.tsx`
+- `frontend/src/features/chat/components/ChatWelcomeScreen.tsx`
+- `frontend/src/features/chat/components/MessageInput.tsx`
+- `frontend/src/features/chat/components/sidebar/app-sidebar.tsx`
+- `frontend/src/features/settings/components/profile/ProfileDialog.tsx`
+- `frontend/src/features/settings/components/profile/PersonalInForm.tsx`
+- `frontend/src/features/settings/components/profile/VerifyNewEmailSection.tsx`
+- `frontend/src/features/settings/components/profile/ChangePasswordDialog.tsx`
+- `frontend/src/features/settings/components/profile/ReportTab.tsx`
+- `frontend/src/features/notification/components/NotificationSettingsDialog.tsx`
+- `frontend/src/features/admin/components/AdminLayout.tsx`
+- `frontend/src/features/admin/components/AdminSidebar.tsx`
+- `frontend/src/features/admin/components/AdminTopbar.tsx`
+- `frontend/src/features/admin/pages/AdminDashboard.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Gradient tokens đã tạo
+
+- `--app-shell-bg`: nền shell lớn dùng radial highlight cyan/purple/pink nhẹ + linear gradient tổng; light theme không còn trắng bệch, dark theme không còn đen phẳng.
+- `--app-surface-bg`: nền glass/tinted surface theo theme.
+- `--app-surface-border`: border subtle cho surface/card theo theme.
+- `--app-hero-gradient`: gradient hero/profile/brand panel.
+- `--app-primary-gradient`: gradient CTA primary.
+- `--app-surface-shadow`: shadow mềm dùng chung cho glass surface.
+
+### Class dùng chung
+
+- `.app-shell-bg`
+- `.app-surface`
+- `.app-glass-card`
+- `.app-hero-gradient`
+- `.app-primary-gradient`
+
+Các class legacy `bg-gradient-primary`, `bg-gradient-chat`, `bg-gradient-purple` được map về token mới để giảm lệch visual ở các component cũ chưa thay hết.
+
+### Các màn đã áp dụng
+
+- Login/register/forgot password: shell dùng `app-shell-bg`, auth card dùng `app-glass-card`, illustration panel dùng `app-surface` + highlight `app-hero-gradient`, CTA chính dùng `app-primary-gradient`.
+- Protected route/admin protected route loading state: nền dùng shell token, card dùng surface token, logo/progress dùng hero/primary gradient chung.
+- Chat page: app shell dùng `app-shell-bg`; chat sidebar, welcome screen, chat window và composer dùng surface token; send button dùng `app-primary-gradient`.
+- Profile/settings modal: modal shell bỏ inline gradient riêng và dùng `app-shell-bg`; sidebar/header/settings card dùng `app-surface`; profile hero card dùng `app-hero-gradient`; các CTA trong profile/security/notification dùng `app-primary-gradient`.
+- Admin dashboard: admin layout dùng `app-shell-bg`; sidebar/topbar dùng `app-surface`; dashboard overview/chart/quick action cards dùng surface token; admin brand mark dùng `app-hero-gradient`.
+
+### Test results
+
+- `npx eslint` scoped trên các file auth/chat/settings/notification/admin vừa chỉnh: đạt.
+- `npm run build` trong `frontend`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi thay đổi (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification realtime).
+- `src/index.css` không được ESLint xử lý vì cấu hình hiện tại không lint CSS; CSS đã được kiểm tra gián tiếp qua `npm run build`.
+- Chưa chạy manual browser QA dark/light cho login, chat, profile modal và admin dashboard trong phiên này.
+
+### Remaining risks
+
+- Cần kiểm tra trực tiếp bằng mắt ở dark/light theme để tinh chỉnh độ đậm surface trên dữ liệu thật, đặc biệt các màn admin nhiều bảng và chat sidebar nhiều conversation.
+- Một số component nhỏ ngoài các shell chính vẫn có thể còn dùng `bg-card`/`bg-background` theo design token cũ; các gradient legacy đã được map về token mới để tránh lệch lớn, nhưng có thể tiếp tục polish sâu hơn nếu muốn đồng bộ tuyệt đối từng dialog nhỏ.

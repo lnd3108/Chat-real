@@ -36,7 +36,7 @@ export const ForgotPasswordPage = () => {
           <p className="text-sm text-muted-foreground">
             {successMessage || "Đổi mật khẩu thành công. Vui lòng đăng nhập lại."}
           </p>
-          <Button className="w-full" onClick={() => navigate("/signin", { replace: true })}>
+          <Button className="app-primary-gradient w-full border-0 text-slate-950" onClick={() => navigate("/signin", { replace: true })}>
             Quay về đăng nhập
           </Button>
         </div>
@@ -47,9 +47,9 @@ export const ForgotPasswordPage = () => {
   }, [navigate, step, successMessage]);
 
   return (
-    <div className="bg-muted absolute inset-0 flex min-h-svh items-center justify-center bg-gradient-purple p-6 md:p-10">
+    <div className="app-shell-bg absolute inset-0 flex min-h-svh items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-md">
-        <Card className="border-border">
+        <Card className="app-glass-card">
           <CardHeader className="space-y-2">
             <CardTitle>{STEP_TITLES[step]}</CardTitle>
             <CardDescription>{STEP_DESCRIPTIONS[step]}</CardDescription>

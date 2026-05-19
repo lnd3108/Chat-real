@@ -1,4 +1,5 @@
 import { cn, formatMessageTime } from "@/shared/lib/utils";
+import { getCallHistoryLabel } from "@/features/chat/calls/call-format";
 import { DELETED_USER_LABEL, getDeletedAwareSenderName } from "@/features/chat/lib/chatParticipants";
 import type { Conversation, Message, Participant } from "@/shared/types/chat";
 import { useState } from "react";
@@ -188,6 +189,14 @@ const MessageItem = ({
   };
 
   if (message.type === "system") {
+    const systemContent = message.callMetadata
+      ? getCallHistoryLabel({
+          callType: message.callMetadata.callType,
+          callStatus: message.callMetadata.callStatus,
+          durationSeconds: message.callMetadata.callDurationSeconds,
+        })
+      : message.content;
+
     return (
       <>
         {isShowTime && (
@@ -200,7 +209,7 @@ const MessageItem = ({
 
         <div className="my-3 flex justify-center">
           <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-            {message.content}
+            {systemContent}
           </span>
         </div>
       </>

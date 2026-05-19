@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShieldBan } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,8 +26,19 @@ type Props = {
 };
 
 type FriendLike = Friend & {
-  userId?: Partial<Friend>;
-  friendId?: Partial<Friend>;
+  avatar?: string | null;
+  profilePicture?: string | null;
+  photoURL?: string | null;
+  userId?: Partial<Friend> & {
+    avatar?: string | null;
+    profilePicture?: string | null;
+    photoURL?: string | null;
+  };
+  friendId?: Partial<Friend> & {
+    avatar?: string | null;
+    profilePicture?: string | null;
+    photoURL?: string | null;
+  };
 };
 
 const defaultReportState: ReportPayload = {
@@ -44,11 +55,24 @@ const normalizeFriend = (friend: FriendLike): FriendItem => {
     _id: user._id || friend._id,
     userName: user.userName || friend.userName || "",
     displayName: user.displayName || friend.displayName || "",
-    avatarUrl: user.avatarUrl || friend.avatarUrl,
+    avatarUrl:
+      user.avatarUrl ||
+      user.avatar ||
+      user.profilePicture ||
+      user.photoURL ||
+      friend.avatarUrl ||
+      friend.avatar ||
+      friend.profilePicture ||
+      friend.photoURL ||
+      undefined,
   };
 };
 
-const BlockReportDialog = ({ open, setOpen }: Props) => {
+type BlockReportPanelProps = {
+  active?: boolean;
+};
+
+export const BlockReportPanel = ({ active = true }: BlockReportPanelProps) => {
   const [tab, setTab] = useState<"block" | "report">("block");
   const [blocked, setBlockedState] = useState<BlockedUser[]>([]);
   const [blockUserName, setBlockUserName] = useState("");
@@ -57,12 +81,16 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const { friends, getFriends } = useFriendStore();
 
-  const friendList: FriendItem[] = (friends || [])
-    .map((friend) => normalizeFriend(friend as FriendLike))
-    .filter((friend) => friend.userName && friend.displayName);
+  const friendList: FriendItem[] = useMemo(
+    () =>
+      (friends || [])
+        .map((friend) => normalizeFriend(friend as FriendLike))
+        .filter((friend) => friend.userName && friend.displayName),
+    [friends],
+  );
 
   useEffect(() => {
-    if (!open) {
+    if (!active) {
       return;
     }
 
@@ -81,11 +109,7 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
         toast.error("Không thể tải danh sách chặn.");
       }
     })();
-  }, [open, getFriends]);
-
-  const onOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-  };
+  }, [active, getFriends]);
 
   const onSendReport = async () => {
     try {
@@ -110,56 +134,62 @@ const BlockReportDialog = ({ open, setOpen }: Props) => {
       setTab("block");
     } catch (error) {
       logger.error("Loi gui bao cao tu dialog quyen rieng tu", getErrorMeta(error));
-      toast.error("Gửi báo cáo thất bại, thử lại.");
+      toast.error("Gửi báo cáo thất bại, vui lòng thử lại.");
     } finally {
       setIsSubmittingReport(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong app-scrollbar-thin max-h-[85vh] overflow-y-auto border-border/30 sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldBan className="h-5 w-5 text-primary" />
-            Chặn và Báo cáo
-          </DialogTitle>
-          <DialogDescription>
-            Chặn người dùng để ngừng nhắn tin direct hoặc gửi báo cáo hành vi xấu.
-          </DialogDescription>
-        </DialogHeader>
+    <Tabs value={tab} onValueChange={(value) => setTab(value as "block" | "report")}>
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="block">Chặn</TabsTrigger>
+        <TabsTrigger value="report">Báo cáo</TabsTrigger>
+      </TabsList>
 
-        <Tabs value={tab} onValueChange={(value) => setTab(value as "block" | "report")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="block">Chặn</TabsTrigger>
-            <TabsTrigger value="report">Báo cáo</TabsTrigger>
-          </TabsList>
+      <TabsContent value="block">
+        <BlockTab
+          friends={friendList}
+          blocked={blocked}
+          setBlocked={setBlockedState}
+          blockUserName={blockUserName}
+          setBlockUserName={setBlockUserName}
+          blockReason={blockReason}
+          setBlockReason={setBlockReason}
+        />
+      </TabsContent>
 
-          <TabsContent value="block">
-            <BlockTab
-              friends={friendList}
-              blocked={blocked}
-              setBlocked={setBlockedState}
-              blockUserName={blockUserName}
-              setBlockUserName={setBlockUserName}
-              blockReason={blockReason}
-              setBlockReason={setBlockReason}
-            />
-          </TabsContent>
-
-          <TabsContent value="report">
-            <ReportTab
-              friends={friendList}
-              report={report}
-              setReport={setReport}
-              onSendReport={onSendReport}
-              isSubmitting={isSubmittingReport}
-            />
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+      <TabsContent value="report">
+        <ReportTab
+          friends={friendList}
+          report={report}
+          setReport={setReport}
+          onSendReport={onSendReport}
+          isSubmitting={isSubmittingReport}
+        />
+      </TabsContent>
+    </Tabs>
   );
 };
+
+const BlockReportDialog = ({ open, setOpen }: Props) => (
+  <Dialog open={open} onOpenChange={setOpen}>
+    <DialogContent className="glass-strong max-h-[85vh] overflow-hidden border-border/30 sm:max-w-2xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <ShieldBan className="h-5 w-5 text-primary" />
+          Chặn và báo cáo
+        </DialogTitle>
+        <DialogDescription>
+          Chặn người dùng để ngừng nhắn tin direct hoặc gửi báo cáo hành vi xấu.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="app-scrollbar-thin overflow-y-auto pr-1">
+        <BlockReportPanel active={open} />
+      </div>
+    </DialogContent>
+  </Dialog>
+);
 
 export default BlockReportDialog;

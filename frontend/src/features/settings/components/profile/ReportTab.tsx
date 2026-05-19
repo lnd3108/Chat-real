@@ -78,7 +78,7 @@ const ReportTab = ({
               variant={report.reason === reason ? "default" : "outline"}
               className={
                 report.reason === reason
-                  ? "bg-gradient-primary"
+                  ? "app-primary-gradient border-0 text-slate-950"
                   : "glass-light border-border/30"
               }
               onClick={() => setReport({ ...report, reason })}

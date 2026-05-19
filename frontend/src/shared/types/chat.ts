@@ -118,6 +118,14 @@ export interface Message {
   imgUrl?: string | null;
   replyTo?: MessageReply | null;
   reactions?: MessageReaction[];
+  callMetadata?: {
+    callSessionId?: string | null;
+    callType?: "voice" | "video";
+    callStatus?: "ringing" | "accepted" | "rejected" | "missed" | "cancelled" | "ended" | "failed" | null;
+    callDurationSeconds?: number;
+    callerId?: string | null;
+    receiverId?: string | null;
+  } | null;
   deletedFor?: string[];
   isDeletedForEveryone?: boolean;
   isHiddenForMe?: boolean;

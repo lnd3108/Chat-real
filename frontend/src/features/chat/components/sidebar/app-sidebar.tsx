@@ -39,13 +39,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { convoLoading } = useChatStore();
 
   return (
-    <Sidebar variant="inset" className="md:flex-shrink-0" {...props}>
+    <Sidebar
+      variant="inset"
+      className="md:flex-shrink-0 [&_[data-sidebar=sidebar]]:border [&_[data-sidebar=sidebar]]:border-[var(--app-surface-border)] [&_[data-sidebar=sidebar]]:[background:var(--app-surface-bg)] [&_[data-sidebar=sidebar]]:[backdrop-filter:blur(20px)]"
+      {...props}
+    >
       <SidebarHeader className="border-b border-sidebar-border/70">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              className="h-auto min-h-16 cursor-default bg-gradient-primary p-3 hover:bg-gradient-primary hover:text-white"
+              className="app-hero-gradient h-auto min-h-16 cursor-default p-3 hover:text-white"
             >
               <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
                 <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-white sm:text-xl">

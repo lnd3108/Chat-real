@@ -188,7 +188,7 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
     blockedByUserA: blockedByA,
     blockedByUserB: blockedByB,
     hasDirectBlock: blockedByA || blockedByB,
-    note: "Block chá»‰ áº£nh hÆ°á»Ÿng direct 1-1, khÃ´ng áº£nh hÆ°á»Ÿng group chat.",
+    note: "Block chỉ ảnh hưởng direct 1-1, không ảnh hưởng group chat.",
   };
 };
 
@@ -197,7 +197,6 @@ const parsePage = (value, fallback = 1) =>
   Number.parseInt(value, 10) || fallback;
 const parseLimit = (value, fallback = 20) =>
   Number.parseInt(value, 10) || fallback;
-
 //Các hàm lấy dữ liệu chính của biểu đồ
 export const getDashboardUserChartData = async ({ days: daysValue }) => {
   const days = clampDashboardDays(daysValue, 7);
@@ -431,7 +430,7 @@ export const getFriendshipsAdminQuery = async ({ query }) => {
   };
 };
 
-// danh sách cuộc trò chuyện 
+// danh sách cuộc trò chuyện
 export const getConversationsAdminQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -493,7 +492,7 @@ export const getAdminMessagesQuery = async ({ query }) => {
   };
 };
 
-// danh sách người bị chặn và thông tin 
+// danh sách người bị chặn và thông tin
 export const getAdminBlockedUsersQuery = async ({ query }) => {
   const page = parsePage(query.page);
   const limit = parseLimit(query.limit);
@@ -519,7 +518,7 @@ export const getAdminBlockedUsersQuery = async ({ query }) => {
   };
 };
 
-// chi tiết cuộc trò chuyện 
+// chi tiết cuộc trò chuyện
 export const getConversationDetailAdminQuery = async ({ conversationId }) => {
   const conversation = await Conversation.findById(conversationId)
     .populate("participants.userId", "displayName userName email avatarUrl")
@@ -638,7 +637,7 @@ export const getBlockDetailAdminQuery = async ({ blockId }) => {
   };
 };
 
-// bỏ chặn một quan hệ block 
+// bỏ chặn một quan hệ block
 export const unblockBlockRelationAsAdminCommand = async ({ blockId }) => {
   const currentBlock = await Blocking.findById(blockId).select(
     "userId blockedUserId isActive",

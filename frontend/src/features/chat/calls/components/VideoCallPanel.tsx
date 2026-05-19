@@ -1,4 +1,5 @@
 import { Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
+import { formatCallDuration } from "@/features/chat/calls/call-format";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import LocalVideoPreview from "@/features/chat/calls/components/LocalVideoPreview";
@@ -6,12 +7,6 @@ import RemoteVideo from "@/features/chat/calls/components/RemoteVideo";
 import { getParticipantId, getParticipantProfile } from "@/features/chat/lib/chatParticipants";
 import { useChatStore } from "@/features/chat/stores/useChatStore";
 import { Button } from "@/shared/ui/button";
-
-const formatDuration = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remain = seconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remain).padStart(2, "0")}`;
-};
 
 const VideoCallPanel = () => {
   const currentCall = useCallStore((state) => state.currentCall);
@@ -43,7 +38,7 @@ const VideoCallPanel = () => {
         <RemoteVideo stream={remoteStream} />
         <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-8rem)] rounded-md bg-background/85 px-3 py-2 shadow-sm backdrop-blur sm:left-4 sm:top-4 sm:max-w-[calc(100%-14rem)]">
           <p className="text-sm font-medium text-foreground">{peerName}</p>
-          <p className="text-xs text-muted-foreground">{formatDuration(durationSeconds)}</p>
+          <p className="text-xs text-muted-foreground">{formatCallDuration(durationSeconds)}</p>
         </div>
         <div className="absolute right-3 top-3 z-30 aspect-video w-28 overflow-hidden rounded-md border bg-background shadow-md sm:right-4 sm:top-4 sm:w-40 md:w-44">
           {isCameraEnabled ? (

@@ -119,6 +119,13 @@ const calculateDurationSeconds = (callSession, endedAt) => {
   );
 };
 
+const formatCallDuration = (seconds = 0) => {
+  const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remain = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remain).padStart(2, "0")}`;
+};
+
 const getCallHistoryContent = (callSession) => {
   const label =
     (callSession.callType ?? CALL_TYPES.VOICE) === CALL_TYPES.VIDEO
@@ -133,7 +140,7 @@ const getCallHistoryContent = (callSession) => {
     case CALL_STATUSES.CANCELLED:
       return `${label} đã hủy`;
     case CALL_STATUSES.ENDED:
-      return `${label} đã kết thúc (${callSession.durationSeconds ?? 0}s)`;
+      return `${label} đã kết thúc (${formatCallDuration(callSession.durationSeconds)})`;
     case CALL_STATUSES.FAILED:
       return `${label} thất bại`;
     default:
@@ -326,7 +333,8 @@ const completeCall = async ({ callSession, status, endReason, eventName }) => {
   callSession.status = status;
   callSession.endedAt = endedAt;
   callSession.endReason = endReason;
-  callSession.durationSeconds = calculateDurationSeconds(callSession, endedAt);
+  callSession.durationSeconds =
+    status === CALL_STATUSES.ENDED ? calculateDurationSeconds(callSession, endedAt) : 0;
 
   try {
     await callSession.save();

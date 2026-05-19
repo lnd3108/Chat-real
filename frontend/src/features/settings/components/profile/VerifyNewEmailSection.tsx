@@ -21,7 +21,7 @@ const VerifyNewEmailSection = () => {
     verifyOtpAndCommit,
     backToEdit,
   } = useProfileSettingsStore();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -95,7 +95,7 @@ const VerifyNewEmailSection = () => {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Button
           type="button"
-          className="w-full bg-gradient-primary"
+          className="app-primary-gradient w-full border-0 text-slate-950"
           onClick={() => void handleVerify()}
           loading={isVerifyingOtp}
           loadingText="Đang xác minh..."
