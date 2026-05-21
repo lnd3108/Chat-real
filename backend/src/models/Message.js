@@ -72,7 +72,7 @@ const callMetadataSchema = new mongoose.Schema(
     },
     callStatus: {
       type: String,
-      enum: ["ringing", "accepted", "rejected", "missed", "cancelled", "ended", "failed"],
+      enum: ["ringing", "active", "accepted", "rejected", "missed", "cancelled", "ended", "failed"],
       default: null,
     },
     callType: {
@@ -80,10 +80,30 @@ const callMetadataSchema = new mongoose.Schema(
       enum: ["voice", "video"],
       default: "voice",
     },
+    callMode: {
+      type: String,
+      enum: ["direct", "group"],
+      default: "direct",
+    },
     callDurationSeconds: {
       type: Number,
       default: 0,
       min: 0,
+    },
+    durationSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    participantCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    initiatorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     callerId: {
       type: mongoose.Schema.Types.ObjectId,

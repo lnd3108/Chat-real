@@ -8,14 +8,21 @@ export const formatCallDuration = (seconds?: number | null) => {
 
 export const getCallHistoryLabel = ({
   callType,
+  callMode,
   callStatus,
   durationSeconds,
 }: {
   callType?: "voice" | "video" | string | null;
+  callMode?: "direct" | "group" | string | null;
   callStatus?: string | null;
   durationSeconds?: number | null;
 }) => {
-  const label = callType === "video" ? "Cuộc gọi video" : "Cuộc gọi thoại";
+  const label =
+    callMode === "group"
+      ? "Cuộc gọi thoại nhóm"
+      : callType === "video"
+        ? "Cuộc gọi video"
+        : "Cuộc gọi thoại";
 
   switch (callStatus) {
     case "ended":

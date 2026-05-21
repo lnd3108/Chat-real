@@ -190,8 +190,9 @@ const MessageItem = ({
 
   if (message.type === "system") {
     const systemContent = message.callMetadata
-      ? getCallHistoryLabel({
+        ? getCallHistoryLabel({
           callType: message.callMetadata.callType,
+          callMode: message.callMetadata.callMode,
           callStatus: message.callMetadata.callStatus,
           durationSeconds: message.callMetadata.callDurationSeconds,
         })

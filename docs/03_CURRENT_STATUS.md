@@ -1,5 +1,169 @@
 # Trạng thái hiện tại
 
+## Group voice call trong group conversation
+
+Đã triển khai backend MVP cho gọi thoại nhóm trong group conversation bằng WebRTC mesh. Backend chỉ dùng Socket.IO để signaling và quản lý trạng thái; không truyền audio, không lưu SDP/ICE candidate, không triển khai group video call và không dùng SFU ở MVP.
+
+## Frontend group voice call trong group conversation
+
+Đã triển khai frontend MVP cho gọi thoại nhóm trong group conversation. UI chỉ hỗ trợ audio, dùng WebRTC mesh ở client và Socket.IO chỉ để signaling; không truyền audio qua backend và không thêm group video call.
+
+### Files changed
+
+- `frontend/src/features/chat/calls/group/group-call.types.ts`
+- `frontend/src/features/chat/calls/group/group-call.constants.ts`
+- `frontend/src/features/chat/calls/group/group-call.store.ts`
+- `frontend/src/features/chat/calls/group/group-call.socket.ts`
+- `frontend/src/features/chat/calls/group/group-webrtc-mesh.service.ts`
+- `frontend/src/features/chat/calls/group/components/GroupIncomingCallModal.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupCallPanel.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupCallParticipantItem.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupCallAudioRenderer.tsx`
+- `frontend/src/features/chat/calls/components/CallLayer.tsx`
+- `frontend/src/features/chat/calls/call.socket.ts`
+- `frontend/src/features/chat/calls/call-format.ts`
+- `frontend/src/features/chat/components/ChatWindowHeader.tsx`
+- `frontend/src/features/chat/components/MessageItem.tsx`
+- `frontend/src/shared/realtime/SocketLifecycleService.ts`
+- `frontend/src/shared/realtime/useSocketStore.ts`
+- `frontend/src/shared/types/chat.ts`
+- `docs/03_CURRENT_STATUS.md`
+
+### Group call UI
+
+- Group conversation header có nút gọi thoại nhóm, chỉ hiển thị trong group conversation.
+- Nếu có incoming group call cùng group, nút header chuyển ngữ cảnh thành `Tham gia cuộc gọi`.
+- `GroupIncomingCallModal` hiển thị:
+  - `Cuộc gọi thoại nhóm đến`
+  - `{Tên người gọi} đang bắt đầu cuộc gọi trong nhóm {Tên nhóm}`
+  - `Tham gia`
+  - `Từ chối`
+- `GroupCallPanel` hiển thị tên nhóm, thời lượng MM:SS, số người đang tham gia, danh sách participant joined, avatar, trạng thái mic của bản thân, nút bật/tắt mic, rời cuộc gọi và nút kết thúc toàn call cho host.
+- `GroupCallAudioRenderer` render audio element ẩn cho từng remote stream; không phát lại local stream để tránh echo.
+
+### WebRTC mesh flow
+
+- `group-webrtc-mesh.service.ts` quản lý `Map<userId, RTCPeerConnection>`, local audio stream, remote streams, queued ICE candidates và cleanup peer.
+- `initLocalAudio()` dùng `getUserMedia({ audio: true, video: false })`.
+- Mỗi remote participant có một `RTCPeerConnection` riêng, dùng STUN `stun:stun.l.google.com:19302`.
+- Rule chống glare MVP: người mới join tạo offer tới các participant đã `joined` trước đó; participant có sẵn không tạo offer ngược.
+- `group-call:offer`, `group-call:answer`, `group-call:ice-candidate` chỉ relay theo `targetUserId`.
+- ICE candidate đến trước peer/remoteDescription được queue theo `fromUserId` rồi flush sau khi set remote description.
+
+### Cleanup strategy
+
+- `leaveGroupCall()` emit `group-call:leave`, cleanup toàn bộ peer, stop local audio tracks, clear streams, clear timer và reset state.
+- `group-call:ended` dừng ringtone, cleanup all peers và đóng panel.
+- `group-call:participant-left` cleanup peer connection và remote stream của participant đó.
+- Socket unregister/disconnect cleanup group call state để không giữ micro chạy nền.
+- Direct incoming call sẽ bị reject nếu frontend đang có active/incoming group call; group incoming call cũng decline nếu đang có direct call.
+- Ringtone dùng service chung: phát khi `group-call:incoming`, dừng khi join/decline/ended/busy/error.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- Scoped ESLint cho các file group call và integration vừa chỉnh: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi group call (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification).
+- Chưa chạy manual QA 3 tài khoản/browser thật cho A start, B/C join, A/B/C nghe nhau, B leave, C leave auto-end, host end/leave, mic toggle, ringtone và duplicate event.
+
+### Limitation
+
+- MVP dùng WebRTC mesh, chỉ phù hợp nhóm nhỏ 3-4 người joined.
+- Production với nhóm lớn nên dùng SFU như LiveKit, mediasoup hoặc Janus.
+- Frontend hiện chưa có cơ chế discover active group call sau khi user mở group muộn nếu client không nhận `group-call:incoming` trước đó; cần API/socket state discovery riêng nếu muốn hỗ trợ đầy đủ case này.
+
+### Files changed
+
+- `backend/src/models/CallSession.js`
+- `backend/src/models/Message.js`
+- `backend/src/modules/calls/domain/call.constants.js`
+- `backend/src/modules/calls/application/call.service.js`
+- `backend/src/modules/calls/api/socket/call.socket-handler.js`
+- `backend/src/shared/domain/constants/socket-events.js`
+- `backend/src/tests/calls/call.service.test.js`
+- `docs/03_CURRENT_STATUS.md`
+
+### Architecture
+
+- Group call nằm trong `modules/calls`, không tạo module rời.
+- `CallSession` hỗ trợ `callMode = direct|group`, `initiatorId`, `hostId`, `participants[]`, `status = ringing|active|ended|failed` cho group flow, đồng thời giữ nguyên direct call status cũ như `accepted/rejected/missed/cancelled`.
+- Active state in-memory:
+  - `activeGroupCallsByConversationId`: chặn một group có nhiều call đồng thời.
+  - `activeCallsByUser`: chặn user tham gia nhiều call cùng lúc, dùng chung direct/group.
+  - Timer riêng theo participant để mark `missed` sau `GROUP_CALL_INVITE_TIMEOUT_MS = 40_000`.
+- `MAX_GROUP_CALL_PARTICIPANTS = 4` cho MVP mesh.
+- Khi group call ended, backend tạo một system message trong group chat với `callMetadata`: `callSessionId`, `callType`, `callMode`, `durationSeconds`, `participantCount`, `initiatorId`.
+- User-facing text tiếng Việt có dấu: `Cuộc gọi thoại nhóm đã kết thúc (MM:SS)`, `Cuộc gọi thoại nhóm đã hủy`, `Cuộc gọi thoại nhóm nhỡ`.
+
+### Socket events mới
+
+Client -> Server: `group-call:start`, `group-call:join`, `group-call:decline`, `group-call:leave`, `group-call:end`, `group-call:offer`, `group-call:answer`, `group-call:ice-candidate`, `group-call:sync-state`.
+
+Server -> Client: `group-call:incoming`, `group-call:started`, `group-call:participant-joined`, `group-call:participant-left`, `group-call:participant-declined`, `group-call:participant-missed`, `group-call:ended`, `group-call:offer`, `group-call:answer`, `group-call:ice-candidate`, `group-call:state`, `group-call:busy`, `group-call:error`.
+
+### Payload chính
+
+`group-call:start`:
+
+```json
+{
+  "conversationId": "conversationId",
+  "callType": "voice"
+}
+```
+
+`group-call:incoming`:
+
+```json
+{
+  "callId": "callSessionId",
+  "conversationId": "conversationId",
+  "groupName": "Tên nhóm",
+  "caller": {
+    "_id": "userId",
+    "displayName": "Tên người gọi",
+    "userName": "username",
+    "avatarUrl": null
+  },
+  "callType": "voice",
+  "callMode": "group"
+}
+```
+
+`group-call:join`, `group-call:decline`, `group-call:leave`, `group-call:end`, `group-call:sync-state`:
+
+```json
+{
+  "callId": "callSessionId"
+}
+```
+
+Signaling dùng `callId`, `targetUserId` và một trong các field `offer`, `answer`, `candidate`.
+
+### Validation rules
+
+- Chỉ cho `callType = voice`; `video` trả `GROUP_CALL_VIDEO_NOT_SUPPORTED`.
+- Chỉ cho conversation `type = group`; direct/support trả `GROUP_CALL_NOT_GROUP_CONVERSATION`.
+- Caller/joiner/decliner/sender signaling phải thuộc group conversation.
+- Một user chỉ được ở một call tại một thời điểm; vi phạm trả `GROUP_CALL_USER_BUSY`.
+- Một group chỉ có một active group call; vi phạm trả `GROUP_CALL_ALREADY_ACTIVE`.
+- Join bị chặn khi call không tồn tại, không phải group voice, đã ended, user ngoài group, hoặc vượt `MAX_GROUP_CALL_PARTICIPANTS`.
+- Signaling chỉ relay giữa các participant đang `joined`; user ngoài call hoặc target chưa joined trả `GROUP_CALL_SIGNALING_FORBIDDEN`.
+- `group-call:end` toàn cuộc gọi chỉ cho host; participant khác dùng `group-call:leave`.
+- Disconnect khi user đang joined group call sẽ mark participant `left`, cleanup `activeCallsByUser`, notify `participant-left`, và end call sau grace nếu còn dưới 2 người joined.
+
+### Test results
+
+- `npm test -- src/tests/calls/call.service.test.js`: đạt, 9 tests.
+- Đã test service cho start group voice call, chặn group video call, join chuyển status `active` khi có 2 joined, signaling relay đúng target, user ngoài group bị chặn, và regression direct call cũ.
+- Chưa chạy manual QA nhiều socket client trong browser thật cho toàn bộ checklist start/join/decline/leave/host leave/disconnect/missed timeout/busy/signaling.
+
+### Limitation
+
+- MVP dùng WebRTC mesh, giới hạn 4 participant joined để tránh tải P2P quá cao.
+- Production với nhóm lớn nên dùng SFU như LiveKit, mediasoup hoặc Janus.
+- Active call registry đang in-memory, chưa phù hợp multi-instance nếu không có shared store.
+
 ## Gọi thoại và video call 1-1
 
 Đã triển khai chức năng gọi thoại và video call 1-1 cho direct conversation. WebRTC truyền âm thanh/video trực tiếp giữa hai client; Socket.IO chỉ dùng để điều phối trạng thái cuộc gọi và signaling. Không triển khai group call.

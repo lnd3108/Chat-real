@@ -121,8 +121,12 @@ export interface Message {
   callMetadata?: {
     callSessionId?: string | null;
     callType?: "voice" | "video";
-    callStatus?: "ringing" | "accepted" | "rejected" | "missed" | "cancelled" | "ended" | "failed" | null;
+    callMode?: "direct" | "group";
+    callStatus?: "ringing" | "active" | "accepted" | "rejected" | "missed" | "cancelled" | "ended" | "failed" | null;
     callDurationSeconds?: number;
+    durationSeconds?: number;
+    participantCount?: number;
+    initiatorId?: string | null;
     callerId?: string | null;
     receiverId?: string | null;
   } | null;

@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { CALL_ERROR_MESSAGES, CALL_SOCKET_EVENTS, CALL_STATUS } from "@/features/chat/calls/call.constants";
 import { playIncomingRingtone, stopRingtone } from "@/features/chat/calls/call-ringtone.service";
+import { useGroupCallStore } from "@/features/chat/calls/group/group-call.store";
 import { useCallStore } from "@/features/chat/calls/call.store";
 import type { CallErrorPayload, CallSessionPayload, CallSignalPayload } from "@/features/chat/calls/call.types";
 import { webRTCVoiceCallService } from "@/features/chat/calls/webrtc.service";
@@ -71,7 +72,13 @@ export class CallSocketHandler {
 
   private handleIncoming = (call: CallSessionPayload) => {
     const callState = useCallStore.getState();
-    if (callState.currentCall || callState.incomingCall) {
+    const groupCallState = useGroupCallStore.getState();
+    if (
+      callState.currentCall ||
+      callState.incomingCall ||
+      groupCallState.activeGroupCall ||
+      groupCallState.incomingGroupCall
+    ) {
       this.socket?.emit(CALL_SOCKET_EVENTS.REJECT, { callSessionId: call.callSessionId });
       return;
     }

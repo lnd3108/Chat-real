@@ -3,6 +3,7 @@ import { AdminRoleSocketHandler } from "@/features/admin/realtime/AdminRoleSocke
 import { AccountSocketHandler } from "@/features/auth/realtime/AccountSocketHandler";
 import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { CallSocketHandler } from "@/features/chat/calls/call.socket";
+import { GroupCallSocketHandler } from "@/features/chat/calls/group/group-call.socket";
 import { ChatSocketHandler } from "@/features/chat/realtime/ChatSocketHandler";
 import { FriendSocketHandler } from "@/features/friend/realtime/FriendSocketHandler";
 import { NotificationSocketHandler } from "@/features/notification/realtime/NotificationSocketHandler";
@@ -42,6 +43,7 @@ export const useSocketStore = create<SocketState>((set, get) => {
     new AdminRoleSocketHandler(),
     new NotificationSocketHandler(),
     new CallSocketHandler(),
+    new GroupCallSocketHandler(),
   );
 
   let isRefreshingSocketAuth = false;

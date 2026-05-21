@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 export const CALL_SESSION_STATUSES = {
   RINGING: "ringing",
+  ACTIVE: "active",
   ACCEPTED: "accepted",
   REJECTED: "rejected",
   MISSED: "missed",
@@ -14,6 +15,54 @@ export const CALL_SESSION_TYPES = {
   VOICE: "voice",
   VIDEO: "video",
 };
+
+export const CALL_SESSION_MODES = {
+  DIRECT: "direct",
+  GROUP: "group",
+};
+
+export const CALL_PARTICIPANT_STATUSES = {
+  INVITED: "invited",
+  RINGING: "ringing",
+  JOINED: "joined",
+  DECLINED: "declined",
+  MISSED: "missed",
+  LEFT: "left",
+};
+
+const callParticipantSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: Object.values(CALL_PARTICIPANT_STATUSES),
+      default: CALL_PARTICIPANT_STATUSES.INVITED,
+      required: true,
+    },
+    invitedAt: {
+      type: Date,
+      default: null,
+    },
+    joinedAt: {
+      type: Date,
+      default: null,
+    },
+    leftAt: {
+      type: Date,
+      default: null,
+    },
+    durationSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  { _id: false },
+);
 
 const callSessionSchema = new mongoose.Schema(
   {
@@ -32,6 +81,27 @@ const callSessionSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required() {
+        return this.callMode !== CALL_SESSION_MODES.GROUP;
+      },
+      index: true,
+    },
+    initiatorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    hostId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    callMode: {
+      type: String,
+      enum: Object.values(CALL_SESSION_MODES),
+      default: CALL_SESSION_MODES.DIRECT,
       required: true,
       index: true,
     },
@@ -71,6 +141,10 @@ const callSessionSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+    participants: {
+      type: [callParticipantSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -79,6 +153,8 @@ const callSessionSchema = new mongoose.Schema(
 
 callSessionSchema.index({ callerId: 1, status: 1 });
 callSessionSchema.index({ receiverId: 1, status: 1 });
+callSessionSchema.index({ conversationId: 1, callMode: 1, status: 1 });
+callSessionSchema.index({ "participants.userId": 1, status: 1 });
 
 const CallSession = mongoose.model("CallSession", callSessionSchema);
 

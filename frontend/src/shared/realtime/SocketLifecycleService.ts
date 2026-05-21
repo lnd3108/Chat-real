@@ -1,6 +1,7 @@
 import type { AdminRoleSocketHandler } from "@/features/admin/realtime/AdminRoleSocketHandler";
 import type { AccountSocketHandler } from "@/features/auth/realtime/AccountSocketHandler";
 import type { CallSocketHandler } from "@/features/chat/calls/call.socket";
+import type { GroupCallSocketHandler } from "@/features/chat/calls/group/group-call.socket";
 import type { ChatSocketHandler } from "@/features/chat/realtime/ChatSocketHandler";
 import type { FriendSocketHandler } from "@/features/friend/realtime/FriendSocketHandler";
 import type { NotificationSocketHandler } from "@/features/notification/realtime/NotificationSocketHandler";
@@ -21,6 +22,7 @@ export class SocketLifecycleService {
     adminRoleHandler: AdminRoleSocketHandler,
     notificationHandler: NotificationSocketHandler,
     callHandler: CallSocketHandler,
+    groupCallHandler: GroupCallSocketHandler,
   ) {
     this.handlers = [
       chatHandler,
@@ -29,6 +31,7 @@ export class SocketLifecycleService {
       adminRoleHandler,
       notificationHandler,
       callHandler,
+      groupCallHandler,
     ];
   }
 

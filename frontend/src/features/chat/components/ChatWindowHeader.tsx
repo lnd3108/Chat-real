@@ -5,6 +5,7 @@ import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import { Separator } from "@radix-ui/react-separator";
 import { Phone, Settings, Video } from "lucide-react";
 import { useCallStore } from "@/features/chat/calls/call.store";
+import { useGroupCallStore } from "@/features/chat/calls/group/group-call.store";
 import UserAvatar from "@/features/chat/components/UserAvatar";
 import StatusBadge from "@/features/chat/components/StatusBadge";
 import GroupChatAvatar from "@/features/chat/components/GroupChatAvatar";
@@ -30,6 +31,11 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const startVideoCall = useCallStore((state) => state.startVideoCall);
   const currentCall = useCallStore((state) => state.currentCall);
   const incomingCall = useCallStore((state) => state.incomingCall);
+  const startGroupVoiceCall = useGroupCallStore((state) => state.startGroupVoiceCall);
+  const acceptGroupCall = useGroupCallStore((state) => state.acceptGroupCall);
+  const activeGroupCall = useGroupCallStore((state) => state.activeGroupCall);
+  const incomingGroupCall = useGroupCallStore((state) => state.incomingGroupCall);
+  const isGroupJoining = useGroupCallStore((state) => state.isJoining);
 
   const activeChat = chat ?? conversations.find((c) => c._id === activeConversationId);
 
@@ -56,7 +62,17 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
     !activeConversationId ||
     !otherId ||
     isDirectBlocked ||
-    Boolean(currentCall || incomingCall);
+    Boolean(currentCall || incomingCall || activeGroupCall || incomingGroupCall);
+  const groupCallForActiveChat =
+    activeChat.type === "group" &&
+    (activeGroupCall?.conversationId === activeChat._id ||
+      incomingGroupCall?.conversationId === activeChat._id);
+  const isGroupCallUnavailable =
+    activeChat.type !== "group" ||
+    !activeConversationId ||
+    Boolean(currentCall || incomingCall) ||
+    (Boolean(activeGroupCall || incomingGroupCall) && !groupCallForActiveChat) ||
+    isGroupJoining;
 
   if (activeChat.type === "direct" && (!user || !otherUser)) {
     return null;
@@ -197,15 +213,42 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
         </div>
 
         {activeChat.type === "group" && (
-          <GroupInfoDialog
-            chat={activeChat}
-            trigger={
-              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                <Settings className="size-4" />
-                <span className="sr-only">Cài đặt nhóm</span>
-              </Button>
-            }
-          />
+          <>
+            <Button
+              type="button"
+              variant={groupCallForActiveChat ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              disabled={isGroupCallUnavailable}
+              onClick={() => {
+                if (!activeConversationId) return;
+                if (incomingGroupCall?.conversationId === activeChat._id) {
+                  acceptGroupCall(incomingGroupCall.callId);
+                  return;
+                }
+                if (!activeGroupCall) {
+                  startGroupVoiceCall(activeConversationId);
+                }
+              }}
+              title={
+                groupCallForActiveChat ? "Tham gia cuộc gọi" : "Gọi thoại nhóm"
+              }
+            >
+              <Phone className="size-4" />
+              <span className="sr-only">
+                {groupCallForActiveChat ? "Tham gia cuộc gọi" : "Gọi thoại nhóm"}
+              </span>
+            </Button>
+            <GroupInfoDialog
+              chat={activeChat}
+              trigger={
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                  <Settings className="size-4" />
+                  <span className="sr-only">Cài đặt nhóm</span>
+                </Button>
+              }
+            />
+          </>
         )}
 
         {activeChat.type === "direct" && (
