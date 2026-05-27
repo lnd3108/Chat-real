@@ -17,6 +17,7 @@ class GroupWebRTCMeshService {
   private localStream: MediaStream | null = null;
   private peerConnectionsByUserId = new Map<string, RTCPeerConnection>();
   private pendingIceCandidatesByUserId = new Map<string, RTCIceCandidateInit[]>();
+  private offeredPeerIds = new Set<string>();
   private emitSignal: EmitSignal | null = null;
   private callId: string | null = null;
   private callbacks: GroupWebRTCCallbacks | null = null;
@@ -26,6 +27,9 @@ class GroupWebRTCMeshService {
   }
 
   setSignalContext(callId: string, emitSignal: EmitSignal) {
+    if (this.callId && this.callId !== callId) {
+      this.cleanupAllPeers();
+    }
     this.callId = callId;
     this.emitSignal = emitSignal;
   }
@@ -86,17 +90,27 @@ class GroupWebRTCMeshService {
   }
 
   async createOfferForPeer(remoteUserId: string) {
+    if (this.offeredPeerIds.has(remoteUserId)) return;
+    this.offeredPeerIds.add(remoteUserId);
+
     const peerConnection = this.createPeerConnection(remoteUserId);
 
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
+    try {
+      if (peerConnection.signalingState !== "stable") return;
 
-    if (!this.callId || !this.emitSignal) return;
-    this.emitSignal(GROUP_CALL_SOCKET_EVENTS.OFFER, {
-      callId: this.callId,
-      targetUserId: remoteUserId,
-      offer,
-    });
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      if (!this.callId || !this.emitSignal) return;
+      this.emitSignal(GROUP_CALL_SOCKET_EVENTS.OFFER, {
+        callId: this.callId,
+        targetUserId: remoteUserId,
+        offer,
+      });
+    } catch (error) {
+      this.offeredPeerIds.delete(remoteUserId);
+      throw error;
+    }
   }
 
   async createOffersForPeers(remoteUserIds: string[]) {
@@ -163,6 +177,7 @@ class GroupWebRTCMeshService {
     }
     this.peerConnectionsByUserId.delete(userId);
     this.pendingIceCandidatesByUserId.delete(userId);
+    this.offeredPeerIds.delete(userId);
     this.callbacks?.setPeerConnection(userId, null);
     this.callbacks?.setRemoteStream(userId, null);
   }
@@ -177,6 +192,7 @@ class GroupWebRTCMeshService {
     this.callId = null;
     this.emitSignal = null;
     this.pendingIceCandidatesByUserId.clear();
+    this.offeredPeerIds.clear();
     this.callbacks?.setLocalStream(null);
   }
 

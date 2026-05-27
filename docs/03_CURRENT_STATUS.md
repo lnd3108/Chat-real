@@ -1,5 +1,99 @@
 # Trạng thái hiện tại
 
+## Review và hardening group voice call
+
+Đã review backend/frontend liên quan đến group voice call sau khi backend Calls Module và frontend WebRTC mesh đã được implement. Phạm vi giữ đúng MVP: chỉ group voice call, không group video call, không SFU, không truyền audio qua backend.
+
+### Files changed
+
+- `backend/src/modules/calls/application/call.service.js`
+- `backend/src/shared/domain/constants/socket-events.js`
+- `backend/src/tests/calls/call.service.test.js`
+- `frontend/src/features/chat/calls/group/group-call.constants.ts`
+- `frontend/src/features/chat/calls/group/group-call.socket.ts`
+- `frontend/src/features/chat/calls/group/group-call.store.ts`
+- `frontend/src/features/chat/calls/group/group-webrtc-mesh.service.ts`
+- `frontend/src/features/chat/components/sidebar/app-sidebar.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Verified cases
+
+- Backend group call vẫn nằm trong Calls Module, không đưa audio/SDP/ICE candidate vào chat/message/socket core.
+- `CallSession` hỗ trợ `callMode = group`, `callType = voice`, participant statuses, `hostId`, `initiatorId`, `acceptedAt`, `endedAt` và duration MM:SS cho call history.
+- `group-call:start` validate group conversation, membership, busy state, active group call và reject group video call.
+- `group-call:join` validate membership, live call state, participant limit `MAX_GROUP_CALL_PARTICIPANTS = 4` và busy state.
+- `group-call:leave` và disconnect cleanup participant state, active user map, peer signaling permission và scheduled group end.
+- Stale/ghost group call có 0 live participant được cleanup trước khi tạo call mới.
+- Signaling group chỉ relay giữa participant đã `joined`; target chưa joined hoặc user ngoài call bị chặn.
+- Frontend group call dùng `getUserMedia({ audio: true, video: false })`, mỗi remote user chỉ có một `RTCPeerConnection`, queue ICE candidate theo `fromUserId`, không render local stream thành remote audio.
+- Frontend đã hardening để `handleJoinedState` idempotent và không tạo nhiều offer cho cùng peer khi socket event và ack đến trùng.
+- Cleanup frontend dừng ringtone, clear interval, stop local tracks, close peer connection, xóa remote stream/audio element khi leave/end/error/unregister.
+- Direct call socket/store vẫn dùng event `call:*`; group call dùng event `group-call:*`, không đổi event direct cũ.
+
+### Failed/partial cases
+
+- Chưa chạy manual E2E 3 tài khoản/3 browser thật để xác nhận nghe audio A/B/C, mic tắt thật qua browser UI, reload tab trong call và NAT/firewall thực tế.
+- `npm run lint` toàn frontend chưa đạt do lint debt có sẵn ngoài phạm vi group call (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification). `npm run build` frontend đạt.
+- Không start dev server trong phiên này vì verification cần thiết đã chạy bằng test/build; không có server process nào được spawn cần stop.
+
+### Known limitations
+
+- Active call registry vẫn là in-memory map, chưa phù hợp chạy nhiều backend instance nếu không có shared store.
+- WebRTC mesh chỉ phù hợp nhóm nhỏ 3-4 người; số peer connection tăng theo `n * (n - 1) / 2`.
+- MVP cần TURN server để ổn định hơn qua NAT/firewall khó.
+- Khi scale production nên nghiên cứu SFU như LiveKit, mediasoup hoặc Janus.
+- Group video call không nên làm bằng mesh nếu muốn scale tốt.
+
+### Next recommended task
+
+- Chạy manual QA E2E với 3 browser/account thật cho start/join/leave/decline/missed/busy/reload, đồng thời kiểm tra direct voice/video call và message realtime trong cùng phiên.
+
+## Fix ghost/stale group voice call
+
+Đã sửa lỗi group voice call bị kẹt trạng thái khi conversation hiển thị 0 người đang gọi nhưng backend vẫn chặn tạo cuộc gọi mới.
+
+### Files changed
+
+- `backend/src/modules/calls/application/call.service.js`
+- `backend/src/shared/domain/constants/socket-events.js`
+- `backend/src/tests/calls/call.service.test.js`
+- `frontend/src/features/chat/calls/group/group-call.constants.ts`
+- `frontend/src/features/chat/calls/group/group-call.socket.ts`
+- `frontend/src/features/chat/calls/group/group-call.store.ts`
+- `frontend/src/features/chat/components/sidebar/app-sidebar.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Verified cases
+
+- Backend start group call không còn chỉ tin `activeGroupCallsByConversationId` hoặc status `ringing/active`.
+- Nếu live group call có `participants` rỗng, hoặc không còn participant `joined/ringing`, backend coi là stale call, set `status = ended`, set `endedAt`, cleanup active maps/timers và emit `group-call-cleaned`.
+- Nếu call còn participant live thật, backend vẫn chặn tạo call mới với message `Nhóm đang có cuộc gọi thoại.`
+- Frontend nghe `group-call-cleaned` và cleanup `activeGroupCall`, participants, modal/panel, ringtone, peer connections và local tracks.
+- Toast lỗi group call dùng toast id theo error code để giảm duplicate toast `Nhóm đang có cuộc gọi thoại.`
+- Sidebar header không còn đặt Radix `Switch` bên trong `SidebarMenuButton` render ra `<button>`; chuyển row đó sang `<div>` đúng DOM.
+
+### Test results
+
+- `npm test -- src/tests/calls/call.service.test.js`: đạt, 12 tests.
+- `npm test` trong `backend`: đạt, 9 suites / 41 tests.
+- Scoped ESLint frontend cho group call/sidebar/integration files: đạt.
+- `npm run build` trong `frontend`: đạt.
+- `git diff --check`: đạt, chỉ có warning line ending LF -> CRLF.
+
+### Failed/partial cases
+
+- Chưa kiểm thử thủ công bằng DB thật cho case A start/end rồi gọi lại, reload tab khi đang gọi, B decline khi không còn participant, và console browser hết warning button-in-button.
+- Không tìm thấy field `conversation.activeCallId` trong schema hiện tại; cleanup có guard nếu field này tồn tại nhưng không thêm field mới ngoài phạm vi fix.
+
+### Known limitations
+
+- Active group call state vẫn là in-memory, chưa phù hợp multi-instance nếu không có shared store.
+- MVP WebRTC mesh chỉ phù hợp nhóm nhỏ 3-4 người; production cần TURN và nên nghiên cứu SFU nếu mở rộng.
+
+### Next recommended task
+
+- Chạy manual QA 2-3 browser với MongoDB thật để xác nhận DB `CallSession.status = ended`, không còn ghost busy sau reload/decline, và console không còn DOM nesting warning.
+
 ## Group voice call trong group conversation
 
 Đã triển khai backend MVP cho gọi thoại nhóm trong group conversation bằng WebRTC mesh. Backend chỉ dùng Socket.IO để signaling và quản lý trạng thái; không truyền audio, không lưu SDP/ICE candidate, không triển khai group video call và không dùng SFU ở MVP.

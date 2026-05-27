@@ -126,7 +126,7 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
             remoteStreamsByUserId: {},
             peerConnectionsByUserId: new Map(),
           });
-          toast.error(message);
+          toast.error(message, { id: response.error.code ?? "group-call-error" });
           return;
         }
 
@@ -342,6 +342,21 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
       const joinedAt = new Date().toISOString();
       const callId = getCallId(call);
       if (!callId) return;
+
+      const currentState = get();
+      if (
+        currentState.isConnected &&
+        getCallId(currentState.activeGroupCall) === callId
+      ) {
+        set({
+          activeGroupCall: call,
+          incomingGroupCall: null,
+          participants: normalizeParticipants(call.participants),
+          isJoining: false,
+          error: null,
+        });
+        return;
+      }
 
       groupWebRTCMeshService.setSignalContext(callId, (eventName, payload) => {
         get().socket?.emit(eventName, payload);

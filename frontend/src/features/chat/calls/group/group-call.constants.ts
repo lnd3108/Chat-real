@@ -15,6 +15,7 @@ export const GROUP_CALL_SOCKET_EVENTS = {
   PARTICIPANT_DECLINED: "group-call:participant-declined",
   PARTICIPANT_MISSED: "group-call:participant-missed",
   ENDED: "group-call:ended",
+  CLEANED: "group-call-cleaned",
   STATE: "group-call:state",
   BUSY: "group-call:busy",
   ERROR: "group-call:error",

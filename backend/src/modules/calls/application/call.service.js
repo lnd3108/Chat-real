@@ -69,6 +69,13 @@ const getJoinedParticipants = (callSession) =>
     (participant) => participant.status === CALL_PARTICIPANT_STATUS.JOINED,
   );
 
+const getLiveParticipants = (callSession) =>
+  (callSession.participants ?? []).filter((participant) =>
+    [CALL_PARTICIPANT_STATUS.JOINED, CALL_PARTICIPANT_STATUS.RINGING].includes(
+      participant.status,
+    ),
+  );
+
 const getJoinedParticipantIds = (callSession) =>
   getJoinedParticipants(callSession).map((participant) => toIdString(participant.userId));
 
@@ -539,6 +546,77 @@ const emitToGroupConversationParticipants = (conversation, eventName, payload) =
   });
 };
 
+const clearConversationActiveCallIfPresent = async (conversation, callSessionId) => {
+  if (!conversation || !("activeCallId" in conversation)) return;
+  const currentActiveCallId = toIdString(conversation.activeCallId);
+  if (currentActiveCallId && currentActiveCallId !== toIdString(callSessionId)) return;
+  conversation.activeCallId = null;
+  await conversation.save();
+};
+
+const cleanupStaleGroupCall = async ({
+  callSession,
+  conversation,
+  reason = "stale_group_call",
+}) => {
+  if (!callSession || !isGroupCall(callSession)) return null;
+  if (!groupLiveStatuses.has(callSession.status)) return null;
+  if (getLiveParticipants(callSession).length > 0) return null;
+
+  const endedAt = new Date();
+  callSession.status = CALL_STATUSES.ENDED;
+  callSession.endedAt = callSession.endedAt ?? endedAt;
+  callSession.endReason = callSession.endReason ?? reason;
+  callSession.durationSeconds = callSession.acceptedAt
+    ? calculateDurationSeconds(callSession, endedAt)
+    : 0;
+
+  try {
+    await callSession.save();
+    await clearConversationActiveCallIfPresent(conversation, callSession._id);
+  } finally {
+    cleanupActiveCall(callSession);
+  }
+
+  const payload = buildGroupCallState(callSession);
+  if (conversation) {
+    emitToGroupConversationParticipants(conversation, CALL_SOCKET_EVENTS.GROUP_ENDED, payload);
+    emitToGroupConversationParticipants(conversation, CALL_SOCKET_EVENTS.GROUP_CLEANED, payload);
+  }
+
+  return payload;
+};
+
+const isStaleGroupCall = (callSession) =>
+  isGroupCall(callSession) &&
+  groupLiveStatuses.has(callSession.status) &&
+  getLiveParticipants(callSession).length === 0;
+
+const cleanupStaleActiveCallForUser = async ({ userId, fallbackConversation = null }) => {
+  const activeCallId = getActiveCallIdForUser(userId);
+  if (!activeCallId) return false;
+
+  const callSession = await CallSession.findById(activeCallId);
+  if (!callSession) {
+    activeCallsByUser.delete(toIdString(userId));
+    activeCallIds.delete(activeCallId);
+    clearRingingTimeout(activeCallId);
+    clearGroupParticipantTimeouts(activeCallId);
+    clearGroupEndGraceTimeout(activeCallId);
+    return true;
+  }
+
+  if (!isStaleGroupCall(callSession)) return false;
+
+  const conversation =
+    fallbackConversation && toIdString(fallbackConversation._id) === toIdString(callSession.conversationId)
+      ? fallbackConversation
+      : await Conversation.findById(callSession.conversationId);
+
+  await cleanupStaleGroupCall({ callSession, conversation });
+  return true;
+};
+
 const emitToJoinedGroupParticipants = (callSession, eventName, payload) => {
   getJoinedParticipantIds(callSession).forEach((userId) => {
     emitToUser(userId, eventName, payload);
@@ -729,6 +807,14 @@ const scheduleGroupEndIfNeeded = ({ callSession, conversation }) => {
 };
 
 const maybeEndUnansweredGroupCall = async ({ callSession, conversation }) => {
+  if (isStaleGroupCall(callSession)) {
+    return cleanupStaleGroupCall({
+      callSession,
+      conversation,
+      reason: CALL_END_REASONS.MISSED,
+    });
+  }
+
   if (callSession.status !== CALL_STATUSES.RINGING) return null;
 
   const hasPendingInvite = (callSession.participants ?? []).some((participant) =>
@@ -828,6 +914,11 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
     };
   }
 
+  await cleanupStaleActiveCallForUser({
+    userId,
+    fallbackConversation: context.conversation,
+  });
+
   if (isUserBusy(userId)) {
     return {
       error: buildError(CALL_ERROR_CODES.GROUP_USER_BUSY, "Bạn đang trong cuộc gọi khác"),
@@ -835,13 +926,24 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
   }
 
   const normalizedConversationId = toIdString(conversationId);
-  if (activeGroupCallsByConversationId.has(normalizedConversationId)) {
-    return {
-      error: buildError(
-        CALL_ERROR_CODES.GROUP_ALREADY_ACTIVE,
-        "Nhóm đang có cuộc gọi khác",
-      ),
-    };
+  const activeGroupCallId = activeGroupCallsByConversationId.get(normalizedConversationId);
+  if (activeGroupCallId) {
+    const activeGroupCall = await CallSession.findById(activeGroupCallId);
+    if (activeGroupCall && isStaleGroupCall(activeGroupCall)) {
+      await cleanupStaleGroupCall({
+        callSession: activeGroupCall,
+        conversation: context.conversation,
+      });
+    } else if (activeGroupCall && groupLiveStatuses.has(activeGroupCall.status)) {
+      return {
+        error: buildError(
+          CALL_ERROR_CODES.GROUP_ALREADY_ACTIVE,
+          "Nhóm đang có cuộc gọi thoại.",
+        ),
+      };
+    } else {
+      activeGroupCallsByConversationId.delete(normalizedConversationId);
+    }
   }
 
   const existingLiveCall = await CallSession.findOne?.({
@@ -850,13 +952,23 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
     status: { $in: Array.from(groupLiveStatuses) },
   });
   if (existingLiveCall) {
-    activeGroupCallsByConversationId.set(normalizedConversationId, toIdString(existingLiveCall._id));
-    return {
-      error: buildError(
-        CALL_ERROR_CODES.GROUP_ALREADY_ACTIVE,
-        "Nhóm đang có cuộc gọi khác",
-      ),
-    };
+    if (isStaleGroupCall(existingLiveCall)) {
+      await cleanupStaleGroupCall({
+        callSession: existingLiveCall,
+        conversation: context.conversation,
+      });
+    } else {
+      activeGroupCallsByConversationId.set(
+        normalizedConversationId,
+        toIdString(existingLiveCall._id),
+      );
+      return {
+        error: buildError(
+          CALL_ERROR_CODES.GROUP_ALREADY_ACTIVE,
+          "Nhóm đang có cuộc gọi thoại.",
+        ),
+      };
+    }
   }
 
   const now = new Date();
@@ -1471,4 +1583,18 @@ export const emitResultErrorToUser = ({ userId, error, callSessionId }) => {
   }
 
   emitCallError(userId, error, { callSessionId: callSessionId ?? null });
+};
+
+export const resetCallServiceStateForTests = () => {
+  timeoutByCallId.forEach((timeout) => clearTimeout(timeout));
+  groupInviteTimeoutsByCallId.forEach((timeouts) => {
+    timeouts.forEach((timeout) => clearTimeout(timeout));
+  });
+  groupEndGraceTimeoutByCallId.forEach((timeout) => clearTimeout(timeout));
+  activeCallsByUser.clear();
+  activeCallIds.clear();
+  timeoutByCallId.clear();
+  activeGroupCallsByConversationId.clear();
+  groupInviteTimeoutsByCallId.clear();
+  groupEndGraceTimeoutByCallId.clear();
 };

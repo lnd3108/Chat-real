@@ -85,10 +85,13 @@ jest.unstable_mockModule("../../shared/infrastructure/realtime/user-presence.js"
 const {
   acceptCall,
   endCall,
+  handleUserDisconnectedFromCalls,
   inviteCall,
   joinGroupVoiceCall,
+  leaveGroupVoiceCall,
   rejectCall,
   relayGroupCallSignal,
+  resetCallServiceStateForTests,
   startGroupVoiceCall,
 } = await import("../../modules/calls/application/call.service.js");
 
@@ -96,6 +99,7 @@ describe("call service callType", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    resetCallServiceStateForTests();
     mockConversationFindById.mockResolvedValue({
       _id: "507f1f77bcf86cd799439011",
       type: "direct",
@@ -348,6 +352,7 @@ describe("group voice call service", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    resetCallServiceStateForTests();
     mockConversationFindById.mockResolvedValue(buildGroupConversation());
     mockUserFindById.mockImplementation(() => ({
       select: jest.fn().mockResolvedValue({
@@ -400,6 +405,42 @@ describe("group voice call service", () => {
         callMode: "group",
         callType: "voice",
       }),
+    );
+  });
+
+  it("cleans stale group calls before starting a new call", async () => {
+    const staleCallSession = buildGroupCallSession({
+      _id: "507f1f77bcf86cd799439109",
+      status: "ringing",
+      participants: [],
+      save: jest.fn().mockImplementation(function save() {
+        return Promise.resolve(this);
+      }),
+    });
+    mockCallSessionFindOne.mockResolvedValueOnce(staleCallSession);
+    mockCallSessionCreate.mockImplementation(async (payload) => ({
+      _id: callSessionId,
+      ...payload,
+      save: jest.fn(),
+      toObject() {
+        return this;
+      },
+    }));
+
+    const result = await startGroupVoiceCall({
+      userId: hostId,
+      conversationId,
+      callType: "voice",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(staleCallSession.status).toBe("ended");
+    expect(staleCallSession.endedAt).toBeInstanceOf(Date);
+    expect(mockCallSessionCreate).toHaveBeenCalled();
+    expect(mockEmitToUser).toHaveBeenCalledWith(
+      hostId,
+      "group-call-cleaned",
+      expect.objectContaining({ callSessionId: staleCallSession._id }),
     );
   });
 
@@ -521,5 +562,59 @@ describe("group voice call service", () => {
     expect(result.error).toEqual(
       expect.objectContaining({ code: "GROUP_CALL_SIGNALING_FORBIDDEN" }),
     );
+  });
+
+  it("cleans user busy state and blocks signaling after a participant leaves", async () => {
+    const callSession = buildGroupCallSession();
+    mockCallSessionFindById.mockResolvedValue(callSession);
+
+    await joinGroupVoiceCall({ userId: memberId, callSessionId });
+
+    const leaveResult = await leaveGroupVoiceCall({
+      userId: memberId,
+      callSessionId,
+    });
+
+    expect(leaveResult.error).toBeUndefined();
+    expect(callSession.participants.find((p) => p.userId === memberId).status).toBe(
+      "left",
+    );
+    expect(callSession.participants.find((p) => p.userId === memberId).leftAt).toBeInstanceOf(
+      Date,
+    );
+
+    const relayResult = await relayGroupCallSignal({
+      userId: memberId,
+      callSessionId,
+      targetUserId: hostId,
+      eventName: "group-call:offer",
+      signalPayload: { type: "offer" },
+    });
+
+    expect(relayResult.error).toEqual(
+      expect.objectContaining({ code: "GROUP_CALL_SIGNALING_FORBIDDEN" }),
+    );
+  });
+
+  it("disconnect cleanup marks the participant left and clears active call state", async () => {
+    const callSession = buildGroupCallSession();
+    mockCallSessionFindById.mockResolvedValue(callSession);
+
+    await joinGroupVoiceCall({ userId: memberId, callSessionId });
+
+    const result = await handleUserDisconnectedFromCalls(memberId);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        callSessionId,
+        userId: memberId,
+      }),
+    );
+    expect(callSession.participants.find((p) => p.userId === memberId).status).toBe(
+      "left",
+    );
+
+    const secondResult = await handleUserDisconnectedFromCalls(memberId);
+    expect(secondResult).toBeNull();
   });
 });

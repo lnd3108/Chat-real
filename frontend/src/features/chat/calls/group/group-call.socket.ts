@@ -61,6 +61,7 @@ export class GroupCallSocketHandler {
       this.handleParticipantMissed,
     );
     socket.on(GROUP_CALL_SOCKET_EVENTS.ENDED, this.handleEnded);
+    socket.on(GROUP_CALL_SOCKET_EVENTS.CLEANED, this.handleCleaned);
     socket.on(GROUP_CALL_SOCKET_EVENTS.OFFER, this.handleOffer);
     socket.on(GROUP_CALL_SOCKET_EVENTS.ANSWER, this.handleAnswer);
     socket.on(GROUP_CALL_SOCKET_EVENTS.ICE_CANDIDATE, this.handleIceCandidate);
@@ -86,6 +87,7 @@ export class GroupCallSocketHandler {
       this.handleParticipantMissed,
     );
     socket.off(GROUP_CALL_SOCKET_EVENTS.ENDED, this.handleEnded);
+    socket.off(GROUP_CALL_SOCKET_EVENTS.CLEANED, this.handleCleaned);
     socket.off(GROUP_CALL_SOCKET_EVENTS.OFFER, this.handleOffer);
     socket.off(GROUP_CALL_SOCKET_EVENTS.ANSWER, this.handleAnswer);
     socket.off(GROUP_CALL_SOCKET_EVENTS.ICE_CANDIDATE, this.handleIceCandidate);
@@ -177,6 +179,11 @@ export class GroupCallSocketHandler {
     toast.info("Cuộc gọi thoại nhóm đã kết thúc.");
   };
 
+  private handleCleaned = () => {
+    stopRingtone();
+    useGroupCallStore.getState().clearGroupCall();
+  };
+
   private handleOffer = (
     signal: GroupCallSignalPayload<RTCSessionDescriptionInit>,
   ) => {
@@ -224,7 +231,7 @@ export class GroupCallSocketHandler {
     const message = getErrorMessage(payload);
     useGroupCallStore.getState().clearGroupCall();
     useGroupCallStore.getState().setError(message);
-    toast.error(message);
+    toast.error(message, { id: payload.code ?? "group-call-busy" });
   };
 
   private handleError = (payload: GroupCallErrorPayload) => {
@@ -234,6 +241,6 @@ export class GroupCallSocketHandler {
       useGroupCallStore.getState().clearGroupCall();
     }
     useGroupCallStore.getState().setError(message);
-    toast.error(message);
+    toast.error(message, { id: payload.code ?? "group-call-error" });
   };
 }

@@ -14,7 +14,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/ui/sidebar";
 import { useSoundSettings } from "@/features/settings/hooks/useSoundSettings";
@@ -47,9 +46,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="border-b border-sidebar-border/70">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              className="app-hero-gradient h-auto min-h-16 cursor-default p-3 hover:text-white"
+            <div
+              className="app-hero-gradient flex h-auto min-h-16 w-full items-center rounded-md p-3 text-sm text-white"
             >
               <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
                 <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-white sm:text-xl">
@@ -85,7 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </div>
               </div>
-            </SidebarMenuButton>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
