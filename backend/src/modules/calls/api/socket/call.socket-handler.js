@@ -14,6 +14,7 @@ import {
   relayCallSignal,
   startGroupVoiceCall,
   syncGroupVoiceCallState,
+  updateGroupCallMediaState,
 } from "../../application/call.service.js";
 
 const getCallSessionId = (payload) => payload?.callSessionId ?? payload?.id ?? null;
@@ -190,6 +191,20 @@ export const registerCallSocketHandlers = (socket) => {
       if (!result.error) {
         socket.emit(CALL_SOCKET_EVENTS.GROUP_STATE, result.payload);
       }
+      emitCommandError({ socket, result, callSessionId });
+      ackResult(ack, result);
+    }, ack);
+  });
+
+  socket.on(CALL_SOCKET_EVENTS.GROUP_MEDIA_STATE, (payload = {}, ack) => {
+    handleCommand(socket, async () => {
+      const callSessionId = getGroupCallSessionId(payload);
+      const result = await updateGroupCallMediaState({
+        userId,
+        callSessionId,
+        audioEnabled: payload.audioEnabled,
+        videoEnabled: payload.videoEnabled,
+      });
       emitCommandError({ socket, result, callSessionId });
       ackResult(ack, result);
     }, ack);

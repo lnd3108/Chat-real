@@ -60,6 +60,16 @@ const callParticipantSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    mediaState: {
+      audioEnabled: {
+        type: Boolean,
+        default: true,
+      },
+      videoEnabled: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   { _id: false },
 );

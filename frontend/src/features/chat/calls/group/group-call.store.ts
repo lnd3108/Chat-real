@@ -3,12 +3,15 @@ import { toast } from "sonner";
 import type { Socket } from "socket.io-client";
 import { stopRingtone } from "@/features/chat/calls/call-ringtone.service";
 import {
+  GROUP_CALL_CAMERA_ERROR,
   GROUP_CALL_ERROR_MESSAGES,
   GROUP_CALL_MIC_ERROR,
   GROUP_CALL_SOCKET_EVENTS,
 } from "@/features/chat/calls/group/group-call.constants";
 import type {
+  GroupCallMediaState,
   GroupCallParticipant,
+  GroupCallType,
   GroupCallSessionPayload,
   GroupCallState,
 } from "@/features/chat/calls/group/group-call.types";
@@ -39,6 +42,17 @@ const normalizeParticipants = (
   (participants ?? []).map((participant) => ({
     ...participant,
     userId: participant.userId?.toString(),
+    audioEnabled:
+      participant.audioEnabled ?? participant.mediaState?.audioEnabled ?? true,
+    videoEnabled:
+      participant.videoEnabled ?? participant.mediaState?.videoEnabled ?? false,
+    isMuted:
+      participant.isMuted ??
+      !(
+        participant.audioEnabled ??
+        participant.mediaState?.audioEnabled ??
+        true
+      ),
   }));
 
 const getJoinedPeerIdsBeforeSelf = (
@@ -135,6 +149,77 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
     );
   };
 
+  const emitMediaState = (mediaState: GroupCallMediaState) => {
+    const callId = getCallId(get().activeGroupCall);
+    if (!callId) return;
+    get().socket?.emit(GROUP_CALL_SOCKET_EVENTS.MEDIA_STATE, {
+      callId,
+      ...mediaState,
+    });
+  };
+
+  const startGroupCall = (conversationId: string, callType: GroupCallType) => {
+    if (useCallStore.getState().currentCall || useCallStore.getState().incomingCall) {
+      toast.error("Bạn đang trong cuộc gọi khác.");
+      return;
+    }
+    if (get().activeGroupCall || get().incomingGroupCall) {
+      toast.error("Bạn đang trong cuộc gọi nhóm khác.");
+      return;
+    }
+
+    set({ isJoining: true, error: null });
+    void groupWebRTCMeshService
+      .initLocalMedia(callType)
+      .then(() => {
+        emitCommand(
+          GROUP_CALL_SOCKET_EVENTS.START,
+          { conversationId, callType },
+          (call) => {
+            if (!call) return;
+            get().handleJoinedState(call);
+          },
+        );
+      })
+      .catch(() => {
+        groupWebRTCMeshService.cleanupAllPeers();
+        const message =
+          callType === "video" ? GROUP_CALL_CAMERA_ERROR : GROUP_CALL_MIC_ERROR;
+        set({ isJoining: false, error: message });
+        toast.error(message);
+      });
+  };
+
+  const acceptGroupCallByType = (callId?: string, requestedType?: GroupCallType) => {
+    const incomingCall = get().incomingGroupCall;
+    const targetCallId = callId ?? getCallId(incomingCall);
+    if (!targetCallId) return;
+
+    if (useCallStore.getState().currentCall || useCallStore.getState().incomingCall) {
+      toast.error("Bạn đang trong cuộc gọi khác.");
+      return;
+    }
+
+    const callType = requestedType ?? incomingCall?.callType ?? "voice";
+    stopRingtone();
+    set({ isJoining: true, error: null });
+    void groupWebRTCMeshService
+      .initLocalMedia(callType)
+      .then(() => {
+        emitCommand(GROUP_CALL_SOCKET_EVENTS.JOIN, { callId: targetCallId }, (call) => {
+          if (!call) return;
+          get().handleJoinedState(call);
+        });
+      })
+      .catch(() => {
+        groupWebRTCMeshService.cleanupAllPeers();
+        const message =
+          callType === "video" ? GROUP_CALL_CAMERA_ERROR : GROUP_CALL_MIC_ERROR;
+        set({ isJoining: false, error: message });
+        toast.error(message);
+      });
+  };
+
   return {
     socket: null,
     activeGroupCall: null,
@@ -144,6 +229,7 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
     remoteStreamsByUserId: {},
     peerConnectionsByUserId: new Map(),
     isMuted: false,
+    isCameraEnabled: true,
     isJoining: false,
     isConnected: false,
     error: null,
@@ -183,6 +269,8 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
         });
     },
 
+    startGroupVideoCall: (conversationId: string) => startGroupCall(conversationId, "video"),
+
     acceptGroupCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().incomingGroupCall);
       if (!targetCallId) return;
@@ -208,6 +296,8 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
           toast.error(GROUP_CALL_MIC_ERROR);
         });
     },
+
+    acceptGroupVideoCall: (callId?: string) => acceptGroupCallByType(callId, "video"),
 
     declineGroupCall: (callId?: string) => {
       const targetCallId = callId ?? getCallId(get().incomingGroupCall);
@@ -238,7 +328,18 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
 
     toggleMute: () => {
       const isMuted = groupWebRTCMeshService.toggleMic();
+      const mediaState = groupWebRTCMeshService.getMediaState();
       set({ isMuted });
+      get().updateParticipantMediaState(useAuthStore.getState().user?._id ?? "", mediaState);
+      emitMediaState(mediaState);
+    },
+
+    toggleCamera: () => {
+      const isCameraEnabled = groupWebRTCMeshService.toggleCamera();
+      const mediaState = groupWebRTCMeshService.getMediaState();
+      set({ isCameraEnabled });
+      get().updateParticipantMediaState(useAuthStore.getState().user?._id ?? "", mediaState);
+      emitMediaState(mediaState);
     },
 
     clearGroupCall: () => {
@@ -253,6 +354,7 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
         remoteStreamsByUserId: {},
         peerConnectionsByUserId: new Map(),
         isMuted: false,
+        isCameraEnabled: true,
         isJoining: false,
         isConnected: false,
         error: null,
@@ -287,6 +389,39 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
             : participant,
         ),
       })),
+
+    updateParticipantMediaState: (userId, mediaState) => {
+      if (!userId) return;
+      set((state) => ({
+        participants: state.participants.map((participant) =>
+          participant.userId === userId
+            ? {
+                ...participant,
+                mediaState: {
+                  audioEnabled:
+                    mediaState.audioEnabled ??
+                    participant.mediaState?.audioEnabled ??
+                    participant.audioEnabled ??
+                    true,
+                  videoEnabled:
+                    mediaState.videoEnabled ??
+                    participant.mediaState?.videoEnabled ??
+                    participant.videoEnabled ??
+                    false,
+                },
+                audioEnabled:
+                  mediaState.audioEnabled ?? participant.audioEnabled ?? true,
+                videoEnabled:
+                  mediaState.videoEnabled ?? participant.videoEnabled ?? false,
+                isMuted:
+                  mediaState.audioEnabled === undefined
+                    ? participant.isMuted
+                    : !mediaState.audioEnabled,
+              }
+            : participant,
+        ),
+      }));
+    },
 
     upsertParticipants: (participants) => {
       const normalized = normalizeParticipants(participants);
@@ -362,6 +497,7 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
         get().socket?.emit(eventName, payload);
       });
 
+      const mediaState = groupWebRTCMeshService.getMediaState();
       stopRingtone();
       set({
         activeGroupCall: call,
@@ -369,9 +505,16 @@ export const useGroupCallStore = create<GroupCallState>((set, get) => {
         participants: normalizeParticipants(call.participants),
         isJoining: false,
         isConnected: true,
+        isMuted: !mediaState.audioEnabled,
+        isCameraEnabled: call.callType === "video" ? mediaState.videoEnabled : true,
         error: null,
         joinedAt,
       });
+      get().updateParticipantMediaState(
+        useAuthStore.getState().user?._id ?? getLatestJoinedParticipantId(call) ?? "",
+        mediaState,
+      );
+      emitMediaState(mediaState);
       startDurationTimer(
         call.acceptedAt ? new Date(call.acceptedAt).getTime() : Date.now(),
       );

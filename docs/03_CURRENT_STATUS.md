@@ -1,5 +1,175 @@
 # Trạng thái hiện tại
 
+## Review và hardening group video call
+
+Đã review backend/frontend cho group video call sau khi Calls Module và Group Video UI/WebRTC mesh được triển khai. Phạm vi giữ đúng MVP: WebRTC mesh P2P, Socket.IO chỉ signaling/state, không SFU, không truyền audio/video qua backend.
+
+### Files changed
+
+- `backend/src/modules/calls/application/call.service.js`
+- `frontend/src/features/chat/calls/group/group-call.socket.ts`
+- `docs/03_CURRENT_STATUS.md`
+
+### Verified cases
+
+- Backend Calls Module vẫn độc lập; direct `call:*` events không bị đổi.
+- `CallSession` hỗ trợ `callMode = group`, `callType = video`, participant statuses và `participants[].mediaState`.
+- `group-call:start` dùng group conversation, membership, busy state, active group call guard và callType `voice|video`; direct conversation vẫn bị reject khỏi group call flow.
+- `group-call:join` kiểm tra membership, busy state, live call state và participant limit theo callType.
+- `group-call:media-state` chỉ cho participant đã joined, update `mediaState` và broadcast `group-call:participant-media-state` cho các joined participant khác.
+- `group-call:leave`, disconnect cleanup, participant timeout và stale active maps được giữ trong Calls Module.
+- Signaling group vẫn chỉ relay giữa participant `joined`; backend không lưu SDP/candidate và không truyền media stream.
+- Frontend group conversation có nút video call nhóm; direct conversation không có group video call UI.
+- Incoming modal video hiển thị tiếng Việt có dấu: `Cuộc gọi video nhóm đến`, `Tham gia`, `Từ chối`.
+- `GroupVideoCallPanel` render group name, duration MM:SS, video grid, local video muted, remote video không muted, avatar fallback, mute/camera/leave/end controls.
+- WebRTC mesh dùng `getUserMedia({ audio: true, video: true })` cho group video, mỗi remote participant một `RTCPeerConnection`, queue ICE theo user và chặn duplicate offer bằng `offeredPeerIds`.
+- Cleanup frontend stop local audio/video tracks, close peer connections, clear remote streams, clear timers và socket unregister cleanup.
+- Group voice panel không render cho `callType = video`; group voice vẫn dùng audio-only path.
+
+### Failed/partial cases
+
+- Chưa chạy manual E2E 3 browser/account thật cho A/B/C thấy video nhau, nghe audio, toggle mic/camera, reload/leave/end và xác nhận camera indicator tắt sau leave.
+- Chưa chạy live socket-client automation với DB/auth thật cho busy/limit/disconnect/signaling target.
+- `npm run lint` toàn frontend vẫn chưa đạt do lint debt có sẵn ngoài phạm vi group call (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification).
+- Không start dev server trong phiên này; verification chạy bằng test/build/lint scoped.
+
+### Known limitations
+
+- MVP dùng WebRTC mesh, chỉ phù hợp nhóm nhỏ 3-4 người.
+- Số peer connection tăng theo `n * (n - 1) / 2`.
+- Group video tốn CPU/bandwidth hơn group voice rất nhiều.
+- Production cần TURN server để ổn định qua NAT/firewall khó.
+- Production nên dùng SFU như LiveKit, mediasoup hoặc Janus nếu muốn scale group video.
+
+### Next recommended task
+
+- Chạy manual QA 3 browser/account thật cho checklist A-J: start/join, media controls, leave/end, decline/missed, busy/limit, reload, direct call regression, group voice regression và chat realtime regression.
+
+## Frontend group video call trong group conversation
+
+Đã triển khai frontend MVP cho group video call trong group conversation, dùng WebRTC mesh P2P giữa client và Socket.IO chỉ để signaling/state. Luồng mới reuse `group-call:*`, không tạo namespace event riêng và không thay đổi direct voice/video call.
+
+### Files changed
+
+- `frontend/src/features/chat/calls/group/group-call.types.ts`
+- `frontend/src/features/chat/calls/group/group-call.constants.ts`
+- `frontend/src/features/chat/calls/group/group-call.store.ts`
+- `frontend/src/features/chat/calls/group/group-call.socket.ts`
+- `frontend/src/features/chat/calls/group/group-webrtc-mesh.service.ts`
+- `frontend/src/features/chat/calls/group/components/GroupIncomingCallModal.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupCallPanel.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupVideoCallPanel.tsx`
+- `frontend/src/features/chat/calls/group/components/GroupVideoTile.tsx`
+- `frontend/src/features/chat/calls/components/CallLayer.tsx`
+- `frontend/src/features/chat/calls/call-format.ts`
+- `frontend/src/features/chat/components/ChatWindowHeader.tsx`
+- `docs/03_CURRENT_STATUS.md`
+
+### Group video UI
+
+- Group conversation header có thêm nút gọi video nhóm, chỉ hiển thị trong group conversation.
+- Direct conversation vẫn chỉ dùng direct voice/video call hiện có.
+- Incoming modal phân biệt voice/video:
+  - `Cuộc gọi video nhóm đến`
+  - `{Tên người gọi} đang bắt đầu cuộc gọi video trong nhóm {Tên nhóm}`
+  - `Tham gia`
+  - `Từ chối`
+- Khi active call có `callType = video`, UI hiển thị `GroupVideoCallPanel` dạng overlay toàn màn hình.
+- Video panel hiển thị tên nhóm, duration MM:SS, grid participant, local tile, remote tile, avatar fallback khi camera tắt/chưa có stream, trạng thái mic/camera, nút bật/tắt mic, bật/tắt camera, rời cuộc gọi và kết thúc cuộc gọi cho host.
+- Group voice call vẫn dùng `GroupCallPanel` cũ; panel voice không render khi callType là video.
+
+### WebRTC mesh flow
+
+- `group-webrtc-mesh.service.ts` hỗ trợ `initLocalMedia(callType)`:
+  - voice: `getUserMedia({ audio: true, video: false })`
+  - video: `getUserMedia({ audio: true, video: true })`
+- Mỗi remote participant có một `RTCPeerConnection` trong `peerConnectionsByUserId`.
+- Local audio/video tracks được add vào mỗi peer connection.
+- `onicecandidate` emit `group-call:ice-candidate` với `targetUserId`.
+- `ontrack` gắn remote stream theo `userId`.
+- Rule chống glare MVP giữ nguyên: người mới join tạo offer đến các participant đã joined trước đó; người đã ở trong call không tự tạo offer ngược.
+- ICE candidate đến sớm được queue theo `fromUserId` rồi flush sau `setRemoteDescription`.
+- `toggleMute()` và `toggleCamera()` bật/tắt track local, sau đó emit `group-call:media-state`.
+- Socket listener `group-call:participant-media-state` cập nhật UI participant mic/camera, backend không điều khiển WebRTC track.
+
+### Cleanup strategy
+
+- `leaveGroupCall`, `endGroupCall`, `group-call:ended`, `group-call:error` và socket unregister đều gọi cleanup local media.
+- Cleanup stop toàn bộ audio/video tracks, close peer connections, clear remote streams, clear pending ICE candidates và reset timers/state.
+- `group-call:participant-left` cleanup peer/remote stream của participant đó.
+- Local video tile luôn `muted` để tránh echo; remote video không muted.
+- Timer chỉ start sau khi join thành công và stop khi clear call.
+
+### Test results
+
+- `npm run build` trong `frontend`: đạt.
+- Scoped ESLint cho group call/video files, `CallLayer`, `ChatWindowHeader`, `call-format`: đạt.
+- `npm run lint` toàn frontend: chưa đạt do lint debt có sẵn ngoài phạm vi group call (`no-explicit-any`, hook deps, purity, unused vars trong admin/auth/chat/friend/notification).
+- Chưa chạy manual QA 3 tài khoản/browser thật cho A start, B/C join, thấy video nhau, toggle mic/camera, leave/end và xác nhận camera/mic tắt thật sau leave.
+
+### Limitation
+
+- MVP dùng WebRTC mesh, chỉ phù hợp nhóm nhỏ 3-4 người.
+- Số peer connection tăng theo `n * (n - 1) / 2`.
+- Production nên dùng TURN để ổn định qua NAT/firewall khó.
+- Khi nhóm lớn hoặc cần group video ổn định hơn, nên nghiên cứu SFU như LiveKit, mediasoup hoặc Janus.
+
+## Backend group video call trong group conversation
+
+Đã mở rộng Calls Module để hỗ trợ group video call trong group conversation bằng cùng luồng `group-call:*` hiện có. Backend vẫn chỉ quản lý trạng thái và relay WebRTC signaling; không truyền audio/video stream, không lưu SDP/ICE candidate vào database và không thêm SFU trong MVP.
+
+### Files changed
+
+- `backend/src/models/CallSession.js`
+- `backend/src/modules/calls/domain/call.constants.js`
+- `backend/src/modules/calls/application/call.service.js`
+- `backend/src/modules/calls/api/socket/call.socket-handler.js`
+- `backend/src/shared/domain/constants/socket-events.js`
+- `backend/src/tests/calls/call.service.test.js`
+- `docs/03_CURRENT_STATUS.md`
+
+### Group video call architecture
+
+- `CallSession.callType` tiếp tục dùng `voice | video`; `callMode = group` phân biệt group call với direct call.
+- Group voice và group video dùng chung lifecycle: `ringing -> active -> ended/failed`.
+- Participant có thêm `mediaState.audioEnabled` và `mediaState.videoEnabled`.
+- `MAX_GROUP_VIDEO_PARTICIPANTS = 4`, tách khỏi limit group voice để có thể chỉnh riêng.
+- `activeCallsByUser` vẫn dùng chung cho direct voice, direct video, group voice và group video, nên một user chỉ ở trong một call tại một thời điểm.
+- Duration group call vẫn tính từ `acceptedAt` khi call active, không tính từ incoming/ringing.
+- Call history group video dùng text tiếng Việt có dấu dạng `Cuộc gọi video nhóm đã kết thúc (MM:SS)`.
+
+### Socket events mới hoặc payload mới
+
+- Reuse client event `group-call:start` với payload `{ conversationId, callType: "video" }`.
+- Reuse `group-call:incoming`, `group-call:join`, `group-call:decline`, `group-call:leave`, `group-call:end`, `group-call:offer`, `group-call:answer`, `group-call:ice-candidate`, `group-call:sync-state`.
+- Thêm client event `group-call:media-state` với payload `{ callId, audioEnabled, videoEnabled }`.
+- Thêm server event `group-call:participant-media-state` để broadcast trạng thái mic/camera của participant đã joined.
+- Signaling vẫn dùng `{ callId, targetUserId, offer|answer|candidate }` và chỉ relay đúng target.
+
+### Validation rules
+
+- `group-call:start` chỉ cho conversation `type = group`, caller thuộc group, caller không busy, group chưa có live group call khác, `callType` phải là `voice` hoặc `video`.
+- Direct conversation bị reject khỏi group call flow bằng `GROUP_CALL_NOT_GROUP_CONVERSATION`.
+- `group-call:join` yêu cầu call tồn tại, `callMode = group`, `callType = voice|video`, user thuộc group, user không busy, call chưa ended và chưa vượt participant limit theo callType.
+- `group-call:leave` yêu cầu user đang joined, mark participant `left`, cleanup busy state và end call nếu còn dưới 2 joined participant.
+- `group-call:end` chỉ host kết thúc toàn bộ call; user thường dùng leave.
+- `group-call:offer|answer|ice-candidate` yêu cầu sender và target đều là participant `joined`.
+- `group-call:media-state` yêu cầu sender là participant `joined`; backend chỉ lưu/broadcast state, không điều khiển WebRTC track.
+
+### Test results
+
+- `node --experimental-vm-modules ./node_modules/jest/bin/jest.js src/tests/calls/call.service.test.js --runInBand`: đạt, 15 tests.
+- `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand`: đạt, 9 suites / 44 tests.
+- Đã test service cho start group video call, incoming payload `callType = video`, participant `mediaState`, media-state broadcast, signaling target validation, participant limit, leave cleanup, disconnect cleanup và regression direct call.
+- Chưa chạy live multi-socket client thật cho start/join/decline/leave/end/busy/disconnect/signaling/media-state vì cần môi trường DB/auth/socket session thực.
+
+### Limitation
+
+- MVP dùng WebRTC mesh, phù hợp nhóm nhỏ 3-4 người.
+- Số kết nối P2P tăng theo `n * (n - 1) / 2`.
+- Production nên có TURN server để ổn định qua NAT/firewall khó.
+- Nếu nhóm lớn hoặc muốn group video ổn định hơn, nên nghiên cứu SFU như LiveKit, mediasoup hoặc Janus.
+
 ## Review và hardening group voice call
 
 Đã review backend/frontend liên quan đến group voice call sau khi backend Calls Module và frontend WebRTC mesh đã được implement. Phạm vi giữ đúng MVP: chỉ group voice call, không group video call, không SFU, không truyền audio qua backend.

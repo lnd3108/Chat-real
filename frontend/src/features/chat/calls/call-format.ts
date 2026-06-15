@@ -19,7 +19,9 @@ export const getCallHistoryLabel = ({
 }) => {
   const label =
     callMode === "group"
-      ? "Cuộc gọi thoại nhóm"
+      ? callType === "video"
+        ? "Cuộc gọi video nhóm"
+        : "Cuộc gọi thoại nhóm"
       : callType === "video"
         ? "Cuộc gọi video"
         : "Cuộc gọi thoại";

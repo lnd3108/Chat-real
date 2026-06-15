@@ -6,6 +6,7 @@ import CallingModal from "@/features/chat/calls/components/CallingModal";
 import IncomingCallModal from "@/features/chat/calls/components/IncomingCallModal";
 import GroupCallPanel from "@/features/chat/calls/group/components/GroupCallPanel";
 import GroupIncomingCallModal from "@/features/chat/calls/group/components/GroupIncomingCallModal";
+import GroupVideoCallPanel from "@/features/chat/calls/group/components/GroupVideoCallPanel";
 import { useGroupCallStore } from "@/features/chat/calls/group/group-call.store";
 
 const CallLayer = () => {
@@ -23,6 +24,7 @@ const CallLayer = () => {
       <CallingModal />
       <ActiveCallPanel />
       <GroupCallPanel />
+      <GroupVideoCallPanel />
     </>
   );
 };

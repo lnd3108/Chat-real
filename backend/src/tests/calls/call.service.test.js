@@ -93,6 +93,7 @@ const {
   relayGroupCallSignal,
   resetCallServiceStateForTests,
   startGroupVoiceCall,
+  updateGroupCallMediaState,
 } = await import("../../modules/calls/application/call.service.js");
 
 describe("call service callType", () => {
@@ -444,17 +445,49 @@ describe("group voice call service", () => {
     );
   });
 
-  it("rejects group video calls", async () => {
+  it("starts a group video call and emits video incoming payload", async () => {
+    mockCallSessionCreate.mockImplementation(async (payload) => ({
+      _id: callSessionId,
+      ...payload,
+      save: jest.fn(),
+      toObject() {
+        return this;
+      },
+    }));
+
     const result = await startGroupVoiceCall({
       userId: hostId,
       conversationId,
       callType: "video",
     });
 
-    expect(result.error).toEqual(
-      expect.objectContaining({ code: "GROUP_CALL_VIDEO_NOT_SUPPORTED" }),
+    expect(result.error).toBeUndefined();
+    expect(mockCallSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        callMode: "group",
+        callType: "video",
+        participants: expect.arrayContaining([
+          expect.objectContaining({
+            userId: hostId,
+            mediaState: { audioEnabled: true, videoEnabled: true },
+          }),
+          expect.objectContaining({
+            userId: memberId,
+            mediaState: { audioEnabled: true, videoEnabled: false },
+          }),
+        ]),
+      }),
     );
-    expect(mockCallSessionCreate).not.toHaveBeenCalled();
+    expect(mockEmitToUser).toHaveBeenCalledWith(
+      memberId,
+      "group-call:incoming",
+      expect.objectContaining({
+        callId: callSessionId,
+        conversationId,
+        callMode: "group",
+        callType: "video",
+      }),
+    );
   });
 
   it("joins a group call, marks it active with two joined participants, and enforces signaling target", async () => {
@@ -561,6 +594,52 @@ describe("group voice call service", () => {
 
     expect(result.error).toEqual(
       expect.objectContaining({ code: "GROUP_CALL_SIGNALING_FORBIDDEN" }),
+    );
+  });
+
+  it("updates and broadcasts group video media state for joined participants", async () => {
+    const callSession = buildGroupCallSession({
+      callType: "video",
+      status: "active",
+      participants: [
+        {
+          userId: hostId,
+          status: "joined",
+          joinedAt: new Date(),
+          durationSeconds: 0,
+          mediaState: { audioEnabled: true, videoEnabled: true },
+        },
+        {
+          userId: memberId,
+          status: "joined",
+          joinedAt: new Date(),
+          durationSeconds: 0,
+          mediaState: { audioEnabled: true, videoEnabled: true },
+        },
+      ],
+    });
+    mockCallSessionFindById.mockResolvedValue(callSession);
+
+    const result = await updateGroupCallMediaState({
+      userId: memberId,
+      callSessionId,
+      audioEnabled: false,
+      videoEnabled: false,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(callSession.participants.find((p) => p.userId === memberId).mediaState).toEqual({
+      audioEnabled: false,
+      videoEnabled: false,
+    });
+    expect(mockEmitToUser).toHaveBeenCalledWith(
+      hostId,
+      "group-call:participant-media-state",
+      expect.objectContaining({
+        userId: memberId,
+        audioEnabled: false,
+        videoEnabled: false,
+      }),
     );
   });
 

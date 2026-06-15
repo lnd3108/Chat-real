@@ -63,7 +63,8 @@ npx artillery run tests/load/socket-test.js
 npx artillery run tests/load/socket-test.yml
 ```
 
-Lệnh Chạy
+```test tải
+```Lệnh Chạy
 cd backend
 npm install
 node scripts/seed-test-users.js
@@ -78,3 +79,4 @@ Cleanup sau test:
 
 cd backend
 node scripts/cleanup-test-data.js
+```

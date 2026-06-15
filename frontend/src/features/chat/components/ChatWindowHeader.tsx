@@ -32,7 +32,9 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
   const currentCall = useCallStore((state) => state.currentCall);
   const incomingCall = useCallStore((state) => state.incomingCall);
   const startGroupVoiceCall = useGroupCallStore((state) => state.startGroupVoiceCall);
+  const startGroupVideoCall = useGroupCallStore((state) => state.startGroupVideoCall);
   const acceptGroupCall = useGroupCallStore((state) => state.acceptGroupCall);
+  const acceptGroupVideoCall = useGroupCallStore((state) => state.acceptGroupVideoCall);
   const activeGroupCall = useGroupCallStore((state) => state.activeGroupCall);
   const incomingGroupCall = useGroupCallStore((state) => state.incomingGroupCall);
   const isGroupJoining = useGroupCallStore((state) => state.isJoining);
@@ -223,7 +225,11 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               onClick={() => {
                 if (!activeConversationId) return;
                 if (incomingGroupCall?.conversationId === activeChat._id) {
-                  acceptGroupCall(incomingGroupCall.callId);
+                  if (incomingGroupCall.callType === "video") {
+                    acceptGroupVideoCall(incomingGroupCall.callId);
+                  } else {
+                    acceptGroupCall(incomingGroupCall.callId);
+                  }
                   return;
                 }
                 if (!activeGroupCall) {
@@ -237,6 +243,39 @@ const ChatWindowHeader = ({ chat }: { chat?: Conversation }) => {
               <Phone className="size-4" />
               <span className="sr-only">
                 {groupCallForActiveChat ? "Tham gia cuộc gọi" : "Gọi thoại nhóm"}
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant={
+                groupCallForActiveChat && activeGroupCall?.callType === "video"
+                  ? "secondary"
+                  : "ghost"
+              }
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              disabled={isGroupCallUnavailable}
+              onClick={() => {
+                if (!activeConversationId) return;
+                if (incomingGroupCall?.conversationId === activeChat._id) {
+                  if (incomingGroupCall.callType === "video") {
+                    acceptGroupVideoCall(incomingGroupCall.callId);
+                  } else {
+                    acceptGroupCall(incomingGroupCall.callId);
+                  }
+                  return;
+                }
+                if (!activeGroupCall) {
+                  startGroupVideoCall(activeConversationId);
+                }
+              }}
+              title={
+                groupCallForActiveChat ? "Tham gia cuộc gọi" : "Gọi video nhóm"
+              }
+            >
+              <Video className="size-4" />
+              <span className="sr-only">
+                {groupCallForActiveChat ? "Tham gia cuộc gọi" : "Gọi video nhóm"}
               </span>
             </Button>
             <GroupInfoDialog

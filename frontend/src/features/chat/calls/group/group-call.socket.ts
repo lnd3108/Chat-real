@@ -9,6 +9,7 @@ import {
 import { useGroupCallStore } from "@/features/chat/calls/group/group-call.store";
 import type {
   GroupCallErrorPayload,
+  GroupCallMediaStatePayload,
   GroupCallParticipantEventPayload,
   GroupCallSessionPayload,
   GroupCallSignalPayload,
@@ -35,6 +36,7 @@ const shouldClearGroupCallOnError = (code?: string) =>
     "GROUP_CALL_NOT_PARTICIPANT",
     "GROUP_CALL_PARTICIPANT_LIMIT_REACHED",
     "GROUP_CALL_VIDEO_NOT_SUPPORTED",
+    "GROUP_VIDEO_CALL_NOT_SUPPORTED",
   ].includes(code ?? "");
 
 export class GroupCallSocketHandler {
@@ -59,6 +61,10 @@ export class GroupCallSocketHandler {
     socket.on(
       GROUP_CALL_SOCKET_EVENTS.PARTICIPANT_MISSED,
       this.handleParticipantMissed,
+    );
+    socket.on(
+      GROUP_CALL_SOCKET_EVENTS.PARTICIPANT_MEDIA_STATE,
+      this.handleParticipantMediaState,
     );
     socket.on(GROUP_CALL_SOCKET_EVENTS.ENDED, this.handleEnded);
     socket.on(GROUP_CALL_SOCKET_EVENTS.CLEANED, this.handleCleaned);
@@ -85,6 +91,10 @@ export class GroupCallSocketHandler {
     socket.off(
       GROUP_CALL_SOCKET_EVENTS.PARTICIPANT_MISSED,
       this.handleParticipantMissed,
+    );
+    socket.off(
+      GROUP_CALL_SOCKET_EVENTS.PARTICIPANT_MEDIA_STATE,
+      this.handleParticipantMediaState,
     );
     socket.off(GROUP_CALL_SOCKET_EVENTS.ENDED, this.handleEnded);
     socket.off(GROUP_CALL_SOCKET_EVENTS.CLEANED, this.handleCleaned);
@@ -171,6 +181,16 @@ export class GroupCallSocketHandler {
     useGroupCallStore
       .getState()
       .addParticipant({ userId: payload.userId, status: "missed" });
+  };
+
+  private handleParticipantMediaState = (payload: GroupCallMediaStatePayload) => {
+    useGroupCallStore.getState().updateParticipantMediaState(payload.userId, {
+      audioEnabled: payload.audioEnabled ?? payload.mediaState?.audioEnabled,
+      videoEnabled: payload.videoEnabled ?? payload.mediaState?.videoEnabled,
+    });
+    if (payload.state) {
+      useGroupCallStore.getState().setActiveGroupCall(payload.state);
+    }
   };
 
   private handleEnded = () => {

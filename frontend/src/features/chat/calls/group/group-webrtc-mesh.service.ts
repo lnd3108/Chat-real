@@ -1,5 +1,11 @@
 import { STUN_SERVERS } from "@/features/chat/calls/call.constants";
-import { GROUP_CALL_MIC_ERROR, GROUP_CALL_SOCKET_EVENTS } from "@/features/chat/calls/group/group-call.constants";
+import {
+  GROUP_CALL_CAMERA_ERROR,
+  GROUP_CALL_MIC_ERROR,
+  GROUP_CALL_SOCKET_EVENTS,
+  GROUP_CALL_UNSUPPORTED_ERROR,
+} from "@/features/chat/calls/group/group-call.constants";
+import type { GroupCallType } from "@/features/chat/calls/group/group-call.types";
 
 type EmitSignal = (eventName: string, payload: Record<string, unknown>) => void;
 
@@ -35,19 +41,29 @@ class GroupWebRTCMeshService {
   }
 
   async initLocalAudio() {
+    return this.initLocalMedia("voice");
+  }
+
+  async initLocalMedia(callType: GroupCallType = "voice") {
     if (this.localStream) return this.localStream;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.callbacks?.setError(GROUP_CALL_UNSUPPORTED_ERROR);
+      throw new Error(GROUP_CALL_UNSUPPORTED_ERROR);
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: false,
+        video: callType === "video",
       });
       this.localStream = stream;
       this.callbacks?.setLocalStream(stream);
       this.callbacks?.setError(null);
       return stream;
     } catch (error) {
-      this.callbacks?.setError(GROUP_CALL_MIC_ERROR);
+      const errorMessage =
+        callType === "video" ? GROUP_CALL_CAMERA_ERROR : GROUP_CALL_MIC_ERROR;
+      this.callbacks?.setError(errorMessage);
       throw error;
     }
   }
@@ -120,7 +136,9 @@ class GroupWebRTCMeshService {
   }
 
   async handleOffer(fromUserId: string, offer: RTCSessionDescriptionInit) {
-    await this.initLocalAudio();
+    await this.initLocalMedia(
+      this.localStream?.getVideoTracks().length ? "video" : "voice",
+    );
     const peerConnection = this.createPeerConnection(fromUserId);
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
@@ -166,6 +184,27 @@ class GroupWebRTCMeshService {
       track.enabled = nextEnabled;
     });
     return !nextEnabled;
+  }
+
+  toggleCamera() {
+    if (!this.localStream) return false;
+    const videoTracks = this.localStream.getVideoTracks();
+    if (videoTracks.length === 0) return false;
+
+    const nextEnabled = !videoTracks.some((track) => track.enabled);
+    videoTracks.forEach((track) => {
+      track.enabled = nextEnabled;
+    });
+    return nextEnabled;
+  }
+
+  getMediaState() {
+    return {
+      audioEnabled:
+        this.localStream?.getAudioTracks().some((track) => track.enabled) ?? false,
+      videoEnabled:
+        this.localStream?.getVideoTracks().some((track) => track.enabled) ?? false,
+    };
   }
 
   cleanupPeer(userId: string) {

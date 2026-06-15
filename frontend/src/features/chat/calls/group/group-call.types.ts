@@ -12,6 +12,13 @@ export type GroupCallParticipantStatus =
   | "missed"
   | "left";
 
+export type GroupCallType = "voice" | "video";
+
+export interface GroupCallMediaState {
+  audioEnabled: boolean;
+  videoEnabled: boolean;
+}
+
 export interface GroupCallParticipant {
   userId: string;
   displayName?: string;
@@ -24,6 +31,10 @@ export interface GroupCallParticipant {
   durationSeconds?: number;
   isSpeaking?: boolean;
   isMuted?: boolean;
+  audioEnabled?: boolean;
+  videoEnabled?: boolean;
+  mediaState?: Partial<GroupCallMediaState>;
+  stream?: MediaStream;
 }
 
 export interface GroupCallSessionPayload {
@@ -33,7 +44,7 @@ export interface GroupCallSessionPayload {
   callerId?: string;
   initiatorId?: string;
   hostId?: string;
-  callType: "voice";
+  callType: GroupCallType;
   callMode: "group";
   status: string;
   startedAt?: string | null;
@@ -59,7 +70,7 @@ export interface GroupIncomingCallPayload {
     username?: string;
     avatarUrl?: string | null;
   };
-  callType: "voice";
+  callType: GroupCallType;
   callMode: "group";
 }
 
@@ -69,6 +80,12 @@ export interface GroupCallParticipantEventPayload {
   conversationId: string;
   userId: string;
   state?: GroupCallSessionPayload;
+}
+
+export interface GroupCallMediaStatePayload extends GroupCallParticipantEventPayload {
+  audioEnabled?: boolean;
+  videoEnabled?: boolean;
+  mediaState?: Partial<GroupCallMediaState>;
 }
 
 export interface GroupCallSignalPayload<T = unknown> {
@@ -97,6 +114,7 @@ export interface GroupCallState {
   remoteStreamsByUserId: Record<string, MediaStream>;
   peerConnectionsByUserId: Map<string, RTCPeerConnection>;
   isMuted: boolean;
+  isCameraEnabled: boolean;
   isJoining: boolean;
   isConnected: boolean;
   error: string | null;
@@ -106,16 +124,23 @@ export interface GroupCallState {
 
   setSocket: (socket: Socket | null) => void;
   startGroupVoiceCall: (conversationId: string) => void;
+  startGroupVideoCall: (conversationId: string) => void;
   acceptGroupCall: (callId?: string) => void;
+  acceptGroupVideoCall: (callId?: string) => void;
   declineGroupCall: (callId?: string) => void;
   leaveGroupCall: (callId?: string) => void;
   endGroupCall: (callId?: string) => void;
   toggleMute: () => void;
+  toggleCamera: () => void;
   clearGroupCall: () => void;
   setIncomingGroupCall: (call: GroupIncomingCallPayload | null) => void;
   setActiveGroupCall: (call: GroupCallSessionPayload | null) => void;
   addParticipant: (participant: GroupCallParticipant) => void;
   removeParticipant: (userId: string) => void;
+  updateParticipantMediaState: (
+    userId: string,
+    mediaState: Partial<GroupCallMediaState>,
+  ) => void;
   upsertParticipants: (participants: GroupCallParticipant[]) => void;
   setRemoteStream: (userId: string, stream: MediaStream | null) => void;
   setLocalStream: (stream: MediaStream | null) => void;

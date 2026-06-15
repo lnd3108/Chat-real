@@ -14,11 +14,15 @@ import {
 const GroupIncomingCallModal = () => {
   const incomingGroupCall = useGroupCallStore((state) => state.incomingGroupCall);
   const acceptGroupCall = useGroupCallStore((state) => state.acceptGroupCall);
+  const acceptGroupVideoCall = useGroupCallStore(
+    (state) => state.acceptGroupVideoCall,
+  );
   const declineGroupCall = useGroupCallStore((state) => state.declineGroupCall);
   const isJoining = useGroupCallStore((state) => state.isJoining);
 
   const callerName = incomingGroupCall?.caller?.displayName || "Thành viên";
   const groupName = incomingGroupCall?.groupName || "nhóm";
+  const isVideoCall = incomingGroupCall?.callType === "video";
 
   return (
     <Dialog open={Boolean(incomingGroupCall)}>
@@ -29,9 +33,13 @@ const GroupIncomingCallModal = () => {
             name={callerName}
             avatarUrl={incomingGroupCall?.caller?.avatarUrl ?? undefined}
           />
-          <DialogTitle>Cuộc gọi thoại nhóm đến</DialogTitle>
+          <DialogTitle>
+            {isVideoCall ? "Cuộc gọi video nhóm đến" : "Cuộc gọi thoại nhóm đến"}
+          </DialogTitle>
           <DialogDescription>
-            {callerName} đang bắt đầu cuộc gọi trong nhóm {groupName}
+            {isVideoCall
+              ? `${callerName} đang bắt đầu cuộc gọi video trong nhóm ${groupName}`
+              : `${callerName} đang bắt đầu cuộc gọi trong nhóm ${groupName}`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="grid grid-cols-2 gap-3 sm:grid-cols-2">
@@ -47,7 +55,11 @@ const GroupIncomingCallModal = () => {
           <Button
             type="button"
             disabled={isJoining}
-            onClick={() => acceptGroupCall(incomingGroupCall?.callId)}
+            onClick={() =>
+              isVideoCall
+                ? acceptGroupVideoCall(incomingGroupCall?.callId)
+                : acceptGroupCall(incomingGroupCall?.callId)
+            }
           >
             <Phone className="size-4" />
             Tham gia

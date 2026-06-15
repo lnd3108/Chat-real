@@ -7,6 +7,7 @@ export const GROUP_CALL_SOCKET_EVENTS = {
   OFFER: "group-call:offer",
   ANSWER: "group-call:answer",
   ICE_CANDIDATE: "group-call:ice-candidate",
+  MEDIA_STATE: "group-call:media-state",
   SYNC_STATE: "group-call:sync-state",
   INCOMING: "group-call:incoming",
   STARTED: "group-call:started",
@@ -14,6 +15,7 @@ export const GROUP_CALL_SOCKET_EVENTS = {
   PARTICIPANT_LEFT: "group-call:participant-left",
   PARTICIPANT_DECLINED: "group-call:participant-declined",
   PARTICIPANT_MISSED: "group-call:participant-missed",
+  PARTICIPANT_MEDIA_STATE: "group-call:participant-media-state",
   ENDED: "group-call:ended",
   CLEANED: "group-call-cleaned",
   STATE: "group-call:state",
@@ -42,9 +44,16 @@ export const GROUP_CALL_ERROR_MESSAGES: Record<string, string> = {
   GROUP_CALL_PARTICIPANT_LIMIT_REACHED:
     "Cuộc gọi nhóm đã đạt giới hạn người tham gia.",
   GROUP_CALL_VIDEO_NOT_SUPPORTED: "Chưa hỗ trợ gọi video nhóm.",
+  GROUP_VIDEO_CALL_NOT_SUPPORTED: "Chưa hỗ trợ gọi video nhóm.",
   GROUP_CALL_SIGNALING_FORBIDDEN:
     "Bạn không có quyền gửi tín hiệu trong cuộc gọi nhóm này.",
 };
+
+export const GROUP_CALL_CAMERA_ERROR =
+  "Không thể truy cập camera. Vui lòng kiểm tra quyền trình duyệt.";
+
+export const GROUP_CALL_UNSUPPORTED_ERROR =
+  "Trình duyệt không hỗ trợ cuộc gọi video.";
 
 export const GROUP_CALL_MIC_ERROR =
   "Không thể truy cập micro. Vui lòng kiểm tra quyền trình duyệt.";

@@ -23,6 +23,7 @@ import {
   CALL_STATUSES,
   CALL_TYPES,
   MAX_GROUP_CALL_PARTICIPANTS,
+  MAX_GROUP_VIDEO_PARTICIPANTS,
 } from "../domain/call.constants.js";
 
 const activeCallsByUser = new Map();
@@ -55,6 +56,10 @@ const isValidId = (value) => mongoose.isValidObjectId(value);
 const normalizeCallType = (callType) => callType ?? CALL_TYPES.VOICE;
 const isValidCallType = (callType) => Object.values(CALL_TYPES).includes(callType);
 const getCallRoomId = (callSessionId) => `group-call:${callSessionId}`;
+const getGroupCallParticipantLimit = (callType) =>
+  callType === CALL_TYPES.VIDEO
+    ? MAX_GROUP_VIDEO_PARTICIPANTS
+    : MAX_GROUP_CALL_PARTICIPANTS;
 
 const isGroupCall = (callSession) =>
   (callSession?.callMode ?? CALL_MODES.DIRECT) === CALL_MODES.GROUP;
@@ -110,6 +115,10 @@ const normalizeCallSession = (callSession) => {
       joinedAt: participant.joinedAt ?? null,
       leftAt: participant.leftAt ?? null,
       durationSeconds: participant.durationSeconds ?? 0,
+      mediaState: {
+        audioEnabled: participant.mediaState?.audioEnabled ?? true,
+        videoEnabled: participant.mediaState?.videoEnabled ?? false,
+      },
     })),
     createdAt: raw.createdAt ?? null,
     updatedAt: raw.updatedAt ?? null,
@@ -122,7 +131,7 @@ const buildGroupCallState = (callSession) => {
     ...payload,
     joinedParticipantIds: getJoinedParticipantIds(callSession),
     joinedCount: getJoinedParticipants(callSession).length,
-    maxParticipants: MAX_GROUP_CALL_PARTICIPANTS,
+    maxParticipants: getGroupCallParticipantLimit(payload.callType),
   };
 };
 
@@ -242,6 +251,28 @@ const formatCallDuration = (seconds = 0) => {
 };
 
 const getGroupCallHistoryContent = (callSession) => {
+  const label =
+    (callSession.callType ?? CALL_TYPES.VOICE) === CALL_TYPES.VIDEO
+      ? "Cuộc gọi video nhóm"
+      : "Cuộc gọi thoại nhóm";
+
+  if (
+    callSession.status === CALL_STATUSES.MISSED ||
+    callSession.endReason === CALL_END_REASONS.MISSED
+  ) {
+    return `${label} nhỡ`;
+  }
+  if (callSession.status === CALL_STATUSES.CANCELLED) {
+    return `${label} đã hủy`;
+  }
+  if (callSession.status === CALL_STATUSES.ENDED) {
+    return `${label} đã kết thúc (${formatCallDuration(callSession.durationSeconds)})`;
+  }
+  if (callSession.status === CALL_STATUSES.FAILED) {
+    return `${label} thất bại`;
+  }
+  return label;
+
   if (
     callSession.status === CALL_STATUSES.MISSED ||
     callSession.endReason === CALL_END_REASONS.MISSED
@@ -282,6 +313,30 @@ const getCallHistoryContent = (callSession) => {
   }
 };
 
+const getGroupCallHistoryContentSafe = (callSession) => {
+  const label =
+    (callSession.callType ?? CALL_TYPES.VOICE) === CALL_TYPES.VIDEO
+      ? "Cuộc gọi video nhóm"
+      : "Cuộc gọi thoại nhóm";
+
+  if (
+    callSession.status === CALL_STATUSES.MISSED ||
+    callSession.endReason === CALL_END_REASONS.MISSED
+  ) {
+    return `${label} nhỡ`;
+  }
+  if (callSession.status === CALL_STATUSES.CANCELLED) {
+    return `${label} đã hủy`;
+  }
+  if (callSession.status === CALL_STATUSES.ENDED) {
+    return `${label} đã kết thúc (${formatCallDuration(callSession.durationSeconds)})`;
+  }
+  if (callSession.status === CALL_STATUSES.FAILED) {
+    return `${label} thất bại`;
+  }
+  return label;
+};
+
 const createCallHistoryMessage = async (callSession) => {
   if (!terminalStatuses.has(callSession.status)) return null;
 
@@ -308,7 +363,7 @@ const createCallHistoryMessage = async (callSession) => {
     type: "system",
     content:
       callMode === CALL_MODES.GROUP
-        ? getGroupCallHistoryContent(callSession)
+        ? getGroupCallHistoryContentSafe(callSession)
         : getCallHistoryContent(callSession),
     callMetadata: {
       callSessionId: callSession._id,
@@ -672,7 +727,7 @@ const loadGroupCall = async ({ callSessionId, userId, requireJoined = false }) =
   if (
     !callSession ||
     !isGroupCall(callSession) ||
-    callSession.callType !== CALL_TYPES.VOICE
+    ![CALL_TYPES.VOICE, CALL_TYPES.VIDEO].includes(callSession.callType)
   ) {
     return {
       error: buildError(CALL_ERROR_CODES.GROUP_NOT_FOUND, "Không tìm thấy cuộc gọi thoại nhóm"),
@@ -887,6 +942,13 @@ const scheduleGroupParticipantMissed = ({ callSessionId, userId }) => {
 
 export const startGroupVoiceCall = async ({ userId, conversationId, callType }) => {
   const resolvedCallType = normalizeCallType(callType);
+  if (![CALL_TYPES.VOICE, CALL_TYPES.VIDEO].includes(resolvedCallType)) {
+    return {
+      error: buildError(CALL_ERROR_CODES.INVALID_TYPE, "Loại cuộc gọi không hợp lệ"),
+    };
+  }
+
+  /*
   if (resolvedCallType === CALL_TYPES.VIDEO) {
     return {
       error: buildError(
@@ -900,6 +962,7 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
       error: buildError(CALL_ERROR_CODES.INVALID_TYPE, "Loại cuộc gọi không hợp lệ"),
     };
   }
+  */
 
   const context = await loadGroupConversation({ conversationId, userId });
   if (context.error) return { error: context.error };
@@ -984,6 +1047,10 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
       joinedAt: isCaller ? now : null,
       leftAt: null,
       durationSeconds: 0,
+      mediaState: {
+        audioEnabled: true,
+        videoEnabled: resolvedCallType === CALL_TYPES.VIDEO && isCaller,
+      },
     };
   });
 
@@ -992,7 +1059,7 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
     callerId: userId,
     initiatorId: userId,
     hostId: userId,
-    callType: CALL_TYPES.VOICE,
+    callType: resolvedCallType,
     callMode: CALL_MODES.GROUP,
     status: CALL_STATUSES.RINGING,
     startedAt: now,
@@ -1019,7 +1086,7 @@ export const startGroupVoiceCall = async ({ userId, conversationId, callType }) 
           userName: caller.userName,
           avatarUrl: caller.avatarUrl ?? null,
         },
-        callType: CALL_TYPES.VOICE,
+        callType: resolvedCallType,
         callMode: CALL_MODES.GROUP,
       });
     });
@@ -1045,7 +1112,11 @@ export const joinGroupVoiceCall = async ({ userId, callSessionId }) => {
   }
 
   const alreadyJoined = participant.status === CALL_PARTICIPANT_STATUS.JOINED;
-  if (!alreadyJoined && getJoinedParticipants(callSession).length >= MAX_GROUP_CALL_PARTICIPANTS) {
+  if (
+    !alreadyJoined &&
+    getJoinedParticipants(callSession).length >=
+      getGroupCallParticipantLimit(callSession.callType)
+  ) {
     return {
       error: buildError(
         CALL_ERROR_CODES.GROUP_PARTICIPANT_LIMIT_REACHED,
@@ -1058,6 +1129,11 @@ export const joinGroupVoiceCall = async ({ userId, callSessionId }) => {
     participant.status = CALL_PARTICIPANT_STATUS.JOINED;
     participant.joinedAt = new Date();
     participant.leftAt = null;
+    participant.mediaState = {
+      audioEnabled: participant.mediaState?.audioEnabled ?? true,
+      videoEnabled:
+        participant.mediaState?.videoEnabled ?? callSession.callType === CALL_TYPES.VIDEO,
+    };
     clearGroupParticipantTimeout(toIdString(callSession._id), userId);
   }
 
@@ -1197,6 +1273,57 @@ export const syncGroupVoiceCallState = async ({ userId, callSessionId }) => {
   if (error) return { error };
 
   return { payload: buildGroupCallState(callSession) };
+};
+
+export const updateGroupCallMediaState = async ({
+  userId,
+  callSessionId,
+  audioEnabled,
+  videoEnabled,
+}) => {
+  const { callSession, participant, error } = await loadGroupCall({
+    callSessionId,
+    userId,
+    requireJoined: true,
+  });
+  if (error) return { error };
+
+  const nextMediaState = {
+    audioEnabled:
+      typeof audioEnabled === "boolean"
+        ? audioEnabled
+        : participant.mediaState?.audioEnabled ?? true,
+    videoEnabled:
+      typeof videoEnabled === "boolean"
+        ? videoEnabled
+        : participant.mediaState?.videoEnabled ?? false,
+  };
+
+  participant.mediaState = nextMediaState;
+  await callSession.save();
+
+  const payload = {
+    callId: toIdString(callSession._id),
+    callSessionId: toIdString(callSession._id),
+    conversationId: toIdString(callSession.conversationId),
+    userId: toIdString(userId),
+    mediaState: nextMediaState,
+    audioEnabled: nextMediaState.audioEnabled,
+    videoEnabled: nextMediaState.videoEnabled,
+    state: buildGroupCallState(callSession),
+  };
+
+  getJoinedParticipantIds(callSession)
+    .filter((participantId) => participantId !== toIdString(userId))
+    .forEach((participantId) => {
+      emitToUser(
+        participantId,
+        CALL_SOCKET_EVENTS.GROUP_PARTICIPANT_MEDIA_STATE,
+        payload,
+      );
+    });
+
+  return { payload };
 };
 
 export const relayGroupCallSignal = async ({
