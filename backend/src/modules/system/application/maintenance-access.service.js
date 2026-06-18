@@ -1,8 +1,5 @@
 import { hasAdminPanelAccess } from "../../../shared/domain/rbac/access-policy.js";
-import {
-  getMaintenanceMessage,
-  isMaintenanceEnabled,
-} from "./maintenance-mode.service.js";
+import { getMaintenanceStatus } from "./maintenance-mode.service.js";
 
 const MAINTENANCE_ERROR_CODE = "MAINTENANCE_MODE";
 
@@ -31,8 +28,8 @@ export const resolveMaintenanceAccess = async ({
     return { allowed: true };
   }
 
-  const enabled = await isMaintenanceEnabled();
-  if (!enabled) {
+  const maintenance = await getMaintenanceStatus();
+  if (maintenance.isEnabled !== true) {
     return { allowed: true };
   }
 
@@ -40,6 +37,6 @@ export const resolveMaintenanceAccess = async ({
     allowed: false,
     status: 503,
     code: MAINTENANCE_ERROR_CODE,
-    message: await getMaintenanceMessage(),
+    message: maintenance.message,
   };
 };

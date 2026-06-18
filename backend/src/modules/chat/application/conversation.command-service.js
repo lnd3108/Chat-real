@@ -19,6 +19,13 @@ import {
   emitNewMessage,
   updateConversationAfterCreateMessage,
 } from "../infrastructure/realtime/message-realtime.js";
+import {
+  getConversationParticipantIds,
+  invalidateConversationListForConversation,
+  invalidateConversationListForUser,
+  invalidateConversationListForUsers,
+} from "../infrastructure/cache/conversation-list-cache.service.js";
+import { invalidateAdminDashboardCache } from "../../admin-panel/infrastructure/cache/admin-dashboard-cache.service.js";
 
 // Hàm lấy thông tin conversation đã được populate và format lại cho client
 const populateConversationForClient = async (conversation) => {
@@ -100,8 +107,12 @@ const createSystemMessage = async (conversation, actorId, content) => {
     content,
   });
 
-  updateConversationAfterCreateMessage(conversation, message, actorId);
+  await updateConversationAfterCreateMessage(conversation, message, actorId);
   await conversation.save();
+  await invalidateConversationListForConversation(
+    conversation,
+    "system-message",
+  );
 
   return message;
 };
@@ -201,6 +212,11 @@ export const createConversationCommand = async ({ user, body }) => {
     formatConversationForClient(conversation),
     user,
   );
+  await invalidateConversationListForConversation(
+    conversation,
+    `create-${type}-conversation`,
+  );
+  await invalidateAdminDashboardCache(`create-${type}-conversation`);
 
   if (type === "group") {
     formatted.participants.forEach((participant) => {
@@ -252,6 +268,7 @@ export const markConversationSeenCommand = async ({ conversationId, userId }) =>
       lastMessageAt: updated.lastMessageAt,
     },
   });
+  await invalidateConversationListForUser(normalizedUserId, "mark-seen");
 
   return {
     status: 200,
@@ -289,6 +306,10 @@ export const clearDirectConversationForUserCommand = async ({
   });
 
   emitToUser(normalizedUserId, "conversation:direct-cleared", { conversationId });
+  await invalidateConversationListForUser(
+    normalizedUserId,
+    "clear-direct-conversation",
+  );
 
   return {
     status: 200,
@@ -338,6 +359,11 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
       emitToUser(memberId, "conversation:deleted", { conversationId });
     });
     emitToRoom(conversationId, "conversation:deleted", { conversationId });
+    await invalidateConversationListForUsers(
+      memberIds,
+      "delete-group-conversation",
+    );
+    await invalidateAdminDashboardCache("delete-group-conversation");
 
     return {
       status: 200,
@@ -368,6 +394,16 @@ export const deleteOrLeaveConversationCommand = async ({ user, conversationId })
     );
     emitNewMessage(getIo(), updated, systemMessage);
   }
+  await invalidateConversationListForUsers(
+    [
+      userId,
+      ...(updated?.participants ?? []).map((participant) =>
+        participant.userId.toString(),
+      ),
+    ],
+    "leave-group-conversation",
+  );
+  await invalidateAdminDashboardCache("leave-group-conversation");
 
   emitToUser(userId, "conversation:left", {
     conversationId,
@@ -464,6 +500,14 @@ export const addGroupMembersCommand = async ({ user, conversationId, memberIds }
       groupName: populatedConversation.group.name,
     });
   });
+  await invalidateConversationListForUsers(
+    [
+      ...getConversationParticipantIds(populatedConversation),
+      ...newMemberIds,
+    ],
+    "add-group-members",
+  );
+  await invalidateAdminDashboardCache("add-group-members");
 
   return {
     status: 200,
@@ -536,6 +580,14 @@ export const removeGroupMemberCommand = async ({ user, conversationId, memberId 
     const systemMessage = await createSystemMessage(updated, user._id, systemContent);
     emitNewMessage(getIo(), updated, systemMessage);
   }
+  await invalidateConversationListForUsers(
+    [
+      memberId,
+      ...getConversationParticipantIds(updated),
+    ],
+    "remove-group-member",
+  );
+  await invalidateAdminDashboardCache("remove-group-member");
 
   emitToUser(memberId, "conversation:left", {
     conversationId,
@@ -605,6 +657,11 @@ export const uploadGroupAvatarCommand = async ({ user, conversationId, file }) =
   emitToRoom(conversationId, "conversation:updated", {
     conversation: formattedConversation,
   });
+  await invalidateConversationListForConversation(
+    conversation,
+    "update-group-avatar",
+  );
+  await invalidateAdminDashboardCache("update-group-avatar");
 
   return {
     status: 200,
@@ -652,6 +709,11 @@ export const updateGroupNameCommand = async ({ user, conversationId, name }) => 
   emitToRoom(conversationId, "conversation:updated", {
     conversation: formattedConversation,
   });
+  await invalidateConversationListForConversation(
+    conversation,
+    "update-group-name",
+  );
+  await invalidateAdminDashboardCache("update-group-name");
 
   return {
     status: 200,
@@ -690,4 +752,9 @@ export const emitDirectBlockStatusChanged = async ({
 
   emitToUser(resolvedBlockerId.toString(), "direct:block-status", payload);
   emitToUser(resolvedBlockedUserId.toString(), "direct:block-status", payload);
+  await invalidateConversationListForUsers(
+    [resolvedBlockerId, resolvedBlockedUserId],
+    "direct-block-status",
+  );
+  await invalidateAdminDashboardCache("direct-block-status");
 };

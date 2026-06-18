@@ -10,32 +10,45 @@ import fs from "fs";
 import { registerRoutes } from "./http/registerRoutes.js";
 import { initSocket } from "./socket/initSocket.js";
 import { maintenanceCheckMiddleware } from "../middlewares/maintenanceMiddleware.js";
+import { enforceHttps } from "../middlewares/httpsMiddleware.js";
+import { securityHeaders } from "../middlewares/securityHeaders.js";
+import { buildCorsOptions } from "../config/cors.js";
+import { validateProductionTransportConfig } from "../config/origin-config.js";
 import { connectDB } from "../shared/infrastructure/db/connect-db.js";
+import { connectRedis, disconnectRedis } from "../shared/infrastructure/redis/redis-client.js";
+import { startPerfMonitor } from "../shared/infrastructure/perf/perf-monitor.js";
+import { disconnectSocketRedisAdapter } from "../shared/infrastructure/realtime/socket-redis-adapter.js";
 import { getMailConfigStatus } from "../utils/mail.js";
 import { assertLoadTestIsNotProduction } from "../utils/loadTestGuard.js";
 
 // lấy biến môi trường từ file .env
 dotenv.config();
 assertLoadTestIsNotProduction();
+validateProductionTransportConfig();
 
 export const createApp = () => {
   // tạo ứng dụng Express
   const app = express();
+
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
+  app.use(enforceHttps);
+  app.use(securityHeaders());
 
   // cấu hình middleware
   app.use(express.json());
   // cấu hình cookie parser và CORS
   app.use(cookieParser());
   // chỉ cho phép truy cập từ client URL được định nghĩa trong biến môi trường và cho phép gửi cookie
-  app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
-  // middleware kiểm tra bảo trì
-  app.use(maintenanceCheckMiddleware);
-
+  app.use(cors(buildCorsOptions()));
   // Swagger
   const swaggerDocument = JSON.parse(
     fs.readFileSync(new URL("../swagger.json", import.meta.url), "utf8"),
   );
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  app.use(maintenanceCheckMiddleware);
 
   // cấu hình Cloudinary với thông tin từ biến môi trường
   cloudinary.config({
@@ -61,8 +74,9 @@ export const startServer = async () => {
 
   // kết nối đến cơ sở dữ liệu
   await connectDB();
+  await connectRedis();
   // khởi tạo Socket.IO
-  initSocket(server);
+  await initSocket(server);
 
   // kiểm tra cấu hình email và in ra trạng thái
   const mailStatus = getMailConfigStatus();
@@ -74,9 +88,26 @@ export const startServer = async () => {
   }
 
   // khởi động server và trả về app và server khi đã sẵn sàng
+  let stopPerfMonitor = () => {};
+  const shutdown = async (signal) => {
+    console.log(`[Shutdown] Received ${signal}`);
+    stopPerfMonitor();
+    server.close(async () => {
+      await Promise.allSettled([
+        disconnectSocketRedisAdapter(),
+        disconnectRedis(),
+      ]);
+      process.exit(0);
+    });
+  };
+
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+
   return new Promise((resolve) => {
     server.listen(port, () => {
       console.log(`Server bắt đầu chạy trên cổng ${port}`);
+      stopPerfMonitor = startPerfMonitor();
       resolve({ app, server });
     });
   });

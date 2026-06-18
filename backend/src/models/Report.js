@@ -99,6 +99,10 @@ const reportSchema = new mongoose.Schema(
 reportSchema.index({ status: 1, createdAt: -1 });
 reportSchema.index({ reporterId: 1, createdAt: -1 });
 reportSchema.index({ targetType: 1, status: 1 });
+reportSchema.index({ targetUserId: 1, createdAt: -1 });
+reportSchema.index({ targetMessageId: 1, createdAt: -1 });
+reportSchema.index({ targetConversationId: 1, createdAt: -1 });
+reportSchema.index({ targetType: 1, status: 1, createdAt: -1 });
 
 // Mô hình dữ liệu cho báo cáo vi phạm, cho phép người dùng báo cáo các hành vi không phù hợp hoặc vi phạm trong hệ thống.
 const Report = mongoose.model("Report", reportSchema);

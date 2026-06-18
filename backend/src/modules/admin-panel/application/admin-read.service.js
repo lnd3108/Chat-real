@@ -8,6 +8,11 @@ import Blocking, {
 } from "../../../models/Blocking.js";
 import Report from "../../../models/Report.js";
 import { emitDirectBlockStatusChanged } from "../../chat/application/conversation.command-service.js";
+import { invalidateFriendCacheForUsers } from "../../friendship/infrastructure/cache/friend-cache.service.js";
+import {
+  invalidateAdminDashboardCache,
+  wrapAdminDashboardCache,
+} from "../infrastructure/cache/admin-dashboard-cache.service.js";
 import { escapeRegex } from "../../../utils/regex.js";
 import {
   buildAdminBlockFilter,
@@ -195,10 +200,16 @@ const getDirectBlockStatusForAdmin = async (participantIds = []) => {
 // Các hàm tiện ích khác như parsePage và parseLimit để đảm bảo giá trị hợp lệ cho phân trang
 const parsePage = (value, fallback = 1) =>
   Number.parseInt(value, 10) || fallback;
-const parseLimit = (value, fallback = 20) =>
-  Number.parseInt(value, 10) || fallback;
+const parseLimit = (value, fallback = 20, max = 100) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.min(parsed, max);
+};
 //Các hàm lấy dữ liệu chính của biểu đồ
-export const getDashboardUserChartData = async ({ days: daysValue }) => {
+const loadDashboardUserChartData = async ({ days: daysValue }) => {
   const days = clampDashboardDays(daysValue, 7);
   const startDate = getDateRangeStart(days);
   const buckets = buildDateBuckets(days);
@@ -234,7 +245,7 @@ export const getDashboardUserChartData = async ({ days: daysValue }) => {
 };
 
 // lấy dữ liệu cho biểu đồ tin nhắn, đếm số lượng tin nhắn mới theo ngày
-export const getDashboardMessageChartData = async ({ days: daysValue }) => {
+const loadDashboardMessageChartData = async ({ days: daysValue }) => {
   const days = clampDashboardDays(daysValue, 7);
   const startDate = getDateRangeStart(days);
   const buckets = buildDateBuckets(days);
@@ -298,7 +309,7 @@ export const getDashboardMessageChartData = async ({ days: daysValue }) => {
 };
 
 // dữ liệu biểu đồ báo cáo
-export const getDashboardReportChartData = async () => {
+const loadDashboardReportChartData = async () => {
   const rows = await Report.aggregate([
     {
       $group: {
@@ -339,7 +350,7 @@ export const getDashboardReportChartData = async () => {
 };
 
 // dữ liệu biểu đồ hỗ trợ, đếm số lượng cuộc trò chuyện hỗ trợ theo trạng thái
-export const getDashboardSupportChartData = async () => {
+const loadDashboardSupportChartData = async () => {
   const rows = await Conversation.aggregate([
     { $match: { type: "support" } },
     {
@@ -369,6 +380,32 @@ export const getDashboardSupportChartData = async () => {
     ],
   };
 };
+
+export const getDashboardUserChartData = async ({ days }) =>
+  wrapAdminDashboardCache({
+    type: "chart:users",
+    query: { days },
+    fetcher: () => loadDashboardUserChartData({ days }),
+  });
+
+export const getDashboardMessageChartData = async ({ days }) =>
+  wrapAdminDashboardCache({
+    type: "chart:messages",
+    query: { days },
+    fetcher: () => loadDashboardMessageChartData({ days }),
+  });
+
+export const getDashboardReportChartData = async () =>
+  wrapAdminDashboardCache({
+    type: "chart:reports",
+    fetcher: loadDashboardReportChartData,
+  });
+
+export const getDashboardSupportChartData = async () =>
+  wrapAdminDashboardCache({
+    type: "chart:support",
+    fetcher: loadDashboardSupportChartData,
+  });
 
 // Các hàm truy vấn dữ liệu cho các trang quản lý trong admin panel, hỗ trợ phân trang, lọc và sắp xếp
 export const getFriendRequestsAdminQuery = async ({ query }) => {
@@ -681,6 +718,11 @@ export const unblockBlockRelationAsAdminCommand = async ({ blockId }) => {
     blockedUserId: currentBlock.blockedUserId,
     isBlocked: false,
   });
+  await invalidateFriendCacheForUsers(
+    [currentBlock.userId, currentBlock.blockedUserId],
+    "admin-unblocked-user",
+  );
+  await invalidateAdminDashboardCache("admin-unblocked-user");
 
   return {
     block: mapAdminBlockRelation(updatedBlock),
@@ -708,6 +750,7 @@ export const updateUserRoleLegacyCommand = async ({ userId, role }) => {
     error.status = 404;
     throw error;
   }
+  await invalidateAdminDashboardCache("admin-user-role-updated");
 
   return user;
 };

@@ -15,6 +15,7 @@ import {
   sendEmailVerificationForUser,
   verifyPendingToken,
 } from "./verification.service.js";
+import { invalidateAuthUserLookupCacheForUser } from "../infrastructure/auth-user-lookup-cache.service.js";
 
 // Xử lý xác minh email bằng mã
 export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
@@ -60,6 +61,7 @@ export const verifyEmailWithCode = async ({ verificationToken, code, res }) => {
   user.emailVerificationExpiresAt = undefined;
   user.emailVerificationLastSentAt = undefined;
   await user.save();
+  await invalidateAuthUserLookupCacheForUser(user);
 
   if (tokenStatus.decoded.purpose === "signup") {
     return {

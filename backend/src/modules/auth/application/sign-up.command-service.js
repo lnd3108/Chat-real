@@ -4,6 +4,7 @@ import { ADMIN_SOCKET_EVENTS } from "../../../constants/socketEvents.js";
 import { sendEmailVerificationForUser } from "./verification.service.js";
 import { emitAuthLifecycle } from "../infrastructure/auth-realtime.service.js";
 import { ensureMaintenanceAccess } from "../infrastructure/maintenance-access.service.js";
+import { invalidateAdminDashboardCache } from "../../admin-panel/infrastructure/cache/admin-dashboard-cache.service.js";
 
 // Hàm xử lý đăng ký người dùng mới
 export const signUpUser = async ({
@@ -96,6 +97,7 @@ export const signUpUser = async ({
 
   // Phát sự kiện người dùng mới đăng ký
   emitAuthLifecycle(ADMIN_SOCKET_EVENTS.USER_NEW, user);
+  await invalidateAdminDashboardCache("user-registered");
 
   // Gửi email xác minh cho người dùng mới
   const verification = await sendEmailVerificationForUser(user, "signup", {

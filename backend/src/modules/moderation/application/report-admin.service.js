@@ -8,6 +8,8 @@ import {
   getAdminReportSort,
   validateAdminReportStatusUpdate,
 } from "../../../services/adminReportService.js";
+import { invalidateAuthUserLookupCacheForUserId } from "../../auth/infrastructure/auth-user-lookup-cache.service.js";
+import { invalidateAdminDashboardCache } from "../../admin-panel/infrastructure/cache/admin-dashboard-cache.service.js";
 
 export const getReportsQuery = async ({
   page = 1,
@@ -169,6 +171,7 @@ export const updateReportStatusCommand = async ({
     action: "status-updated",
     actorId: adminId.toString(),
   });
+  await invalidateAdminDashboardCache("report-status-updated");
 
   return report;
 };
@@ -204,6 +207,13 @@ export const resolveReportWithActionCommand = async ({
     actionResult = "Đã xóa tin nhắn";
   }
 
+  if (
+    ["ban-user", "unban-user", "delete-account"].includes(action) &&
+    report.targetUserId
+  ) {
+    await invalidateAuthUserLookupCacheForUserId(report.targetUserId);
+  }
+
   const updateData = {
     status: "resolved",
     reviewedByAdminId: adminId,
@@ -225,6 +235,7 @@ export const resolveReportWithActionCommand = async ({
     action,
     actorId: adminId.toString(),
   });
+  await invalidateAdminDashboardCache("report-resolved-with-action");
 
   return {
     report: updatedReport,

@@ -15,6 +15,7 @@ import {
   emitAdminUserPresence,
   emitOnlineUsers,
   getOnlineUsersCount,
+  refreshSocketPresence,
   registerSocketConnection,
   setConversationActiveForSocket,
   setUserVisibility,
@@ -23,8 +24,10 @@ import {
 } from "../../shared/infrastructure/realtime/user-presence.js";
 import { emitToUser } from "../../shared/infrastructure/realtime/socket-gateway.js";
 import { getIo, setIo } from "../../shared/infrastructure/realtime/socket-registry.js";
+import { setupSocketRedisAdapter } from "../../shared/infrastructure/realtime/socket-redis-adapter.js";
 import User from "../../models/User.js";
 import { emitDashboardStatsUpdated } from "../../services/dashboardRealtimeService.js";
+import { buildSocketCorsOptions } from "../../config/cors.js";
 
 // hàm này xây dựng payload người dùng để gửi qua socket, 
 // bao gồm thông tin cơ bản và quyền truy cập của người dùng
@@ -46,14 +49,27 @@ const buildSocketUserPayload = (user) => {
   };
 };
 
+const getPresenceHeartbeatMs = () => {
+  const ttlSeconds = Number(process.env.PRESENCE_TTL_SECONDS || 120);
+  const safeTtlSeconds =
+    Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : 120;
+  return Math.max(10_000, Math.floor((safeTtlSeconds * 1000) / 2));
+};
+
 // hàm này khởi tạo socket.io server và thiết lập các sự kiện liên quan đến kết nối người dùng,
 // bao gồm quản lý trạng thái trực tuyến, tham gia phòng trò chuyện, và cập nhật sở thích người dùng
-export const initSocket = (server) => {
+export const initSocket = async (server) => {
   const io = setIo(
     new Server(server, {
-      cors: { origin: process.env.CLIENT_URL, credentials: true },
+      cors: buildSocketCorsOptions(),
     }),
   );
+
+  await setupSocketRedisAdapter(io);
+
+  io.on("presence:disconnect-non-admin", (message) => {
+    disconnectAllNonAdminSockets(message, { broadcast: false });
+  });
 
   // xác thực kết nối socket bằng middleware
   io.use(socketAuthMiddleWare);
@@ -76,7 +92,7 @@ export const initSocket = (server) => {
     // xây dựng payload người dùng để đăng ký kết nối socket
     const userMeta = buildSocketUserPayload(user);
     // đăng ký kết nối socket và kiểm tra xem người dùng có trở nên trực tuyến hay không
-    const { wasOffline } = registerSocketConnection({
+    const { wasOffline } = await registerSocketConnection({
       userId,
       socketId: socket.id,
       visible,
@@ -90,7 +106,7 @@ export const initSocket = (server) => {
     }
 
     // phát sự kiện cập nhật danh sách người dùng trực tuyến cho tất cả client
-    emitOnlineUsers();
+    await emitOnlineUsers();
 
     //phát sự kiện thống kê cho admin và cập nhật dashboard nếu người dùng vừa trở nên trực tuyến
     if (wasOffline) {
@@ -108,13 +124,22 @@ export const initSocket = (server) => {
     conversations.forEach((id) => socket.join(id.toString()));
     registerCallSocketHandlers(socket);
 
+    const presenceHeartbeat = setInterval(() => {
+      void refreshSocketPresence({
+        userId,
+        socketId: socket.id,
+        userMeta,
+      });
+    }, getPresenceHeartbeatMs());
+
     // xử lý khi người dùng ngắt kết nối 
-    socket.on("disconnect", () => {
-      const { becameOffline } = unregisterSocketConnection({
+    socket.on("disconnect", async () => {
+      clearInterval(presenceHeartbeat);
+      const { becameOffline } = await unregisterSocketConnection({
         userId,
         socketId: socket.id,
       });
-      emitOnlineUsers();
+      await emitOnlineUsers();
 
       if (becameOffline) {
         void handleUserDisconnectedFromCalls(userId).catch((error) => {
@@ -142,7 +167,7 @@ export const initSocket = (server) => {
 
     //xử lý khi kích hoạt hoặc hủy kích hoạt một cuộc trò chuyện
     socket.on("conversation:active", (conversationId) => {
-      setConversationActiveForSocket(
+      void setConversationActiveForSocket(
         socket.id,
         typeof conversationId === "string" && conversationId.trim()
           ? conversationId
@@ -153,8 +178,7 @@ export const initSocket = (server) => {
     //xử lý khi người dùng cập nhật sở thích hiển thị trạng thái trực tuyến
     socket.on("preferences:showOnlineStatus", (value) => {
       if (typeof value === "boolean") {
-        setUserVisibility(userId, value);
-        emitOnlineUsers();
+        void setUserVisibility(userId, value).then(() => emitOnlineUsers());
       }
     });
   });

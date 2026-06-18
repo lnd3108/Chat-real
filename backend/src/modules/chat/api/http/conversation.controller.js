@@ -43,7 +43,7 @@ export const createConversation = makeCommandHandler({
 
 // Controller để lấy danh sách cuộc trò chuyện của người dùng
 export const getConversation = makeQueryHandler({
-  execute: (req) => getConversationListForUser(req.user),
+  execute: (req) => getConversationListForUser(req.user, req.query),
   present: (conversations) => presentJson({ body: { conversations } }),
   onError: conversationServerError,
 });

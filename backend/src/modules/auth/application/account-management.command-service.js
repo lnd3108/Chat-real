@@ -3,6 +3,11 @@ import User from "../../../models/User.js";
 import Session from "../../../models/Session.js";
 import { deleteMyAccountCommand } from "../../user-profile/application/user-profile.service.js";
 import { sendAccountDeletionCodeForUser } from "./verification.service.js";
+import {
+  clearAuthCookies,
+  clearRefreshTokenCookie,
+} from "../../../config/auth-cookies.js";
+import { invalidateAuthUserLookupCacheForUser } from "../infrastructure/auth-user-lookup-cache.service.js";
 
 // Đổi mật khẩu cho người dùng đã xác thực
 export const changePasswordForUser = async ({
@@ -65,13 +70,10 @@ export const changePasswordForUser = async ({
 
   user.hashedPassword = await bcrypt.hash(newPassword, 10);
   await user.save();
+  await invalidateAuthUserLookupCacheForUser(user);
   await Session.deleteMany({ userId: user._id });
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-  });
+  clearAuthCookies(res);
 
   return {
     status: 200,
@@ -120,7 +122,7 @@ export const confirmAuthenticatedAccountDeletion = async ({
   }
 
   if (result.clearRefreshToken) {
-    res.clearCookie("refreshToken");
+    clearRefreshTokenCookie(res);
   }
 
   return {

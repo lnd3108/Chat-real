@@ -100,6 +100,11 @@ jest.unstable_mockModule(
 jest.unstable_mockModule("../../services/maintenanceService.js", () => ({
   isMaintenanceEnabled: mockIsMaintenanceEnabled,
   getMaintenanceMessage: mockGetMaintenanceMessage,
+  getPublicMaintenanceConfig: jest.fn(async () => ({
+    isEnabled: await mockIsMaintenanceEnabled(),
+    message: await mockGetMaintenanceMessage(),
+  })),
+  isMaintenanceL1CacheEnabled: jest.fn(() => false),
 }));
 
 jest.unstable_mockModule("../../socket/adminSocket.js", () => ({

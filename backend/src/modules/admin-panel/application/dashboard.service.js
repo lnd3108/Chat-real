@@ -6,9 +6,10 @@ import Blocking from "../../../models/Blocking.js";
 import Friend from "../../../models/Friend.js";
 import { buildAdminStaffQuery } from "../../../services/rbacService.js";
 import { getAdminDashboardRealtimeStats } from "../../../services/dashboardRealtimeService.js";
+import { wrapAdminDashboardCache } from "../infrastructure/cache/admin-dashboard-cache.service.js";
 
 // Lấy tổng quan các thống kê chính cho dashboard admin panel
-export const getDashboardStatsSummary = async () => {
+const loadDashboardStatsSummary = async () => {
   const [
     totalUsers,
     totalAdmins,
@@ -36,7 +37,7 @@ export const getDashboardStatsSummary = async () => {
 };
 
 //Tổng quan chi tiết cho trang tổng quan admin
-export const getDashboardOverviewSummary = async () => {
+const loadDashboardOverviewSummary = async () => {
   const last7Days = new Date();
   last7Days.setDate(last7Days.getDate() - 7);
 
@@ -121,3 +122,19 @@ export const getDashboardOverviewSummary = async () => {
     maintenance: dashboardRealtime.maintenance,
   };
 };
+
+export const getDashboardStatsSummary = async (options = {}) =>
+  wrapAdminDashboardCache({
+    type: "stats",
+    query: options.query ?? {},
+    adminContext: options.adminContext ?? {},
+    fetcher: loadDashboardStatsSummary,
+  });
+
+export const getDashboardOverviewSummary = async (options = {}) =>
+  wrapAdminDashboardCache({
+    type: "overview",
+    query: options.query ?? {},
+    adminContext: options.adminContext ?? {},
+    fetcher: loadDashboardOverviewSummary,
+  });

@@ -56,13 +56,13 @@ export const cancelSentFriendRequest = makeCommandHandler({
 });
 
 export const getAllFriends = makeQueryHandler({
-  execute: (req) => getAllFriendsQuery({ user: req.user }),
+  execute: (req) => getAllFriendsQuery({ user: req.user, query: req.query }),
   present: (data) => presentJson({ body: data }),
   onError: friendshipServerError,
 });
 
 export const getFriendRequests = makeQueryHandler({
-  execute: (req) => getFriendRequestsQuery({ user: req.user }),
+  execute: (req) => getFriendRequestsQuery({ user: req.user, query: req.query }),
   present: (data) => presentJson({ body: data }),
   onError: friendshipServerError,
 });

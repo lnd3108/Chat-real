@@ -59,7 +59,7 @@ const normalizeRecipients = (value) => {
     .filter(Boolean);
 };
 
-const sendMail = async ({ to, subject, text, html }) => {
+export const sendMailDirect = async ({ to, subject, text, html }) => {
   if (shouldDisableExternalSideEffects()) {
     return;
   }
@@ -117,6 +117,14 @@ const sendMail = async ({ to, subject, text, html }) => {
   }
 };
 
+const sendMail = async (payload) => {
+  const { sendEmailOrEnqueue } = await import(
+    "../shared/infrastructure/queue/email.queue.js"
+  );
+
+  return sendEmailOrEnqueue(payload, sendMailDirect);
+};
+
 export const sendVerificationCodeEmail = async ({
   email,
   code,
@@ -125,6 +133,7 @@ export const sendVerificationCodeEmail = async ({
   const appName = getAppName();
 
   await sendMail({
+    templateName: "email-verification-code",
     to: email,
     subject: `${appName} - Mã xác minh email`,
     text: [
@@ -156,6 +165,7 @@ export const sendPasswordResetOtpEmail = async ({
   const appName = getAppName();
 
   await sendMail({
+    templateName: "password-reset-otp",
     to: email,
     subject: `${appName} - Xác nhận quên mật khẩu`,
     text: [
@@ -189,6 +199,7 @@ export const sendEmailChangeVerificationEmail = async ({
   const appName = getAppName();
 
   await sendMail({
+    templateName: "email-change-verification",
     to: email,
     subject: `${appName} - Xác minh email mới`,
     text: [
@@ -222,6 +233,7 @@ export const sendAccountDeletionCodeEmail = async ({
   const appName = getAppName();
 
   await sendMail({
+    templateName: "account-deletion-code",
     to: email,
     subject: `${appName} - Mã xác minh xóa tài khoản`,
     text: [
@@ -269,6 +281,9 @@ export const sendAccountDeletedEmail = async ({
   const config = getMailConfig();
 
   await sendMail({
+    templateName: deletedByAdmin
+      ? "admin-account-deleted"
+      : "account-deleted",
     to: email,
     subject: deletedByAdmin
       ? `${appName} - Tài khoản của bạn đã bị xóa bởi quản trị viên`
@@ -298,6 +313,7 @@ export const sendMaintenanceConfirmationCodeEmail = async ({ email, code }) => {
   const appName = getAppName();
 
   await sendMail({
+    templateName: "maintenance-confirmation-code",
     to: email,
     subject: `${appName} - Mã xác nhận bảo trì hệ thống`,
     text: [

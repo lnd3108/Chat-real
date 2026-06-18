@@ -33,6 +33,8 @@ import {
   confirmAuthenticatedAccountDeletion,
   requestAuthenticatedAccountDeletion,
 } from "../../application/account-management.command-service.js";
+import { clearAuthCookies } from "../../../../config/auth-cookies.js";
+import { recordSigninPipelineServiceTiming } from "../../../../shared/infrastructure/perf/signin-pipeline-timing.js";
 
 // Các controller cho các endpoint liên quan đến xác thực và quản lý tài khoản
 export const signUp = makeCommandHandler({
@@ -47,11 +49,16 @@ export const signUp = makeCommandHandler({
 
 // Controller cho endpoint đăng nhập, sử dụng schema để validate dữ liệu đầu vào
 export const signIn = makeCommandHandler({
-  execute: (req, res) =>
-    signInUser({
+  execute: async (req, res) => {
+    const pipelineTiming = {};
+    const result = await signInUser({
       ...parseBody(signInSchema, req.body),
       res,
-    }),
+      pipelineTiming,
+    });
+    recordSigninPipelineServiceTiming(req, pipelineTiming);
+    return result;
+  },
   present: presentCommandResult,
   onError: makeValidationErrorHandler({
     logMessage: "Lỗi signIn",
@@ -166,8 +173,7 @@ export const resetForgottenPassword = makeCommandHandler({
       confirmPassword: req.body?.confirmPassword,
     });
 
-    res.clearCookie("refreshToken");
-    res.clearCookie("accessToken");
+    clearAuthCookies(res);
 
     return { payload };
   },

@@ -20,6 +20,13 @@ import {
   getProtectedFriendshipMessage,
   isProtectedAccount,
 } from "../../../services/friendshipPolicyService.js";
+import {
+  getCachedFriendData,
+  invalidateFriendCacheForUsers,
+  setCachedFriendData,
+} from "../infrastructure/cache/friend-cache.service.js";
+import { invalidateConversationListForUsers } from "../../chat/infrastructure/cache/conversation-list-cache.service.js";
+import { invalidateAdminDashboardCache } from "../../admin-panel/infrastructure/cache/admin-dashboard-cache.service.js";
 
 const toSortedFriendPair = (firstUserId, secondUserId) => {
   let userA = firstUserId.toString();
@@ -121,6 +128,11 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
         userA: mapBasicUser(fromUser),
         userB: mapBasicUser(toUser),
       };
+      await invalidateFriendCacheForUsers(
+        [from, to],
+        "friend-request-auto-accepted",
+      );
+      await invalidateAdminDashboardCache("friend-request-auto-accepted");
 
       emitFriendRequestAccepted({
         userIds: [from.toString(), to.toString()],
@@ -170,6 +182,11 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
         fromUserId: from.toString(),
         request: requestPayload,
       });
+      await invalidateFriendCacheForUsers(
+        [from, to],
+        "friend-request-resend",
+      );
+      await invalidateAdminDashboardCache("friend-request-resend");
 
       return {
         status: 200,
@@ -202,6 +219,8 @@ export const sendFriendRequestCommand = async ({ user, body }) => {
     fromUserId: from.toString(),
     request: requestPayload,
   });
+  await invalidateFriendCacheForUsers([from, to], "friend-request-sent");
+  await invalidateAdminDashboardCache("friend-request-sent");
 
   return {
     status: 201,
@@ -263,6 +282,11 @@ export const acceptFriendRequestCommand = async ({ user, requestId }) => {
     userIds: [request.from.toString(), request.to.toString()],
     payload: acceptancePayload,
   });
+  await invalidateFriendCacheForUsers(
+    [request.from, request.to],
+    "friend-request-accepted",
+  );
+  await invalidateAdminDashboardCache("friend-request-accepted");
 
   return {
     status: 200,
@@ -309,6 +333,11 @@ export const declineFriendRequestCommand = async ({ user, requestId }) => {
     userIds: [request.from.toString(), request.to.toString()],
     payload,
   });
+  await invalidateFriendCacheForUsers(
+    [request.from, request.to],
+    "friend-request-declined",
+  );
+  await invalidateAdminDashboardCache("friend-request-declined");
 
   return { status: 204, payload: null };
 };
@@ -348,6 +377,11 @@ export const cancelSentFriendRequestCommand = async ({ user, requestId }) => {
     userIds: [request.from.toString(), request.to.toString()],
     payload,
   });
+  await invalidateFriendCacheForUsers(
+    [request.from, request.to],
+    "friend-request-cancelled",
+  );
+  await invalidateAdminDashboardCache("friend-request-cancelled");
 
   return {
     status: 200,
@@ -355,7 +389,7 @@ export const cancelSentFriendRequestCommand = async ({ user, requestId }) => {
   };
 };
 
-export const getAllFriendsQuery = async ({ user }) => {
+const loadAllFriendsFromMongo = async ({ user }) => {
   const userId = user._id;
   const friendships = await Friend.find({
     $or: [{ userA: userId }, { userB: userId }],
@@ -380,21 +414,73 @@ export const getAllFriendsQuery = async ({ user }) => {
   return { friends };
 };
 
-export const getFriendRequestsQuery = async ({ user }) => {
+export const getAllFriendsQuery = async ({ user, query = {} }) => {
+  if (!user?._id) {
+    return loadAllFriendsFromMongo({ user });
+  }
+
+  const cached = await getCachedFriendData({
+    type: "list",
+    userId: user._id,
+    query,
+  });
+
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  const result = await loadAllFriendsFromMongo({ user });
+  await setCachedFriendData({
+    type: "list",
+    userId: user._id,
+    query,
+    value: result,
+  });
+
+  return result;
+};
+
+const loadFriendRequestsFromMongo = async ({ user }) => {
   const userId = user._id;
   const populateFields = "_id userName displayName avatarUrl";
   const [sent, received] = await Promise.all([
-    FriendRequest.find({ from: userId, status: "pending" }).populate(
-      "to",
-      populateFields,
-    ),
-    FriendRequest.find({ to: userId, status: "pending" }).populate(
-      "from",
-      populateFields,
-    ),
+    FriendRequest.find({ from: userId, status: "pending" })
+      .sort({ createdAt: -1 })
+      .populate("to", populateFields)
+      .lean(),
+    FriendRequest.find({ to: userId, status: "pending" })
+      .sort({ createdAt: -1 })
+      .populate("from", populateFields)
+      .lean(),
   ]);
 
   return { sent, received };
+};
+
+export const getFriendRequestsQuery = async ({ user, query = {} }) => {
+  if (!user?._id) {
+    return loadFriendRequestsFromMongo({ user });
+  }
+
+  const cached = await getCachedFriendData({
+    type: "requests",
+    userId: user._id,
+    query,
+  });
+
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  const result = await loadFriendRequestsFromMongo({ user });
+  await setCachedFriendData({
+    type: "requests",
+    userId: user._id,
+    query,
+    value: result,
+  });
+
+  return result;
 };
 
 export const removeFriendCommand = async ({ user, targetUserId }) => {
@@ -474,6 +560,12 @@ export const removeFriendCommand = async ({ user, targetUserId }) => {
       conversationId,
     });
   }
+  await invalidateFriendCacheForUsers([userId, targetUserId], "friend-removed");
+  await invalidateConversationListForUsers(
+    [userId, targetUserId],
+    "friend-removed",
+  );
+  await invalidateAdminDashboardCache("friend-removed");
 
   const payload = {
     userId: userId.toString(),

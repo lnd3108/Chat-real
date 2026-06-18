@@ -28,7 +28,10 @@ const buildBaseMatch = (excludedIds = []) => {
   return match;
 };
 
-export const findRandomDiscoverableUsers = async ({ excludedIds = [], limit = 5 }) => {
+export const findRandomDiscoverableUsers = async ({
+  excludedIds = [],
+  limit = 5,
+}) => {
   const normalizedLimit = Math.max(1, Math.min(limit, 5));
   const objectIds = toObjectIds(excludedIds);
   const match = {
@@ -59,8 +62,9 @@ export const findRandomDiscoverableUsers = async ({ excludedIds = [], limit = 5 
     },
   ]);
 
-  // If we don't get enough results, try fetching more without sampling
-  // This can happen when there are fewer eligible users than the limit
+  // Nếu không lấy được đủ số lượng kết quả,
+  // thì thử lấy thêm dữ liệu mà không dùng sampling.
+  // Trường hợp này có thể xảy ra khi số user đủ điều kiện ít hơn limit.
   if (results.length < normalizedLimit) {
     const additionalLimit = normalizedLimit - results.length;
     const excludeIds = [

@@ -1,4 +1,8 @@
 import { sendSuccess } from "../../../utils/controllerResponses.js";
+import {
+  markSigninPipelineControllerEnd,
+  markSigninPipelineControllerStart,
+} from "../../infrastructure/perf/signin-pipeline-timing.js";
 
 const sendPresented = (res, presented) => {
   if (presented?.type === "sendStatus") {
@@ -29,9 +33,13 @@ export const makeCommandHandler = ({
   present,
   onError,
 }) => async (req, res) => {
+  markSigninPipelineControllerStart(req);
   try {
-    return sendPresented(res, present(await execute(req, res)));
+    const result = sendPresented(res, present(await execute(req, res)));
+    markSigninPipelineControllerEnd(req);
+    return result;
   } catch (error) {
+    markSigninPipelineControllerEnd(req);
     return onError(error, req, res);
   }
 };

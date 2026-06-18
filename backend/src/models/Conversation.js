@@ -179,11 +179,21 @@ conversationSchema.index({
   lastMessageAt: -1,
 });
 
+// Admin/support list queries filter by type/supportStatus and sort by updatedAt/createdAt.
+conversationSchema.index({ type: 1, updatedAt: -1 });
+conversationSchema.index({ type: 1, createdAt: -1 });
+
 // Support conversation indexes
 conversationSchema.index({
   type: 1,
   supportStatus: 1,
   lastMessageAt: -1,
+});
+
+conversationSchema.index({
+  type: 1,
+  supportStatus: 1,
+  updatedAt: -1,
 });
 
 // Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên người tạo và loại cuộc trò chuyện
@@ -192,10 +202,22 @@ conversationSchema.index({
   type: 1,
 });
 
+conversationSchema.index({
+  supportCreatedByUserId: 1,
+  type: 1,
+  updatedAt: -1,
+});
+
 // Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên người được giao và trạng thái hỗ trợ
 conversationSchema.index({
   assignedAdminId: 1,
   supportStatus: 1,
+});
+
+conversationSchema.index({
+  assignedAdminId: 1,
+  supportStatus: 1,
+  updatedAt: -1,
 });
 
 // Index để tối ưu hóa truy vấn cho các cuộc trò chuyện hỗ trợ, dựa trên trạng thái đã xóa của người dùng

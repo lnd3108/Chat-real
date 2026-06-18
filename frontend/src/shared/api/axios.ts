@@ -2,6 +2,9 @@ import { useAuthStore } from "@/features/auth/stores/useAuthStore";
 import axios from "axios";
 import { toast } from "sonner";
 import { logger } from "@/shared/lib/logger";
+import { validateFrontendTransportConfig } from "@/shared/config/transportSecurity";
+
+validateFrontendTransportConfig();
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,

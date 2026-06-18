@@ -11,6 +11,12 @@ import {
   getUserSuggestionsForViewer,
   searchDiscoverableUsersForViewer,
 } from "../../../services/userDiscoveryService.js";
+import {
+  getCachedFriendData,
+  invalidateFriendCacheForUser,
+  invalidateFriendCacheForUsers,
+  setCachedFriendData,
+} from "../../friendship/infrastructure/cache/friend-cache.service.js";
 import { serializeUserAccess } from "../../../shared/domain/rbac/access-policy.js";
 import { sanitizeUser } from "../../../utils/sanitizeUser.js";
 import {
@@ -60,9 +66,34 @@ export const searchUsersQuery = async ({ user, query, limit }) => ({
   users: await searchDiscoverableUsersForViewer(user._id, query, limit),
 });
 
-export const getUserSuggestionsQuery = async ({ user, limit }) => ({
-  users: await getUserSuggestionsForViewer(user._id, limit),
-});
+export const getUserSuggestionsQuery = async ({ user, limit }) => {
+  if (!user?._id) {
+    return { users: await getUserSuggestionsForViewer(user?._id, limit) };
+  }
+
+  const query = { limit };
+  const cached = await getCachedFriendData({
+    type: "suggestions",
+    userId: user._id,
+    query,
+  });
+
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  const result = {
+    users: await getUserSuggestionsForViewer(user._id, limit),
+  };
+  await setCachedFriendData({
+    type: "suggestions",
+    userId: user._id,
+    query,
+    value: result,
+  });
+
+  return result;
+};
 
 export const uploadAvatarCommand = async ({ user, file }) => {
   const userId = user._id;
@@ -92,11 +123,17 @@ export const uploadAvatarCommand = async ({ user, file }) => {
     return { error: { status: 400, message: "Avatar trả về null" } };
   }
 
+  // TODO Phase 2B.x: invalidate friends' caches too when efficiently available.
+  await invalidateFriendCacheForUser(userId, "profile-avatar-updated");
+
   return { status: 200, payload: { avatarUrl: updatedUser.avatarUrl } };
 };
 
-export const updateProfileCommand = async ({ user, body, req }) =>
-  updateMyProfile({ userId: user?._id, payload: body || {}, req });
+export const updateProfileCommand = async ({ user, body, req }) => {
+  const result = await updateMyProfile({ userId: user?._id, payload: body || {}, req });
+  await invalidateFriendCacheForUser(user?._id, "profile-updated");
+  return result;
+};
 
 export const sendEmailChangeOtpCommand = async ({ user, body, req }) =>
   resendEmailChangeOtp({ userId: user?._id, newEmail: body?.newEmail, req });
@@ -202,6 +239,7 @@ export const blockUserCommand = async ({ user, targetUserId, reason }) => {
     targetUserId,
     isBlocked: true,
   });
+  await invalidateFriendCacheForUsers([actorId, targetUserId], "user-blocked");
 
   return {
     status: 200,
@@ -246,6 +284,7 @@ export const unblockUserCommand = async ({ user, targetUserId }) => {
     targetUserId,
     isBlocked: false,
   });
+  await invalidateFriendCacheForUsers([actorId, targetUserId], "user-unblocked");
 
   return {
     status: 200,

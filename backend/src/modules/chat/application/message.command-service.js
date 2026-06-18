@@ -17,6 +17,7 @@ import {
 import { emitToUser } from "../../../shared/infrastructure/realtime/socket-gateway.js";
 import { getIo } from "../../../shared/infrastructure/realtime/socket-registry.js";
 import { isConversationActiveForUser } from "../../../shared/infrastructure/realtime/user-presence.js";
+import { invalidateConversationListForConversation } from "../infrastructure/cache/conversation-list-cache.service.js";
 
 const RECALL_PLACEHOLDER = "Bạn đã xóa một tin nhắn";
 
@@ -148,11 +149,12 @@ export const createAndEmitMessage = async ({
     replyTo,
   });
 
-  updateConversationAfterCreateMessage(conversation, message, senderId, {
+  await updateConversationAfterCreateMessage(conversation, message, senderId, {
     isConversationActive: (memberId) =>
       isConversationActiveForUser(memberId, conversationId),
   });
   await conversation.save();
+  await invalidateConversationListForConversation(conversation, "send-message");
 
   const conversationPayload = includeConversationPayload
     ? await buildConversationSocketPayload(conversation)
@@ -367,6 +369,10 @@ export const syncConversationAndEmitUpdate = async (conversation, message) => {
 
   syncConversationLastMessage(conversation, latestMessage);
   await conversation.save();
+  await invalidateConversationListForConversation(
+    conversation,
+    "sync-last-message",
+  );
 
   return latestMessage;
 };

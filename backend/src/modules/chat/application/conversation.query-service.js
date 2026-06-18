@@ -3,6 +3,24 @@ import Message from "../../../models/Message.js";
 import {
   buildDirectBlockInfo,
 } from "../domain/direct-blocking.policy.js";
+import {
+  getCachedConversationList,
+  setCachedConversationList,
+} from "../infrastructure/cache/conversation-list-cache.service.js";
+
+const DEFAULT_CONVERSATION_LIST_LIMIT = 50;
+const MAX_CONVERSATION_LIST_LIMIT = 100;
+const DEFAULT_MESSAGE_LIMIT = 50;
+const MAX_MESSAGE_LIMIT = 100;
+
+const clampPositiveInteger = (value, fallback, max) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.min(parsed, max);
+};
 
 // Hàm gọi xóa 
 export const getClearedAtForUser = (conversation, userId) => {
@@ -103,8 +121,13 @@ export const getUserConversationIdsForRealtime = async (userId) => {
   }
 };
 
-export const getConversationListForUser = async (user) => {
+const loadConversationListForUserFromMongo = async (user, query = {}) => {
   const userId = user._id;
+  const limit = clampPositiveInteger(
+    query.limit,
+    DEFAULT_CONVERSATION_LIST_LIMIT,
+    MAX_CONVERSATION_LIST_LIMIT,
+  );
 
   const conversations = await Conversation.find({
     "participants.userId": userId,
@@ -114,6 +137,7 @@ export const getConversationListForUser = async (user) => {
     ],
   })
     .sort({ lastMessageAt: -1 })
+    .limit(limit)
     .populate({
       path: "participants.userId",
       select: "userName displayName avatarUrl bio blockedUsers",
@@ -151,13 +175,42 @@ export const getConversationListForUser = async (user) => {
     });
 };
 
+export const getConversationListForUser = async (user, query = {}) => {
+  if (!user?._id) {
+    return loadConversationListForUserFromMongo(user, query);
+  }
+
+  const cached = await getCachedConversationList({
+    userId: user._id,
+    query,
+  });
+
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  const conversations = await loadConversationListForUserFromMongo(user, query);
+  await setCachedConversationList({
+    userId: user._id,
+    query,
+    conversations,
+  });
+
+  return conversations;
+};
+
 export const getConversationMessagesForUser = async ({
   user,
   conversationId,
-  limit = 50,
+  limit = DEFAULT_MESSAGE_LIMIT,
   cursor,
 }) => {
   const userId = user._id;
+  const normalizedLimit = clampPositiveInteger(
+    limit,
+    DEFAULT_MESSAGE_LIMIT,
+    MAX_MESSAGE_LIMIT,
+  );
 
   const conversation = await Conversation.findById(conversationId).select(
     "_id participants clearedFor",
@@ -196,10 +249,10 @@ export const getConversationMessagesForUser = async ({
 
   let messages = await Message.find(query)
     .sort({ createdAt: -1 })
-    .limit(Number(limit) + 1);
+    .limit(normalizedLimit + 1);
 
   let nextCursor = null;
-  if (messages.length > Number(limit)) {
+  if (messages.length > normalizedLimit) {
     const nextMessage = messages[messages.length - 1];
     nextCursor = nextMessage.createdAt.toISOString();
     messages.pop();

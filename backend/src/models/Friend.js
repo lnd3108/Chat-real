@@ -37,6 +37,9 @@ friendSchema.pre("save", function (next) {
 
 // Tạo index duy nhất trên cặp userA và userB để đảm bảo không có mối quan hệ bạn bè nào bị trùng lặp
 friendSchema.index({ userA: 1, userB: 1 }, { unique: true });
+friendSchema.index({ userA: 1 });
+friendSchema.index({ userB: 1 });
+friendSchema.index({ createdAt: -1 });
 
 // Tạo model Friend từ schema
 const Friend = mongoose.model("Friend", friendSchema);

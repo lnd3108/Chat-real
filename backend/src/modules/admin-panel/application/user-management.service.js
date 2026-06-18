@@ -22,6 +22,8 @@ import {
   canManageUser,
   serializeUserAccess,
 } from "../../../services/rbacService.js";
+import { invalidateAuthUserLookupCacheForUser } from "../../auth/infrastructure/auth-user-lookup-cache.service.js";
+import { invalidateAdminDashboardCache } from "../infrastructure/cache/admin-dashboard-cache.service.js";
 
 // Hàm giúp xây dựng phản hồi người dùng sau khi cập nhật trạng thái
 const buildUserStatusResponse = (user) => ({
@@ -38,7 +40,8 @@ const buildUserStatusResponse = (user) => ({
 // Lấy danh sách người dùng với phân trang, tìm kiếm và lọc trạng thái
 export const getUsersQuery = async ({ actor, query }) => {
   const page = parseInt(query.page, 10) || 1;
-  const limit = parseInt(query.limit, 10) || 20;
+  const parsedLimit = parseInt(query.limit, 10) || 20;
+  const limit = Math.min(Math.max(parsedLimit, 1), 100);
   const skip = (page - 1) * limit;
   const searchQuery = query.q || "";
   const status = query.status || "";
@@ -199,6 +202,7 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
 
   user.status = status;
   await user.save();
+  await invalidateAuthUserLookupCacheForUser(user);
 
   if (status === "banned") {
     await Session.deleteMany({ userId: user._id });
@@ -249,6 +253,9 @@ export const updateUserStatusCommand = async ({ actor, userId, status }) => {
     reason: status === "banned" ? "user:locked" : "user:unlocked",
     userId: user._id.toString(),
   });
+  await invalidateAdminDashboardCache(
+    status === "banned" ? "user-locked" : "user-unlocked",
+  );
 
   return {
     message:
@@ -294,6 +301,8 @@ export const deleteUserAsAdminCommand = async ({
     initiatedBy: "admin",
     reason,
   });
+  await invalidateAuthUserLookupCacheForUser(user);
+  await invalidateAdminDashboardCache("user-deleted");
 
   try {
     await sendAccountDeletedEmail({

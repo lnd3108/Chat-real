@@ -18,6 +18,7 @@ import {
   serializeUserAccess,
 } from "./rbacService.js";
 import { AUDIT_ACTIONS, createAuditLog, listAuditLogs } from "./auditLogService.js";
+import { invalidateAuthUserLookupCacheForUser } from "../modules/auth/infrastructure/auth-user-lookup-cache.service.js";
 
 const VALID_ASSIGNABLE_ROLES = new Set(Object.values(APP_ROLES));
 
@@ -159,6 +160,7 @@ export const updateUserRoleByAdmin = async ({ actor, targetUserId, nextRole, rea
   );
 
   const afterSnapshot = serializeUserAccess(updatedUser.toObject());
+  await invalidateAuthUserLookupCacheForUser(updatedUser);
 
   await createAuditLog({
     actorId: actor._id,

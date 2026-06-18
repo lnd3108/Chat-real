@@ -58,9 +58,16 @@ import {
 
 // Hàm xử lý để lấy thống kê tổng quan cho dashboard, bao gồm các số liệu chính như tổng người dùng, tổng tin nhắn, v.v.
 export const getDashboardStats = makeQueryHandler({
-  execute: async () => ({
+  execute: async (req) => ({
     success: true,
-    data: await getDashboardStatsSummary(),
+    data: await getDashboardStatsSummary({
+      query: req.query,
+      adminContext: {
+        role: req.user?.role,
+        roles: req.user?.roles,
+        permissions: req.user?.permissions,
+      },
+    }),
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({
@@ -71,9 +78,16 @@ export const getDashboardStats = makeQueryHandler({
 
 // Hàm xử lý để lấy danh sách người dùng với các bộ lọc và phân trang
 export const getDashboardOverview = makeQueryHandler({
-  execute: async () => ({
+  execute: async (req) => ({
     success: true,
-    data: await getDashboardOverviewSummary(),
+    data: await getDashboardOverviewSummary({
+      query: req.query,
+      adminContext: {
+        role: req.user?.role,
+        roles: req.user?.roles,
+        permissions: req.user?.permissions,
+      },
+    }),
   }),
   present: (body) => presentJson({ body }),
   onError: makeSuccessFlagErrorHandler({

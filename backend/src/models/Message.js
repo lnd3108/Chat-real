@@ -196,6 +196,9 @@ const messageSchema = new mongoose.Schema(
 
 // Tạo index để tối ưu hóa truy vấn theo conversationId và sắp xếp theo createdAt giảm dần
 messageSchema.index({ conversationId: 1, createdAt: -1 });
+messageSchema.index({ conversationId: 1, createdAt: -1, _id: -1 });
+messageSchema.index({ createdAt: -1 });
+messageSchema.index({ senderId: 1, createdAt: -1 });
 
 // Tạo model từ schema và xuất ra để sử dụng trong các phần khác của ứng dụng
 const Message = mongoose.model("Message", messageSchema);

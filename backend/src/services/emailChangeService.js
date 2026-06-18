@@ -15,6 +15,10 @@ import {
 } from "./otpService.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import { normalizeRole } from "./rbacService.js";
+import {
+  invalidateAuthUserLookupCacheByUserName,
+  invalidateAuthUserLookupCacheForUser,
+} from "../modules/auth/infrastructure/auth-user-lookup-cache.service.js";
 
 const EMAIL_CHANGE_MAX_SENDS_PER_IP_PER_HOUR = 20;
 const EMAIL_CHANGE_GENERIC_MESSAGE = "Mã xác minh đã được gửi tới email mới.";
@@ -250,12 +254,15 @@ export const updateMyProfile = async ({ userId, payload, req }) => {
   const isEmailChanged = nextEmail !== currentUser.email;
 
   if (!isEmailChanged) {
+    const previousUserName = currentUser.userName;
     normalizeUserRoleForSave(currentUser);
     currentUser.displayName = pendingProfile.displayName;
     currentUser.userName = pendingProfile.userName;
     currentUser.phone = pendingProfile.phone;
     currentUser.bio = pendingProfile.bio ?? null;
     await currentUser.save();
+    await invalidateAuthUserLookupCacheByUserName(previousUserName);
+    await invalidateAuthUserLookupCacheForUser(currentUser);
 
     await invalidatePendingEmailChanges(userId);
 
@@ -423,6 +430,7 @@ export const verifyEmailChangeOtp = async ({ userId, newEmail, otp }) => {
   }
 
   const pendingProfile = verification.pendingProfile || {};
+  const previousUserName = user.userName;
   const existedUserName = await User.findOne({
     userName: pendingProfile.userName,
     _id: { $ne: userId },
@@ -439,6 +447,8 @@ export const verifyEmailChangeOtp = async ({ userId, newEmail, otp }) => {
   user.phone = pendingProfile.phone ?? null;
   user.bio = pendingProfile.bio ?? null;
   await user.save();
+  await invalidateAuthUserLookupCacheByUserName(previousUserName);
+  await invalidateAuthUserLookupCacheForUser(user);
 
   verification.isUsed = true;
   verification.usedAt = new Date();

@@ -44,6 +44,9 @@ const blockingSchema = new mongoose.Schema(
 
 blockingSchema.index({ userId: 1, blockedUserId: 1 }, { unique: true });
 blockingSchema.index({ isActive: 1, createdAt: -1 });
+blockingSchema.index({ userId: 1, isActive: 1 });
+blockingSchema.index({ blockedUserId: 1, isActive: 1 });
+blockingSchema.index({ userId: 1, blockedUserId: 1, isActive: 1 });
 
 const Blocking = mongoose.model("Blocking", blockingSchema);
 

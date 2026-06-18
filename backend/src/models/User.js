@@ -144,5 +144,10 @@ const userSchema = new mongoose.Schema(
 );
 
 // Tạo model User từ schema và xuất ra để sử dụng trong các phần khác của ứng dụng
+userSchema.index({ status: 1, createdAt: -1 });
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ "blockedUsers.userId": 1 });
+
 const User = mongoose.model("User", userSchema);
 export default User;

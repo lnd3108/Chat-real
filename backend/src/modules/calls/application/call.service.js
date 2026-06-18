@@ -29,6 +29,8 @@ import {
 const activeCallsByUser = new Map();
 const activeCallIds = new Set();
 const timeoutByCallId = new Map();
+// TODO Phase 2B: move call session runtime state to a shared store before
+// relying on multi-worker call failover. Phase 2A only scales presence/emit.
 const activeGroupCallsByConversationId = new Map();
 const groupInviteTimeoutsByCallId = new Map();
 const groupEndGraceTimeoutByCallId = new Map();
@@ -379,7 +381,7 @@ const createCallHistoryMessage = async (callSession) => {
     },
   });
 
-  updateConversationAfterCreateMessage(conversation, message, callSession.callerId, {
+  await updateConversationAfterCreateMessage(conversation, message, callSession.callerId, {
     isConversationActive: () => true,
   });
   conversation.participants.forEach((participant) => {
@@ -1403,7 +1405,7 @@ export const inviteCall = async ({
   });
   if (blockValidation.error) return { error: blockValidation.error };
 
-  if (!isUserOnline(resolvedReceiverId)) {
+  if (!(await isUserOnline(resolvedReceiverId))) {
     return {
       error: buildError(CALL_ERROR_CODES.RECEIVER_OFFLINE, "Người nhận đang ngoại tuyến"),
     };

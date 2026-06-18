@@ -40,6 +40,9 @@ friendRequestSchema.index({ from: 1, to: 1 }, { unique: true });
 friendRequestSchema.index({ from: 1 });
 // Tạo index để tối ưu hóa truy vấn theo người nhận
 friendRequestSchema.index({ to: 1 });
+friendRequestSchema.index({ from: 1, status: 1, createdAt: -1 });
+friendRequestSchema.index({ to: 1, status: 1, createdAt: -1 });
+friendRequestSchema.index({ status: 1, createdAt: -1 });
 // Tạo model từ schema
 const FriendRequest = mongoose.model("FriendRequest", friendRequestSchema);
 // Xuất model và các hằng số liên quan

@@ -59,7 +59,7 @@ export const buildLastMessagePayload = (message, senderIdOverride) => {
   };
 };
 
-export const updateConversationAfterCreateMessage = (
+export const updateConversationAfterCreateMessage = async (
   conversation,
   message,
   senderId,
@@ -74,24 +74,24 @@ export const updateConversationAfterCreateMessage = (
     lastMessage,
   });
 
-  conversation.participants.forEach((participant) => {
+  for (const participant of conversation.participants) {
     const memberId = participant.userId.toString();
     const isSender = memberId === senderId.toString();
 
     if (isSender) {
       conversation.unreadCounts.set(memberId, 0);
-      return;
+      continue;
     }
 
-    if (isConversationActive(memberId)) {
+    if (await isConversationActive(memberId)) {
       conversation.unreadCounts.set(memberId, 0);
       activeSeenBy.push(participant.userId);
-      return;
+      continue;
     }
 
     const prevCount = conversation.unreadCounts.get(memberId) || 0;
     conversation.unreadCounts.set(memberId, prevCount + 1);
-  });
+  }
 
   conversation.set({
     seenBy: activeSeenBy,

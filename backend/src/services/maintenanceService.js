@@ -1,11 +1,36 @@
 import crypto from "crypto";
 import Maintenance from "../models/Maintenance.js";
 import { sendMaintenanceConfirmationCodeEmail } from "../utils/mail.js";
+import {
+  buildKey,
+  del,
+  getJson,
+  setJson,
+} from "../shared/infrastructure/cache/cache.service.js";
 
 const CONFIRMATION_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_CONFIRMATION_ATTEMPTS = 5;
 const CONFIRMATION_ATTEMPT_LOCKOUT_MS = 30 * 60 * 1000; // 30 minutes
 const PASSWORD_VERIFICATION_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAINTENANCE_CACHE_KEY = buildKey("maintenance", "config");
+const MAINTENANCE_CACHE_TTL_SECONDS = Number(
+  process.env.MAINTENANCE_CACHE_TTL_SECONDS || 45,
+);
+const DEFAULT_MAINTENANCE_L1_CACHE_TTL_MS = 1000;
+
+let maintenanceL1Cache = null;
+let maintenanceSingleFlightPromise = null;
+let maintenanceL1Version = 0;
+
+export const isMaintenanceL1CacheEnabled = () =>
+  process.env.MAINTENANCE_L1_CACHE_ENABLED === "true";
+
+const getMaintenanceL1CacheTtlMs = () => {
+  const value = Number(process.env.MAINTENANCE_L1_CACHE_TTL_MS);
+  return Number.isFinite(value) && value > 0
+    ? value
+    : DEFAULT_MAINTENANCE_L1_CACHE_TTL_MS;
+};
 
 const generateConfirmationCode = () =>
   String(Math.floor(100000 + Math.random() * 900000));
@@ -26,15 +51,136 @@ export const getMaintenanceConfig = async () => {
   return config;
 };
 
-// Check if maintenance mode is enabled
-export const isMaintenanceEnabled = async () => {
+const serializePublicMaintenanceConfig = (config) => ({
+  isEnabled: config.isEnabled,
+  message: config.message,
+  enabledAt: config.enabledAt,
+  enabledBy: config.enabledBy,
+  disabledAt: config.disabledAt,
+  disabledBy: config.disabledBy,
+});
+
+const clonePublicMaintenanceConfig = (config) => ({ ...config });
+
+const setMaintenanceTiming = (timing, data) => {
+  if (timing) {
+    Object.assign(timing, data);
+  }
+};
+
+const getL1CacheEntry = () => {
+  if (!isMaintenanceL1CacheEnabled() || !maintenanceL1Cache) {
+    return null;
+  }
+
+  if (maintenanceL1Cache.expiresAt <= Date.now()) {
+    maintenanceL1Cache = null;
+    return null;
+  }
+
+  return maintenanceL1Cache;
+};
+
+const setL1CacheEntry = (config, version) => {
+  if (!isMaintenanceL1CacheEnabled() || version !== maintenanceL1Version) {
+    return;
+  }
+
+  maintenanceL1Cache = {
+    value: clonePublicMaintenanceConfig(config),
+    expiresAt: Date.now() + getMaintenanceL1CacheTtlMs(),
+  };
+};
+
+const readPublicMaintenanceConfig = async () => {
+  const cached = await getJson(MAINTENANCE_CACHE_KEY);
+  if (cached !== null) {
+    return {
+      config: cached,
+      source: "redis",
+    };
+  }
+
   const config = await getMaintenanceConfig();
+  const publicConfig = serializePublicMaintenanceConfig(config);
+  await setJson(
+    MAINTENANCE_CACHE_KEY,
+    publicConfig,
+    MAINTENANCE_CACHE_TTL_SECONDS,
+  );
+
+  return {
+    config: publicConfig,
+    source: "mongo",
+  };
+};
+
+export const getPublicMaintenanceConfig = async (timing = null) => {
+  const l1Enabled = isMaintenanceL1CacheEnabled();
+  setMaintenanceTiming(timing, {
+    maintenanceL1Enabled: l1Enabled,
+    maintenanceL1Hit: false,
+    maintenanceSingleFlightShared: false,
+  });
+
+  const l1Entry = getL1CacheEntry();
+  if (l1Entry) {
+    setMaintenanceTiming(timing, {
+      maintenanceL1Hit: true,
+      maintenanceSource: "l1_memory",
+    });
+    return clonePublicMaintenanceConfig(l1Entry.value);
+  }
+
+  if (maintenanceSingleFlightPromise) {
+    setMaintenanceTiming(timing, {
+      maintenanceSource: "single_flight",
+      maintenanceSingleFlightShared: true,
+    });
+    const result = await maintenanceSingleFlightPromise;
+    setMaintenanceTiming(timing, {
+      maintenanceSource: result.source,
+    });
+    return clonePublicMaintenanceConfig(result.config);
+  }
+
+  const version = maintenanceL1Version;
+  maintenanceSingleFlightPromise = readPublicMaintenanceConfig()
+    .then((result) => {
+      setL1CacheEntry(result.config, version);
+      return result;
+    })
+    .finally(() => {
+      maintenanceSingleFlightPromise = null;
+    });
+
+  const result = await maintenanceSingleFlightPromise;
+  setMaintenanceTiming(timing, {
+    maintenanceSource: result.source,
+  });
+  return clonePublicMaintenanceConfig(result.config);
+};
+
+export const invalidateMaintenanceL1Cache = () => {
+  maintenanceL1Version += 1;
+  maintenanceL1Cache = null;
+  maintenanceSingleFlightPromise = null;
+};
+
+export const invalidateMaintenanceCache = async () => {
+  invalidateMaintenanceL1Cache();
+  return del(MAINTENANCE_CACHE_KEY);
+};
+
+// Check if maintenance mode is enabled
+export const isMaintenanceEnabled = async (timing = null) => {
+  const config = await getPublicMaintenanceConfig(timing);
   return config.isEnabled === true;
 };
 
 // Get maintenance message
-export const getMaintenanceMessage = async () => {
-  const config = await getMaintenanceConfig();
+export const getMaintenanceMessage = async (timing = null) => {
+  const config = await getPublicMaintenanceConfig(timing);
   return config.message;
 };
 
@@ -207,6 +353,7 @@ export const toggleMaintenanceMode = async (adminId, shouldEnable) => {
   }
 
   await config.save();
+  await invalidateMaintenanceCache();
   return config;
 };
 
@@ -215,18 +362,11 @@ export const updateMaintenanceMessage = async (message) => {
   const config = await getMaintenanceConfig();
   config.message = message;
   await config.save();
+  await invalidateMaintenanceCache();
   return config;
 };
 
 // Get maintenance config (for admin dashboard)
 export const getMaintenanceStatus = async () => {
-  const config = await getMaintenanceConfig();
-  return {
-    isEnabled: config.isEnabled,
-    message: config.message,
-    enabledAt: config.enabledAt,
-    enabledBy: config.enabledBy,
-    disabledAt: config.disabledAt,
-    disabledBy: config.disabledBy,
-  };
+  return getPublicMaintenanceConfig();
 };

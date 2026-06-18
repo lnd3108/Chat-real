@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import User from "../../../models/User.js";
 import { disconnectAllUserSockets, getIo } from "../../../socket/index.js";
 import { isMailConfigured } from "../../../utils/mail.js";
@@ -19,17 +20,41 @@ import {
   emitAdminNotification,
 } from "../../../services/adminNotificationService.js";
 import { emitDashboardStatsUpdated } from "../../../services/dashboardRealtimeService.js";
+import { getRedisHealth } from "../../../shared/infrastructure/redis/redis-client.js";
+import { invalidateAdminDashboardCache } from "../../admin-panel/infrastructure/cache/admin-dashboard-cache.service.js";
 
 export const getSystemHealthSummary = async () => {
+  const mongoReadyState = mongoose.connection.readyState;
+  const databaseOk = mongoReadyState === 1;
+  const redis = await getRedisHealth();
+  const smtpOk = isMailConfigured();
   const health = {
-    status: "healthy",
+    status: databaseOk && (redis.ok || !redis.enabled) ? "healthy" : "warning",
     checks: {
-      database: true,
-      smtp: isMailConfigured(),
+      database: databaseOk,
+      redis: !redis.enabled || redis.ok,
+      smtp: smtpOk,
+    },
+    details: {
+      database: {
+        ok: databaseOk,
+        readyState: mongoReadyState,
+        status: mongoose.STATES?.[mongoReadyState] || String(mongoReadyState),
+      },
+      redis,
+      smtp: {
+        ok: smtpOk,
+      },
     },
   };
 
-  if (!health.checks.smtp) {
+  if (!databaseOk) {
+    health.status = "warning";
+    health.message = "MongoDB chÆ°a sáºµn sÃ ng";
+  } else if (redis.enabled && !redis.ok) {
+    health.status = "warning";
+    health.message = "Redis chua san sang";
+  } else if (!health.checks.smtp) {
     health.status = "warning";
     health.message = "SMTP chưa được cấu hình - không thể gửi email";
   }
@@ -163,6 +188,9 @@ export const confirmMaintenanceToggleCommand = async ({
   await emitDashboardStatsUpdated({
     reason: enable ? "maintenance:on" : "maintenance:off",
   });
+  await invalidateAdminDashboardCache(
+    enable ? "maintenance-on" : "maintenance-off",
+  );
 
   return {
     message: enable
@@ -183,6 +211,7 @@ export const updateMaintenanceMessageCommand = async ({ message }) => {
 
   const result = await updateMaintenanceMessageInDb(message.trim());
   await emitDashboardStatsUpdated({ reason: "maintenance:message-updated" });
+  await invalidateAdminDashboardCache("maintenance-message-updated");
 
   return {
     message: "Tin nhắn bảo trì đã được cập nhật",

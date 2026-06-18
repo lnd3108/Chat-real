@@ -1,4 +1,7 @@
 import { io, type Socket } from "socket.io-client";
+import { validateFrontendTransportConfig } from "@/shared/config/transportSecurity";
+
+validateFrontendTransportConfig();
 
 const baseURL =
   import.meta.env.VITE_SOCKET_URL ||

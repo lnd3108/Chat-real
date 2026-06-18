@@ -31,6 +31,7 @@ import {
   uploadAvatarCommand,
   verifyEmailChangeCommand,
 } from "../../application/user-profile.service.js";
+import { clearRefreshTokenCookie } from "../../../../config/auth-cookies.js";
 
 export const authMe = makeQueryHandler({
   execute: (req) => getAuthMe({ user: req.user }),
@@ -191,7 +192,7 @@ export const deleteMyAccount = makeCommandHandler({
       body: req.body,
     });
     if (result?.clearRefreshToken) {
-      res.clearCookie("refreshToken");
+      clearRefreshTokenCookie(res);
     }
     return result;
   },
