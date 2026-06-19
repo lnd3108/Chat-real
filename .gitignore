@@ -41,9 +41,24 @@ Thumbs.db
 # ======================
 logs/
 *.log
+*.out.log
+*.err.log
+*.old.log
+*.retry.log
+
+# Runtime / benchmark logs
+mongo-monitor-*.log
+phase*.log
+signin-pipeline-*.log
+backend-phase*.log
+backend-redis-phase*.log
 
 # ======================
 # CACHE
 # ======================
 .cache/
 .tmp/
+
+# Temporary files
+tmp/
+tmp-*.js
